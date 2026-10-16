@@ -120,7 +120,10 @@ export function evaluateFeedItem(
     return { reason: '知乎盐选付费内容', category: 'ad' };
   }
   const content = typeof item.content === 'string' ? item.content : '';
-  if (rules.blockAdPlatform && content.includes('xg.zhihu.com')) {
+  if (
+    rules.blockAdPlatform &&
+    (item.isAdPromotion || content.includes('xg.zhihu.com'))
+  ) {
     return { reason: '知乎广告平台推广', category: 'ad' };
   }
   if (

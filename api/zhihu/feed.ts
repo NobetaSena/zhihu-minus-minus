@@ -333,6 +333,8 @@ export interface FeedItem {
   answerType?: string;
   /** 推荐流正文是否被截断；被截断的正文不能作为详情缓存 */
   contentNeedTruncated?: boolean;
+  /** Feed 外层 promotion_extra 的 is_card === true，独立于 target.is_labeled。 */
+  isAdPromotion?: boolean;
   /** 推广/利益声明标记，话题流返回、推荐流通常不返回 */
   isLabeled?: boolean;
   /** author.is_org —— 机构号 */
@@ -519,6 +521,8 @@ export interface RawFeedItem {
   ad?: RawFeedAd;
   ad_list?: RawFeedAd[];
   adjson?: string;
+  /** 推广投放元数据；实测为 JSON 字符串，解析后仅保留明确的 is_card 标记。 */
+  promotion_extra?: unknown;
   // Hot List specific fields
   card_id?: string;
   card_label?: {
