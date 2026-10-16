@@ -676,16 +676,18 @@ interface HslColor {
 }
 
 interface HslSliderProps {
+  accessibilityLabel: string;
   value: number;
   min: number;
   max: number;
   thumbColor: string;
   gradientColors: string[];
   onChange: (value: number) => void;
-  onComplete?: (value: number) => void;
+  onComplete: (value: number) => void;
 }
 
 function HslSlider({
+  accessibilityLabel,
   value,
   min,
   max,
@@ -699,6 +701,8 @@ function HslSlider({
   const onCompleteRef = useRef(onComplete);
   const trackWidthValue = useSharedValue(0);
   const sliderRatio = useSharedValue(0);
+  const isDragging = useSharedValue(false);
+  const startValue = useSharedValue(value);
 
   onChangeRef.current = onChange;
   onCompleteRef.current = onComplete;
@@ -707,52 +711,99 @@ function HslSlider({
     trackWidth > 0 ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0;
 
   useEffect(() => {
+    // JS preview renders can trail the finger; keep the UI-thread position
+    // authoritative until the drag ends.
+    if (isDragging.value) return;
+    startValue.value = value;
     sliderRatio.value = ratio;
-  }, [ratio, sliderRatio]);
+  }, [isDragging, ratio, sliderRatio, startValue, value]);
 
   const notifyChange = useCallback((nextValue: number) => {
     onChangeRef.current(nextValue);
   }, []);
   const notifyComplete = useCallback((nextValue: number) => {
-    onCompleteRef.current?.(nextValue);
+    onCompleteRef.current(nextValue);
   }, []);
-  const panGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([-8, 8])
-        .failOffsetY([-12, 12])
-        .onBegin((event) => {
-          const nextRatio = Math.max(
+  const sliderGesture = useMemo(() => {
+    const updateFromPosition = (x: number, complete: boolean) => {
+      'worklet';
+      if (trackWidthValue.value <= 0) return;
+      const nextRatio = Math.max(0, Math.min(1, x / trackWidthValue.value));
+      sliderRatio.value = nextRatio;
+      const nextValue = Math.round(min + nextRatio * (max - min));
+      if (complete) {
+        // The final value may equal the last preview, so no prop effect is
+        // guaranteed to run before the next drag.
+        startValue.value = nextValue;
+        runOnJS(notifyComplete)(nextValue);
+      } else {
+        runOnJS(notifyChange)(nextValue);
+      }
+    };
+    const pan = Gesture.Pan()
+      .activeOffsetX([-8, 8])
+      .failOffsetY([-12, 12])
+      // BEGAN also fires when the user intends to scroll the page. Wait
+      // for horizontal activation before changing the color preview.
+      .onStart((event) => {
+        isDragging.value = true;
+        updateFromPosition(event.x, false);
+      })
+      .onUpdate((event) => {
+        updateFromPosition(event.x, false);
+      })
+      .onEnd((event, success) => {
+        if (success) updateFromPosition(event.x, true);
+      })
+      .onFinalize((_event, success) => {
+        if (!success && isDragging.value) {
+          sliderRatio.value = Math.max(
             0,
-            Math.min(1, event.x / Math.max(trackWidthValue.value, 1)),
+            Math.min(1, (startValue.value - min) / (max - min)),
           );
-          sliderRatio.value = nextRatio;
-          runOnJS(notifyChange)(Math.round(min + nextRatio * (max - min)));
-        })
-        .onUpdate((event) => {
-          const nextRatio = Math.max(
-            0,
-            Math.min(1, event.x / Math.max(trackWidthValue.value, 1)),
-          );
-          sliderRatio.value = nextRatio;
-          runOnJS(notifyChange)(Math.round(min + nextRatio * (max - min)));
-        })
-        .onEnd((event) => {
-          const nextRatio = Math.max(
-            0,
-            Math.min(1, event.x / Math.max(trackWidthValue.value, 1)),
-          );
-          runOnJS(notifyComplete)(Math.round(min + nextRatio * (max - min)));
-        }),
-    [max, min, notifyChange, notifyComplete, sliderRatio, trackWidthValue],
-  );
+          runOnJS(notifyChange)(startValue.value);
+        }
+        isDragging.value = false;
+      });
+    // A tap (including movement below the pan threshold) never reaches
+    // Pan.onEnd. Handle it explicitly so its selected color is committed.
+    const tap = Gesture.Tap()
+      .maxDistance(12)
+      .onEnd((event, success) => {
+        if (success) updateFromPosition(event.x, true);
+      });
+    return Gesture.Race(pan, tap);
+  }, [
+    isDragging,
+    max,
+    min,
+    notifyChange,
+    notifyComplete,
+    sliderRatio,
+    startValue,
+    trackWidthValue,
+  ]);
   const thumbAnimatedStyle = useAnimatedStyle(() => ({
     left: sliderRatio.value * trackWidthValue.value - 10,
   }));
 
   return (
-    <GestureDetector gesture={panGesture}>
+    <GestureDetector gesture={sliderGesture}>
       <RNView
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityValue={{ min, max, now: value }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={({ nativeEvent }) => {
+          const delta = nativeEvent.actionName === 'increment' ? 1 : -1;
+          if (
+            nativeEvent.actionName === 'increment' ||
+            nativeEvent.actionName === 'decrement'
+          ) {
+            notifyComplete(Math.max(min, Math.min(max, value + delta)));
+          }
+        }}
         style={{ height: 32, justifyContent: 'center' }}
         onLayout={(event) => {
           const width = event.nativeEvent.layout.width;
@@ -911,6 +962,7 @@ function ColorPickerSection({
           色相 (Hue) {hsl.h}°
         </Text>
         <HslSlider
+          accessibilityLabel="色相"
           value={hsl.h}
           min={0}
           max={359}
@@ -925,6 +977,7 @@ function ColorPickerSection({
           饱和度 (Saturation) {hsl.s}%
         </Text>
         <HslSlider
+          accessibilityLabel="饱和度"
           value={hsl.s}
           min={10}
           max={100}
@@ -939,6 +992,7 @@ function ColorPickerSection({
           亮度 (Lightness) {hsl.l}%
         </Text>
         <HslSlider
+          accessibilityLabel="亮度"
           value={hsl.l}
           min={10}
           max={90}
