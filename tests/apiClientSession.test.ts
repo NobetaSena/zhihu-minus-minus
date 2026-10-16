@@ -1,12 +1,14 @@
 import axios, {
   AxiosError,
   type AxiosResponse,
+  CanceledError,
   type InternalAxiosRequestConfig,
 } from 'axios';
 import apiClient, {
   hasAuthenticationCookie,
   mergeCookieHeader,
 } from '../api/client';
+import { touchAnswerRead } from '../api/zhihu/lastRead';
 import type { ZhihuMeInfo } from '../api/zhihu/me';
 import { readAtomically } from '../modules/zhihu-persistence';
 import {
@@ -15,6 +17,7 @@ import {
   useAuthStore,
 } from '../store/useAuthStore';
 import { useCollectionStore } from '../store/useCollectionStore';
+import { useVerificationStore } from '../store/useVerificationStore';
 
 jest.mock('@preeternal/react-native-cookie-manager', () => ({
   __esModule: true,
@@ -88,6 +91,7 @@ function unauthorized(config: InternalAxiosRequestConfig): AxiosError {
 }
 
 beforeEach(async () => {
+  useVerificationStore.getState().hide();
   await useAuthStore.persist.rehydrate();
   useAuthStore.setState({
     accounts: [],
@@ -103,6 +107,74 @@ beforeEach(async () => {
 afterEach(() => {
   apiClient.defaults.adapter = originalAdapter;
   jest.restoreAllMocks();
+});
+
+test('answer touch reaches the adapter as Web multipart FormData after Axios transforms', async () => {
+  let requests = 0;
+  apiClient.defaults.adapter = async (config) => {
+    requests += 1;
+    expect(apiClient.getUri(config)).toBe(
+      'https://www.zhihu.com/lastread/touch',
+    );
+    expect(config.method).toBe('post');
+    expect(config.headers.get('Content-Type')).toBe('multipart/form-data');
+    expect(config.data).toBeInstanceOf(FormData);
+    expect((config.data as FormData).getAll('items')).toEqual([
+      '[["answer","2093868403115155780","touch"]]',
+    ]);
+    expect((config.data as FormData).getAll('targets')).toEqual([]);
+    return response(config);
+  };
+
+  await touchAnswerRead('2093868403115155780');
+  expect(requests).toBe(1);
+});
+
+test('answer touch cannot reach the adapter after an account switch before its request interceptor', async () => {
+  let requests = 0;
+  apiClient.defaults.adapter = async (config) => {
+    requests += 1;
+    return response(config);
+  };
+
+  const pending = touchAnswerRead('42');
+  useAuthStore.getState().setCookies(COOKIE_B);
+  useAuthStore.getState().addAccount(COOKIE_B, PROFILE_B);
+
+  await expect(pending).rejects.toBeInstanceOf(CanceledError);
+  expect(requests).toBe(0);
+});
+
+test('answer touch rejects a verification challenge without opening a modal, while normal requests still prompt', async () => {
+  apiClient.defaults.adapter = async (config) => {
+    throw new AxiosError(
+      'Synthetic challenge',
+      'ERR_BAD_REQUEST',
+      config,
+      undefined,
+      {
+        ...response(config, {
+          error: {
+            code: 40352,
+            redirect: 'https://example.com/synthetic-challenge',
+          },
+        }),
+        status: 403,
+        statusText: 'Forbidden',
+      },
+    );
+  };
+  await expect(touchAnswerRead('42')).rejects.toMatchObject({
+    response: { status: 403 },
+  });
+  expect(useVerificationStore.getState().isVisible).toBe(false);
+  expect(useVerificationStore.getState().verificationUrl).toBeNull();
+
+  await expect(apiClient.get('/test-interactive')).rejects.toMatchObject({
+    response: { status: 403 },
+  });
+  expect(useVerificationStore.getState().isVisible).toBe(true);
+  useVerificationStore.getState().hide();
 });
 
 test('a delayed rehydrate cannot replace a newer login or discard saved accounts', async () => {

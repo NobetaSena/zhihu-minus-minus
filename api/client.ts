@@ -34,6 +34,7 @@ let requestSequence = 0;
 interface SessionRequestConfig extends InternalAxiosRequestConfig {
   zhihuSessionVersion?: number;
   zhihuSessionRetried?: boolean;
+  zhihuSkipVerification?: boolean;
 }
 
 interface SessionRefreshResult {
@@ -530,7 +531,7 @@ apiClient.interceptors.response.use(
         typeof verificationError.redirect === 'string'
           ? verificationError.redirect
           : undefined;
-      if (redirectUrl) {
+      if (redirectUrl && !sessionConfig?.zhihuSkipVerification) {
         useVerificationStore.getState().setVerification(redirectUrl);
       }
       return Promise.reject(error); // 拦截 40352，不抛出红屏错误

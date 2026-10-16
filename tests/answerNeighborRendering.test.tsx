@@ -10,6 +10,7 @@ import { getAllContentCollectionStatus } from '../api/zhihu/collection';
 import { AnswerDetailView } from '../components/AnswerDetailView';
 import type { CollectionButton } from '../components/CollectionButton';
 import type { RichContentLoadingPhase } from '../features/rich-content';
+import { useAnswerReadTouch } from '../hooks/useAnswerReadTouch';
 import {
   getAnswerEndorsementsKey,
   seedAnswerEndorsements,
@@ -213,6 +214,9 @@ jest.mock('../components/VoterListModal', () => ({
 }));
 jest.mock('../hooks/useOptimisticToggle', () => ({
   useOptimisticToggle: () => ({ mutate: jest.fn(), isPending: false }),
+}));
+jest.mock('../hooks/useAnswerReadTouch', () => ({
+  useAnswerReadTouch: jest.fn(),
 }));
 jest.mock('../hooks/useReadingProgress', () => ({
   useReadingProgress: (options: ReadingOptions) => mockReadingProgress(options),
@@ -460,6 +464,35 @@ test('mounts a cached neighboring body before focus without starting detail, col
       .map((node) => node.props.testID),
   ).toEqual(['content-relationship-notice', 'answer-body']);
   expectInactiveReading();
+});
+
+test('reports only the focused answer after its body layout is ready', async () => {
+  const host = await renderAnswer();
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  await act(() => mockLayoutReady());
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  await host.rerender(host.page(true, true));
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], true);
+  await host.rerender(host.page(false, true));
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+});
+
+test('a selected answer does not report while fetching or waiting for native layout', async () => {
+  let finish!: (value: AnswerDetail) => void;
+  jest.mocked(getAnswer).mockReturnValueOnce(
+    new Promise<AnswerDetail>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const host = await renderAnswer({ cached: false, isFocused: true });
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  await act(() => finish(answer));
+  await waitFor(() =>
+    expect(host.getByTestId('answer-body')).toBeOnTheScreen(),
+  );
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  await act(() => mockLayoutReady());
+  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], true);
 });
 
 test('an active answer enables collection immediately before comments using its collection state', async () => {

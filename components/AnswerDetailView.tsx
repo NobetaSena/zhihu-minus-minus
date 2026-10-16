@@ -55,6 +55,7 @@ import {
   type RichContentLoadingPhase,
   ZhihuContent,
 } from '@/features/rich-content';
+import { useAnswerReadTouch } from '@/hooks/useAnswerReadTouch';
 import { useDoubleTapAction } from '@/hooks/useDoubleTapAction';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { useReadingContentMeasurement } from '@/hooks/useReadingContentMeasurement';
@@ -239,6 +240,7 @@ export const AnswerDetailView = ({
     shouldRenderBody &&
     Boolean(answer) &&
     (!waitForNativeLayout || readyLayoutSource === contentLayoutSource);
+  useAnswerReadTouch([id], isFocused && contentLayoutReady);
 
   const updateHeaderProgress = React.useCallback(
     (offset: number) => {

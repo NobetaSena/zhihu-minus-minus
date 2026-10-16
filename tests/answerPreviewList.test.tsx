@@ -17,8 +17,18 @@ import type { useAnswerPreviewAutoLoad } from '../hooks/useAnswerPreviewAutoLoad
 import type { useAnswerPreviewFloatingBar } from '../hooks/useAnswerPreviewFloatingBar';
 
 let mockSessionVersion = 1;
+let mockQuerySessionVersion: number | null = null;
+let mockSelectedIsPending = false;
 let mockActiveAnswerId: string | null = null;
-let mockFollowingAnswers: ZhihuPreviewAnswer[] = [];
+let mockFollowingAnswers: Array<ZhihuPlainPreviewAnswer | ZhihuPreviewAnswer> =
+  [];
+type ViewabilityCallback = ReturnType<
+  typeof useAnswerPreviewFloatingBar
+>['onViewableItemsChanged'];
+let mockViewabilityCallback: ViewabilityCallback | null = null;
+const mockReadTouch = jest.fn(
+  (_answerIds: readonly string[], _enabled?: boolean) => {},
+);
 const mockPlainBodies = new Map<string, ZhihuContentProps>();
 const mockStructuredBodies = new Map<string, ZhihuStructuredContentProps>();
 const mockRefetchSelected = jest.fn(() => Promise.resolve(undefined));
@@ -84,9 +94,9 @@ jest.mock('../store/useSettingsStore', () => ({
 jest.mock('../hooks/useAnswerPreviewQuery', () => ({
   useAnswerPreviewQuery: ({ answerId }: { answerId: string }) => ({
     items: [mockPlainAnswer(answerId), ...mockFollowingAnswers],
-    sessionVersion: mockSessionVersion,
+    sessionVersion: mockQuerySessionVersion ?? mockSessionVersion,
     queryKey: ['answer-preview-list', answerId, mockSessionVersion],
-    selectedIsPending: false,
+    selectedIsPending: mockSelectedIsPending,
     selectedIsError: false,
     isPending: false,
     isError: false,
@@ -95,6 +105,10 @@ jest.mock('../hooks/useAnswerPreviewQuery', () => ({
     hasNextPage: false,
     refetchSelected: mockRefetchSelected,
   }),
+}));
+jest.mock('../hooks/useAnswerReadTouch', () => ({
+  useAnswerReadTouch: (answerIds: readonly string[], enabled?: boolean) =>
+    mockReadTouch(answerIds, enabled),
 }));
 jest.mock('../hooks/useAnswerPreviewFloatingBar', () => ({
   useAnswerPreviewFloatingBar: (
@@ -216,6 +230,7 @@ jest.mock('@shopify/flash-list', () => {
           renderItem,
           keyExtractor,
           refreshControl,
+          onViewableItemsChanged,
         }: {
           data: ZhihuReadingPreviewItem[];
           renderItem: (info: {
@@ -224,9 +239,11 @@ jest.mock('@shopify/flash-list', () => {
           }) => ReactNode;
           keyExtractor: (item: ZhihuReadingPreviewItem) => string;
           refreshControl: ReactNode;
+          onViewableItemsChanged: ViewabilityCallback;
         },
         ref,
       ) => {
+        mockViewabilityCallback = onViewableItemsChanged;
         react.useImperativeHandle(ref, () => ({
           scrollToIndex: mockScrollToIndex,
         }));
@@ -304,9 +321,27 @@ function createHost(answerId = 'selected-answer') {
   return { client, screen, element: screen(answerId) };
 }
 
+function viewabilityCallback(): ViewabilityCallback {
+  if (!mockViewabilityCallback)
+    throw new Error('Expected a list viewability callback');
+  return mockViewabilityCallback;
+}
+
+function visibleAnswers(...ids: string[]) {
+  return {
+    viewableItems: ids.map((id) => ({
+      item: mockPlainAnswer(id),
+      isViewable: true,
+    })),
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockSessionVersion = 1;
+  mockQuerySessionVersion = null;
+  mockSelectedIsPending = false;
+  mockViewabilityCallback = null;
   mockActiveAnswerId = null;
   mockFollowingAnswers = [structuredAnswer('following-answer')];
   mockPlainBodies.clear();
@@ -443,4 +478,99 @@ test('route and account changes keep only the current selected answer expanded a
     { expanded: false },
   );
   expect(host.queryByTestId('answer-preview-plain-toggle')).toBeNull();
+});
+
+test('touches only visible bodies and requires structured previews to be expanded', async () => {
+  const { element } = createHost();
+  const host = await render(element);
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+
+  await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await act(() => viewabilityCallback()(visibleAnswers('selected-answer')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-answer'], true);
+
+  await act(() =>
+    viewabilityCallback()(
+      visibleAnswers('selected-answer', 'following-answer', 'not-in-list'),
+    ),
+  );
+  expect(mockReadTouch).toHaveBeenLastCalledWith(
+    ['selected-answer', 'following-answer'],
+    true,
+  );
+  await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-answer'], true);
+  await act(() =>
+    viewabilityCallback()({
+      viewableItems: [
+        { item: mockPlainAnswer('selected-answer'), isViewable: false },
+        { item: structuredAnswer('following-answer'), isViewable: true },
+      ],
+    }),
+  );
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['following-answer'], true);
+});
+
+test('touches visible plain neighboring bodies without an expansion control', async () => {
+  mockFollowingAnswers = [mockPlainAnswer('plain-neighbor')];
+  const { element } = createHost();
+  await render(element);
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+
+  await act(() => viewabilityCallback()(visibleAnswers('plain-neighbor')));
+  expectExpandedIds(['selected-answer']);
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['plain-neighbor'], true);
+  await act(() => viewabilityCallback()(visibleAnswers()));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+});
+
+test('clears visible answers across route and account changes and ignores previous list callbacks', async () => {
+  const { element, screen } = createHost('selected-a');
+  const host = await render(element);
+  const firstCallback = viewabilityCallback();
+  await act(() => firstCallback(visibleAnswers('selected-a')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-a'], true);
+
+  await host.rerender(screen('selected-b'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await act(() => firstCallback(visibleAnswers('selected-b')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await act(() => viewabilityCallback()(visibleAnswers('selected-b')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-b'], true);
+
+  await host.rerender(screen('selected-a'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await act(() => firstCallback(visibleAnswers('selected-a')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  const previousAccountCallback = viewabilityCallback();
+  await act(() => previousAccountCallback(visibleAnswers('selected-a')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-a'], true);
+
+  mockSessionVersion = 2;
+  await host.rerender(screen('selected-a'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await act(() => previousAccountCallback(visibleAnswers('selected-a')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await act(() => viewabilityCallback()(visibleAnswers('selected-a')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-a'], true);
+});
+
+test('does not enable touch while the entry is pending or its query session is stale', async () => {
+  mockSelectedIsPending = true;
+  const { element, screen } = createHost();
+  const host = await render(element);
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], false);
+
+  mockSelectedIsPending = false;
+  await host.rerender(screen('selected-answer'));
+  await act(() => viewabilityCallback()(visibleAnswers('selected-answer')));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-answer'], true);
+
+  mockQuerySessionVersion = 1;
+  mockSessionVersion = 2;
+  await host.rerender(screen('selected-answer'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-answer'], false);
 });

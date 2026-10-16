@@ -45,6 +45,7 @@ import { useAnswerPreviewAutoLoad } from '@/hooks/useAnswerPreviewAutoLoad';
 import { useAnswerPreviewBody } from '@/hooks/useAnswerPreviewBody';
 import { useAnswerPreviewFloatingBar } from '@/hooks/useAnswerPreviewFloatingBar';
 import { useAnswerPreviewQuery } from '@/hooks/useAnswerPreviewQuery';
+import { useAnswerReadTouch } from '@/hooks/useAnswerReadTouch';
 import { useDetailHeaderState } from '@/hooks/useDetailHeaderState';
 import { getAuthSessionVersion } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -347,6 +348,30 @@ export function AnswerPreviewList({
     ids.add(answerId);
     return ids;
   }, [answerId, expandedState, scope]);
+  const visibleScope = useMemo(() => ({ scope }), [scope]);
+  const currentVisibleScope = useRef(visibleScope);
+  currentVisibleScope.current = visibleScope;
+  const [visibleAnswers, setVisibleAnswers] = useState({
+    scope: visibleScope,
+    ids: new Set<string>(),
+  });
+  const readAnswerIds = useMemo(
+    () =>
+      visibleAnswers.scope === visibleScope
+        ? query.items.flatMap((item) =>
+            item.type === 'answer' &&
+            visibleAnswers.ids.has(item.id) &&
+            (!('structuredContent' in item) || expandedIds.has(item.id))
+              ? [item.id]
+              : [],
+          )
+        : [],
+    [expandedIds, query.items, visibleAnswers, visibleScope],
+  );
+  useAnswerReadTouch(
+    readAnswerIds,
+    !waitingForFirstAnswer && getAuthSessionVersion() === query.sessionVersion,
+  );
   const floatingBar = useAnswerPreviewFloatingBar({
     scope,
     items: query.items,
@@ -360,10 +385,27 @@ export function AnswerPreviewList({
   });
   const handleViewableItemsChanged = useCallback(
     (info: Parameters<typeof floatingBar.onViewableItemsChanged>[0]) => {
+      if (currentVisibleScope.current !== visibleScope) return;
+      const ids = new Set(
+        info.viewableItems.flatMap(({ item, isViewable }) =>
+          item.type === 'answer' && isViewable !== false ? [item.id] : [],
+        ),
+      );
+      setVisibleAnswers((current) =>
+        current.scope === visibleScope &&
+        current.ids.size === ids.size &&
+        [...ids].every((id) => current.ids.has(id))
+          ? current
+          : { scope: visibleScope, ids },
+      );
       floatingBar.onViewableItemsChanged(info);
       autoLoad.onViewableItemsChanged(info);
     },
-    [floatingBar.onViewableItemsChanged, autoLoad.onViewableItemsChanged],
+    [
+      visibleScope,
+      floatingBar.onViewableItemsChanged,
+      autoLoad.onViewableItemsChanged,
+    ],
   );
   const handleFooterRef = useCallback(
     (id: string, view: Pick<NativeView, 'measureInWindow'> | null) => {
