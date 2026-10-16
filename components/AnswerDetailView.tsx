@@ -432,7 +432,7 @@ export const AnswerDetailView = ({
     }
   }, [collectionStatus, id, isFetchedAfterMount, setCollectedStatus]);
 
-  const { gesture: doubleTapVote } = useDoubleTapAction({
+  const { gesture: doubleTapVote, isDoubleTapEnabled } = useDoubleTapAction({
     id,
     type: 'answers',
     commentType: 'answer',
@@ -632,6 +632,7 @@ export const AnswerDetailView = ({
                   voteCount={answer?.voteup_count}
                 />
                 <ZhihuContent
+                  suppressDoubleTapSelection={isDoubleTapEnabled}
                   content={answer?.content || ''}
                   segmentInfos={answer?.segment_infos}
                   linkCardInfo={answer?.link_card_info}

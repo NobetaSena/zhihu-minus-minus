@@ -216,7 +216,7 @@ export default function ArticleDetail() {
     enabled: !!id && !isDaily,
   });
 
-  const { gesture: doubleTapVote } = useDoubleTapAction({
+  const { gesture: doubleTapVote, isDoubleTapEnabled } = useDoubleTapAction({
     id: String(id ?? ''),
     type: 'articles',
     commentType: 'article',
@@ -467,6 +467,7 @@ export default function ArticleDetail() {
                 <AnswerEndorsements endorsements={zhihuData?.endorsements} />
               )}
               <ZhihuContent
+                suppressDoubleTapSelection={isDoubleTapEnabled}
                 content={isDaily ? dailyData?.body : zhihuData?.content}
                 objectId={id as string}
                 type="article"

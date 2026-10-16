@@ -133,6 +133,12 @@ HTML `video` / `source`、`video-box` 和想法 `video` 分段保留安全封面
 
 tiqian-super-mini选区已接回回答的既有业务菜单，但仅开放可逐片验证源映射的普通正文/引用及相邻段落。必须具有唯一真实段落ID，若存在API段落文本也须全文一致；含附件、br、脚注、标题/列表、缺失或重复段落ID等情况保留系统选择和复制，不补造业务范围。业务动作的存在不代表已在本轮真机验证中提交API操作。
 
+正文双击与选字共用 `suppressDoubleTapSelection` 策略，由宿主 `useDoubleTapAction.isDoubleTapEnabled` 决定：启用快捷动作或等待首次设置时，双击留给宿主，长按仍进入系统选区；关闭、日报、未聚焦回答以及没有双击宿主的预览和脚注弹窗保持系统行为。Android 文字流用系统 `GestureDetector` 区分短按与长按，短按不进入 `TextView` 的双击选词逻辑；长按确认后交回原生选择与拖柄，不依赖特定 Android 版本的 Editor 内部状态。iOS 通过公开 `UITextInteraction` 手势失败关系让系统选词等待双击识别，不改变系统长按时限。
+
+Android 手势库 2.30.1 在第二次抬起识别双击时会吞掉原生 `UP`，仅取消 RN 的 JS 触摸，导致文字流的长按计时未结束。项目通过 [RNGH 补丁](../../patches/react-native-gesture-handler+2.30.1.patch) 在首次接管恰好发生于 `UP/CANCEL` 时，沿原生触摸目标链补发一次 `CANCEL`。已在 `MOVE` 阶段交给手势库的触摸不额外取消，避免中断 `NativeViewGestureHandler` 驱动的滚动或惯性滚动；不调整系统长按时限。
+
+WebView 同步这项策略并取消 DOM 多击默认选字，但 WKWebView 还有由 UIKit 直接处理的选词路径，当前 DOM 防护不能保证覆盖它。代码块、未知块和公式文字兜底仍使用普通 RN `Text`，也不经过原生文字流仲裁。Android 默认原生正文已真机验证连续双击不误选、长按与惯性滚动正常；上述 WebView/RN Text 路径、iOS 实际手势关系，以及复制、读屏等交互仍须分别验收，不能把编译通过视为完整交互验证。
+
 反应接口保留完整片段ID集合，并安全解析服务端新建segId。回答段评链接携带原始片段文本和完整段落/范围，当前评论页的根评论和直接回复才使用段评接口；旧链接缺少这些字段时仍可阅读，需重新选择原文后发段评。独立replies页沿用原有comment-ID回复流程，本轮未扩展。
 
 真实知乎格式的补齐以中立文档模型、WebView实现及稳定fixtures为依据，具体覆盖与剩余边界见 [存量案例审计](./docs/renderer-v2-experiment-03-native-flow.md#存量知乎格式审计)。合成演示与真实API格式分别验证，不能仅凭页面中出现“脚注”或“卡片”就认定已覆盖知乎的属性和元数据格式。

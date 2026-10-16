@@ -356,6 +356,7 @@ export const ZhihuContent: React.FC<ZhihuContentProps> = React.memo(
     typographyOptions,
     useNative,
     selectable = true,
+    suppressDoubleTapSelection = false,
     variant = 'default',
   }) => {
     const colorScheme = useColorScheme();
@@ -755,6 +756,7 @@ export const ZhihuContent: React.FC<ZhihuContentProps> = React.memo(
         onSegmentPress={onSegmentPressCallback}
         onTextSelected={type === 'answer' ? onTextSelectedCallback : undefined}
         selectable={selectable}
+        suppressDoubleTapSelection={suppressDoubleTapSelection}
         variant={variant}
         fontSizeScale={fontSizeScale}
         lineHeightScale={lineHeightScale}
@@ -784,6 +786,7 @@ export const ZhihuContent: React.FC<ZhihuContentProps> = React.memo(
             onSelectionChange={onNativeTextSelectedCallback}
             renderLinkCard={renderNativeLinkCard}
             selectable={selectable}
+            suppressDoubleTapSelection={suppressDoubleTapSelection}
             renderFallback={renderWebViewContent}
             renderPlaceholder={renderPlaceholder}
             onLayoutReady={onLayoutReady}

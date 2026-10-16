@@ -135,6 +135,10 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
     propBatch.update { it.copy(selectable = value) }
   }
 
+  fun setSuppressDoubleTapSelection(value: Boolean) {
+    propBatch.update { it.copy(suppressDoubleTapSelection = value) }
+  }
+
   fun commitProps() {
     if (disposed) return
     val change = propBatch.commit() ?: return
@@ -154,6 +158,7 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
       textView.setTextIsSelectable(props.selectable)
       textView.isClickable = true
     }
+    textView.suppressDoubleTapSelection = props.suppressDoubleTapSelection
     if (change.requiresRebuild) {
       rebuild()
     } else {

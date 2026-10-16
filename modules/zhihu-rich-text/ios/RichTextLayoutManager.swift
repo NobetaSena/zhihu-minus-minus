@@ -85,8 +85,81 @@ final class RichTextLayoutManager: NSLayoutManager {
   }
 }
 
+private final class FlowSelectionDoubleTapDelegate: NSObject, UIGestureRecognizerDelegate {
+  private weak var textView: FlowTextView?
+  private let selectionGestures: NSHashTable<UIGestureRecognizer>
+
+  init(textView: FlowTextView, selectionGestures: NSHashTable<UIGestureRecognizer>) {
+    self.textView = textView
+    self.selectionGestures = selectionGestures
+  }
+
+  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+    guard let textView else { return false }
+    return textView.suppressDoubleTapSelection && textView.isSelectable && textView.selectedRange.length == 0 &&
+      touch.type == .direct && !UIAccessibility.isVoiceOverRunning
+  }
+
+  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    !selectionGestures.contains(otherGestureRecognizer)
+  }
+}
+
 final class FlowTextView: UITextView {
   var copyResolver: ((NSRange) -> String?)?
+  var suppressDoubleTapSelection = false {
+    didSet { synchronizeSelectionGestures() }
+  }
+  private var doubleTapGuardInstalled = false
+  private let selectionGestures = NSHashTable<UIGestureRecognizer>.weakObjects()
+  private let guardedSelectionGestures = NSHashTable<UIGestureRecognizer>.weakObjects()
+  private lazy var doubleTapDelegate = FlowSelectionDoubleTapDelegate(textView: self, selectionGestures: selectionGestures)
+  private lazy var doubleTapGuard: UITapGestureRecognizer = {
+    let gesture = UITapGestureRecognizer(target: self, action: #selector(reservedDoubleTap))
+    gesture.numberOfTapsRequired = 2
+    gesture.cancelsTouchesInView = false
+    gesture.delaysTouchesBegan = false
+    gesture.delaysTouchesEnded = false
+    gesture.delegate = doubleTapDelegate
+    return gesture
+  }()
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    synchronizeSelectionGestures()
+  }
+
+  /** UIKit may recreate its text interactions when selectability or layout changes. */
+  func synchronizeSelectionGestures() {
+    guard suppressDoubleTapSelection || doubleTapGuardInstalled else { return }
+    if !doubleTapGuardInstalled {
+      doubleTapGuardInstalled = true
+      addGestureRecognizer(doubleTapGuard)
+    }
+    let enabled = suppressDoubleTapSelection && isSelectable
+    if doubleTapGuard.isEnabled != enabled { doubleTapGuard.isEnabled = enabled }
+    selectionGestures.removeAllObjects()
+    var views: [UIView] = [self]
+    while let view = views.popLast() {
+      views.append(contentsOf: view.subviews)
+      for interaction in view.interactions.compactMap({ $0 as? UITextInteraction }) {
+        for gesture in interaction.gesturesForFailureRequirements {
+          selectionGestures.add(gesture)
+          // A plain hold still starts native selection immediately at UIKit's
+          // normal threshold; other selection gestures wait for the host tap.
+          if let press = gesture as? UILongPressGestureRecognizer, press.numberOfTapsRequired == 0 { continue }
+          if !guardedSelectionGestures.contains(gesture) {
+            gesture.require(toFail: doubleTapGuard)
+            guardedSelectionGestures.add(gesture)
+          }
+        }
+      }
+    }
+  }
+
+  // The ancestor recognizer owns the action. This recognizer only establishes
+  // UIKit failure requirements, so one double tap never dispatches two actions.
+  @objc private func reservedDoubleTap() {}
 
   override func copy(_ sender: Any?) {
     if let text = copyResolver?(selectedRange) {

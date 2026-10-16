@@ -47,6 +47,7 @@ export function useDoubleTapAction({
   const queryClient = useQueryClient();
   const router = useRouter();
   const action = useSettingsStore((state) => state.doubleTapAction);
+  const isDoubleTapEnabled = enabled && action !== 'off';
   const showSetup = useDoubleTapSetupStore((state) => state.show);
   const pendingRef = useRef(false);
   const stateRef = useRef({ id, type, voted, count });
@@ -110,12 +111,12 @@ export function useDoubleTapAction({
       Gesture.Tap()
         .numberOfTaps(2)
         .runOnJS(true)
-        .enabled(enabled && action !== 'off')
+        .enabled(isDoubleTapEnabled)
         .onEnd((_event, success) => {
           if (success) void trigger();
         }),
-    [action, enabled, trigger],
+    [isDoubleTapEnabled, trigger],
   );
 
-  return { gesture };
+  return { gesture, isDoubleTapEnabled };
 }

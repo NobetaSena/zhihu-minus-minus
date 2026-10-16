@@ -31,6 +31,8 @@ export interface RichTextNativeViewProps extends ViewProps {
   readonly contentWidth: number;
   readonly layoutKey: string;
   readonly selectable: boolean;
+  /** Reserve double taps for a host gesture, keeping long-press selection. */
+  readonly suppressDoubleTapSelection?: boolean;
   readonly onSelectionChange?: (
     event: RichTextNativeEvent<RichTextSelectionEventData>,
   ) => void;

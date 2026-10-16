@@ -120,7 +120,7 @@ export default function PinDetailScreen() {
     if (token) router.push(`/user/${token}`);
   }, [pin?.author, router]);
 
-  const { gesture: doubleTapVote } = useDoubleTapAction({
+  const { gesture: doubleTapVote, isDoubleTapEnabled } = useDoubleTapAction({
     id: String(id ?? ''),
     type: 'pins',
     commentType: 'pin',
@@ -262,6 +262,7 @@ export default function PinDetailScreen() {
                 voteCount={pinVoteCount}
               />
               <ZhihuContent
+                suppressDoubleTapSelection={isDoubleTapEnabled}
                 contentArray={pin?.content}
                 objectId={id as string}
                 type="pin"

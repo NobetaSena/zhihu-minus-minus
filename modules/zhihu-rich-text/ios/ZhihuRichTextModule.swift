@@ -22,6 +22,9 @@ public final class ZhihuRichTextModule: Module {
       Prop("selectable") { (view: RichTextView, value: Bool) in
         view.setSelectable(value)
       }
+      Prop("suppressDoubleTapSelection") { (view: RichTextView, value: Bool) in
+        view.setSuppressDoubleTapSelection(value)
+      }
       OnViewDidUpdateProps { (view: RichTextView) in
         view.applyPendingProps()
       }

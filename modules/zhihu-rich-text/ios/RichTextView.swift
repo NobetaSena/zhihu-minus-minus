@@ -158,7 +158,12 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
   func setSelectable(_ value: Bool) {
     selectable = value
     textView.isSelectable = value
+    textView.synchronizeSelectionGestures()
     if !value { emitSelection() }
+  }
+
+  func setSuppressDoubleTapSelection(_ value: Bool) {
+    textView.suppressDoubleTapSelection = value
   }
 
   func applyPendingProps() {

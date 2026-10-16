@@ -46,6 +46,7 @@ export interface ZhihuDOMContentProps {
   lineHeightScale?: number;
   typographyOptions?: RichContentTypographyOptions;
   selectable?: boolean;
+  suppressDoubleTapSelection?: boolean;
 }
 
 function escapeHtml(value: string): string {
@@ -122,6 +123,7 @@ export default React.memo(function ZhihuDOMContent({
   lineHeightScale: lineHeightOverride,
   typographyOptions,
   selectable = true,
+  suppressDoubleTapSelection = false,
 }: ZhihuDOMContentProps) {
   const [height, setHeight] = useState(400);
   const webViewRef = useRef<WebView<WebViewProps>>(null);
@@ -130,6 +132,15 @@ export default React.memo(function ZhihuDOMContent({
     selectionState.current = {
       selectable,
       revision: selectionState.current.revision + 1,
+    };
+  const doubleTapSelectionState = useRef({
+    suppress: suppressDoubleTapSelection,
+    revision: 0,
+  });
+  if (doubleTapSelectionState.current.suppress !== suppressDoubleTapSelection)
+    doubleTapSelectionState.current = {
+      suppress: suppressDoubleTapSelection,
+      revision: doubleTapSelectionState.current.revision + 1,
     };
   const textSelectionCallback = useRef(onTextSelected);
   textSelectionCallback.current = onTextSelected;
@@ -970,6 +981,29 @@ export default React.memo(function ZhihuDOMContent({
       if (clearSelection && window.getSelection) {
         var selection = window.getSelection();
         if (selection) selection.removeAllRanges();
+      }
+      var doubleTapRevision = ${doubleTapSelectionState.current.revision};
+      if (window.__zhihuDoubleTapSelectionDocumentIdentity === identity && window.__zhihuDoubleTapSelectionRevision > doubleTapRevision) return;
+      window.__zhihuDoubleTapSelectionDocumentIdentity = identity;
+      window.__zhihuDoubleTapSelectionRevision = doubleTapRevision;
+      var previousGuard = window.__zhihuDoubleTapSelectionGuard;
+      if (previousGuard) {
+        document.removeEventListener('mousedown', previousGuard, true);
+        document.removeEventListener('dblclick', previousGuard, true);
+        window.__zhihuDoubleTapSelectionGuard = null;
+      }
+      if (${suppressDoubleTapSelection}) {
+        // Cancel the browser's multi-click selection before its default action.
+        // Touch/long-press events and existing selection handles remain native.
+        var guard = function(event) {
+          if (event.button !== 0 || event.detail < 2) return;
+          var selection = window.getSelection();
+          if (selection && !selection.isCollapsed) return;
+          if (event.cancelable) event.preventDefault();
+        };
+        window.__zhihuDoubleTapSelectionGuard = guard;
+        document.addEventListener('mousedown', guard, true);
+        document.addEventListener('dblclick', guard, true);
       }
     })();
     true;

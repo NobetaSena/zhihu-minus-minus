@@ -101,6 +101,7 @@ export interface ZhihuNativeContentProps {
   linkCardInfo?: Readonly<Record<string, unknown>>;
   variant?: RichContentVariant;
   selectable?: boolean;
+  suppressDoubleTapSelection?: boolean;
   fontSizeScale?: number;
   lineHeightScale?: number;
   options?: ZhihuNativeTypographyOptions;
@@ -201,6 +202,7 @@ interface FlowViewProps {
   fontSize: number;
   lineHeight: number;
   selectable: boolean;
+  suppressDoubleTapSelection?: boolean;
   options: ZhihuNativeTypographyOptions;
   linkColor: string;
   onSelection: (event: FlowEvent, flow: RichTextFlow) => void;
@@ -225,6 +227,7 @@ const NativeFlow = React.memo(function NativeFlow({
   fontSize,
   lineHeight,
   selectable,
+  suppressDoubleTapSelection = false,
   options,
   linkColor,
   onSelection,
@@ -294,6 +297,7 @@ const NativeFlow = React.memo(function NativeFlow({
       contentWidth={contentWidth}
       layoutKey={measureKey}
       selectable={selectable}
+      suppressDoubleTapSelection={suppressDoubleTapSelection}
       style={{ width: contentWidth, height: Math.max(lineHeight, height) }}
       onHeightChange={(raw) => {
         if (!mounted.current || currentInput.current.measureKey !== measureKey)
@@ -388,6 +392,7 @@ interface BlockViewProps {
   onImageLongPress?: (url: string) => void;
   configJson: string;
   selectable: boolean;
+  suppressDoubleTapSelection?: boolean;
   options: ZhihuNativeTypographyOptions;
   onFlowAction: (event: ActionEvent, flow: RichTextFlow) => void;
   onFlowSelection?: (event: FlowEvent, flow: RichTextFlow) => void;
@@ -435,6 +440,7 @@ function NativeParagraph(props: BlockViewProps) {
             fontSize={fontSize}
             lineHeight={lineHeight}
             selectable={props.selectable}
+            suppressDoubleTapSelection={props.suppressDoubleTapSelection}
             options={props.options}
             linkColor={props.linkColor}
             onSelection={(event, flow) => props.onFlowSelection?.(event, flow)}
@@ -992,6 +998,7 @@ const NativeDocumentContent = React.memo(function NativeDocumentContent({
   linkCardInfo,
   variant = 'default',
   selectable = true,
+  suppressDoubleTapSelection = false,
   fontSizeScale,
   lineHeightScale,
   options = {},
@@ -1486,6 +1493,7 @@ const NativeDocumentContent = React.memo(function NativeDocumentContent({
                 fontSize={fontSize}
                 lineHeight={lineHeight}
                 selectable={selectable}
+                suppressDoubleTapSelection={suppressDoubleTapSelection}
                 options={options}
                 linkColor={linkColor}
                 onSelection={handleSelection}
@@ -1509,6 +1517,7 @@ const NativeDocumentContent = React.memo(function NativeDocumentContent({
                 onImageLongPress={onImageLongPress}
                 configJson={configJson}
                 selectable={selectable}
+                suppressDoubleTapSelection={suppressDoubleTapSelection}
                 options={options}
                 onFlowAction={handleAction}
                 onFlowSelection={handleSelection}

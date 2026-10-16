@@ -51,6 +51,8 @@ export interface ZhihuContentProps {
   /** 优先使用原生文字排版；缺少模块时仍回退 WebView。 */
   useNative?: boolean;
   selectable?: boolean;
+  /** 正文让出双击选词，供宿主双击动作使用；仍可长按选字。 */
+  suppressDoubleTapSelection?: boolean;
   variant?: RichContentVariant;
 }
 

@@ -8,6 +8,9 @@ import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.os.SystemClock
+import android.view.GestureDetector
+import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.widget.TextView
@@ -24,6 +27,7 @@ internal class FlowTextView(context: Context) : TextView(context) {
   var copyResolver: ((Int, Int) -> String)? = null
   var flow: FlowData? = null
   var config: TextConfig = TextConfig()
+  var suppressDoubleTapSelection = false
   var scale = resources.displayMetrics.density
   private val decorationPaint = Paint(Paint.ANTI_ALIAS_FLAG)
   private val decorationPath = Path()
@@ -36,6 +40,25 @@ internal class FlowTextView(context: Context) : TextView(context) {
   private var handlingTouchEvent = false
   private var touchX = 0f
   private var touchY = 0f
+  private var hostOwnsTouch = false
+  private var hostTouchCancelled = false
+  private var nativeSelectionStarted = false
+  private val readingGestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+    override fun onDown(event: MotionEvent): Boolean = true
+
+    override fun onSingleTapUp(event: MotionEvent): Boolean {
+      if (!hostTouchCancelled && !longPressed && !hasSelection()) dispatchTapAction(event.x, event.y)
+      return true
+    }
+
+    override fun onLongPress(event: MotionEvent) {
+      beginNativeSelection(event)
+    }
+  }).apply {
+    // The reading-area recognizer owns double taps. Each press must still be
+    // eligible for a normal system long press, including the second press.
+    setOnDoubleTapListener(null)
+  }
   private val suppressTouchFocusScroll: Boolean
     get() = handlingTouchEvent && !moved && !longPressed && !hadSelection
 
@@ -57,14 +80,33 @@ internal class FlowTextView(context: Context) : TextView(context) {
     touchY = event.y
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
+        if (hostOwnsTouch) cancelReadingGesture()
         downX = event.x
         downY = event.y
         moved = false
         longPressed = false
-        hadSelection = selectionStart >= 0 && selectionEnd > selectionStart
+        hadSelection = selectionStart >= 0 && selectionEnd >= 0 && selectionStart != selectionEnd
+        hostOwnsTouch = suppressDoubleTapSelection && isTextSelectable && !hadSelection &&
+          event.pointerCount == 1 && event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN) &&
+          event.getToolType(0) == MotionEvent.TOOL_TYPE_FINGER
+        hostTouchCancelled = false
+        nativeSelectionStarted = false
       }
       MotionEvent.ACTION_MOVE -> {
         if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) moved = true
+      }
+    }
+    if (hostOwnsTouch) {
+      if (!nativeSelectionStarted && event.pointerCount > 1 && !hostTouchCancelled) {
+        hostTouchCancelled = true
+        cancelReadingGesture()
+      }
+      if (!hostTouchCancelled) readingGestureDetector.onTouchEvent(event)
+      if (!nativeSelectionStarted) {
+        // Short touches never enter Editor's built-in double-tap selection.
+        // Parents still receive the original stream and may take over scrolling.
+        finishHostTouchIfNeeded(event)
+        return true
       }
     }
     handlingTouchEvent = true
@@ -73,16 +115,66 @@ internal class FlowTextView(context: Context) : TextView(context) {
     } finally {
       handlingTouchEvent = false
     }
+    finishHostTouchIfNeeded(event)
     if (event.actionMasked == MotionEvent.ACTION_UP && !moved && !longPressed && !hadSelection) {
-      if (selectionStart < 0 || selectionStart == selectionEnd) {
-        val action = findActionAt(event.x, event.y)
-        if (action != null) {
-          actionListener?.invoke(action.first, action.second)
-          return true
-        }
-      }
+      if (!hasSelection() && dispatchTapAction(event.x, event.y)) return true
     }
     return handled
+  }
+
+  private fun beginNativeSelection(event: MotionEvent) {
+    if (!hostOwnsTouch || hostTouchCancelled || nativeSelectionStarted || hasSelection() || !isTextSelectable || !isAttachedToWindow) return
+    nativeSelectionStarted = true
+    // Hand the confirmed long press to TextView so its selection handles and
+    // subsequent drag stay native. Cancel the timer started by this replay.
+    val down = MotionEvent.obtain(event)
+    // Initial focus still reveals just the touched pixel, as on a normal DOWN.
+    handlingTouchEvent = true
+    longPressed = false
+    try {
+      down.action = MotionEvent.ACTION_DOWN
+      super.onTouchEvent(down)
+    } finally {
+      handlingTouchEvent = false
+      longPressed = true
+      cancelLongPress()
+      down.recycle()
+    }
+    // Older Editors may already select on the replayed DOWN after a previous
+    // selection gesture. A second long click would start dragging that text.
+    if (hasSelection()) dispatchAttachmentLongPress() else performLongClick()
+  }
+
+  private fun finishHostTouchIfNeeded(event: MotionEvent) {
+    if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+      hostOwnsTouch = false
+      hostTouchCancelled = false
+      nativeSelectionStarted = false
+    }
+  }
+
+  private fun cancelReadingGesture() {
+    val now = SystemClock.uptimeMillis()
+    val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+    try {
+      readingGestureDetector.onTouchEvent(cancel)
+    } finally {
+      cancel.recycle()
+    }
+  }
+
+  override fun onDetachedFromWindow() {
+    cancelReadingGesture()
+    hostOwnsTouch = false
+    hostTouchCancelled = false
+    nativeSelectionStarted = false
+    super.onDetachedFromWindow()
+  }
+
+  private fun dispatchTapAction(x: Float, y: Float): Boolean {
+    val action = findActionAt(x, y) ?: return false
+    actionListener?.invoke(action.first, action.second)
+    return true
   }
 
   override fun getDrawingRect(outRect: Rect) {
@@ -100,9 +192,13 @@ internal class FlowTextView(context: Context) : TextView(context) {
   override fun performLongClick(): Boolean {
     longPressed = true
     val handled = super.performLongClick()
+    dispatchAttachmentLongPress()
+    return handled
+  }
+
+  private fun dispatchAttachmentLongPress() {
     val action = findActionAt(downX, downY)
     if (action?.second == "attachment") actionListener?.invoke(action.first, "attachmentLongPress")
-    return handled
   }
 
   override fun onTextContextMenuItem(id: Int): Boolean {
