@@ -55,7 +55,10 @@ import {
   type RichContentLoadingPhase,
   ZhihuContent,
 } from '@/features/rich-content';
-import { useAnswerReadTouch } from '@/hooks/useAnswerReadTouch';
+import {
+  type AnswerReadSession,
+  useAnswerDetailRead,
+} from '@/hooks/useAnswerDetailRead';
 import { useDoubleTapAction } from '@/hooks/useDoubleTapAction';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { useReadingContentMeasurement } from '@/hooks/useReadingContentMeasurement';
@@ -83,6 +86,7 @@ export interface AnswerEndorsementSource {
 
 interface AnswerDetailViewProps {
   id: string;
+  readSession?: AnswerReadSession;
   endorsementSource?: AnswerEndorsementSource;
   initialTitle?: string;
   questionId?: string;
@@ -99,6 +103,7 @@ interface AnswerDetailViewProps {
 
 export const AnswerDetailView = ({
   id,
+  readSession,
   endorsementSource,
   initialTitle,
   questionId,
@@ -240,7 +245,12 @@ export const AnswerDetailView = ({
     shouldRenderBody &&
     Boolean(answer) &&
     (!waitForNativeLayout || readyLayoutSource === contentLayoutSource);
-  useAnswerReadTouch([id], isFocused && contentLayoutReady);
+  useAnswerDetailRead(
+    id,
+    answer?.question?.id != null ? String(answer.question.id) : questionId,
+    isFocused && contentLayoutReady,
+    readSession,
+  );
 
   const updateHeaderProgress = React.useCallback(
     (offset: number) => {

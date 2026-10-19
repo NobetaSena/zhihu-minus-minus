@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
+import { CanceledError } from 'axios';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
@@ -12,7 +13,7 @@ import {
 } from '@/api/zhihu/question';
 import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
-import { useAuthStore } from '@/store/useAuthStore';
+import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { BouncyButton } from './BouncyButton';
 import { ContentActionButton } from './ContentActionButton';
 import { FollowButton } from './FollowButton';
@@ -36,6 +37,7 @@ export function AnswerPreviewQuestionHeader({
   const isAuthenticated = useAuthStore((state) =>
     hasAuthenticationCookie(state.cookies),
   );
+  const sessionVersion = useAuthStore(() => getAuthSessionVersion());
   const [expanded, setExpanded] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const {
@@ -44,12 +46,19 @@ export function AnswerPreviewQuestionHeader({
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['question', id, isAuthenticated],
-    queryFn: () => getQuestion(id),
+    queryKey: ['question', id, isAuthenticated, sessionVersion],
+    queryFn: async ({ signal }) => {
+      if (sessionVersion !== getAuthSessionVersion())
+        throw new CanceledError('登录会话已切换');
+      const result = await getQuestion(id, undefined, { signal });
+      if (sessionVersion !== getAuthSessionVersion())
+        throw new CanceledError('登录会话已切换');
+      return result;
+    },
     staleTime: RICH_CONTENT_STALE_TIME,
   });
   const follow = useOptimisticToggle<ZhihuQuestionDetail>({
-    queryKey: ['question', id, isAuthenticated],
+    queryKey: ['question', id, isAuthenticated, sessionVersion],
     isActive: question?.relationship?.is_following,
     mutationFn: () =>
       question?.relationship?.is_following

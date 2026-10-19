@@ -179,4 +179,4 @@ npm run check
 </a>
 
 ---
-**Version**: v0.9.1 | **Last Updated**: 2026-10-16
+**Version**: v0.9.2 | **Last Updated**: 2026-10-19

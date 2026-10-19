@@ -8,7 +8,11 @@ import apiClient, {
   hasAuthenticationCookie,
   mergeCookieHeader,
 } from '../api/client';
-import { touchAnswerRead } from '../api/zhihu/lastRead';
+import {
+  readContents,
+  touchAnswerRead,
+  touchAnswersRead,
+} from '../api/zhihu/lastRead';
 import type { ZhihuMeInfo } from '../api/zhihu/me';
 import { readAtomically } from '../modules/zhihu-persistence';
 import {
@@ -128,6 +132,69 @@ test('answer touch reaches the adapter as Web multipart FormData after Axios tra
 
   await touchAnswerRead('2093868403115155780');
   expect(requests).toBe(1);
+});
+
+test('a whole answer batch remains one multipart request after Axios transforms', async () => {
+  let requests = 0;
+  apiClient.defaults.adapter = async (config) => {
+    requests += 1;
+    expect(apiClient.getUri(config)).toBe(
+      'https://www.zhihu.com/lastread/touch',
+    );
+    expect(config.headers.get('Content-Type')).toBe('multipart/form-data');
+    expect(config.data).toBeInstanceOf(FormData);
+    expect((config.data as FormData).getAll('items')).toEqual([
+      JSON.stringify([
+        ['answer', '2093868403115155780', 'touch'],
+        ['answer', '2093868403115155781', 'touch'],
+      ]),
+    ]);
+    return response(config);
+  };
+
+  await touchAnswersRead(['2093868403115155780', '2093868403115155781']);
+  expect(requests).toBe(1);
+});
+
+test('mixed question and answer reads stay one multipart request through the client', async () => {
+  let requests = 0;
+  apiClient.defaults.adapter = async (config) => {
+    requests += 1;
+    expect(apiClient.getUri(config)).toBe(
+      'https://www.zhihu.com/lastread/touch',
+    );
+    expect(config.headers.get('Content-Type')).toBe('multipart/form-data');
+    expect(config.data).toBeInstanceOf(FormData);
+    expect((config.data as FormData).getAll('items')).toEqual([
+      JSON.stringify([
+        ['question', '7', 'read'],
+        ['answer', '2093868403115155780', 'read'],
+      ]),
+    ]);
+    return response(config);
+  };
+
+  await readContents([
+    { type: 'question', id: '7' },
+    { type: 'answer', id: '2093868403115155780' },
+  ]);
+  expect(requests).toBe(1);
+});
+
+test('a read batch cannot reach the adapter after its account switches before interception', async () => {
+  const adapter = jest.fn(async (config: InternalAxiosRequestConfig) =>
+    response(config),
+  );
+  apiClient.defaults.adapter = adapter;
+  const pending = readContents([
+    { type: 'question', id: '7' },
+    { type: 'answer', id: '84' },
+  ]);
+  useAuthStore.getState().setCookies(COOKIE_B);
+  useAuthStore.getState().addAccount(COOKIE_B, PROFILE_B);
+
+  await expect(pending).rejects.toBeInstanceOf(CanceledError);
+  expect(adapter).not.toHaveBeenCalled();
 });
 
 test('answer touch cannot reach the adapter after an account switch before its request interceptor', async () => {

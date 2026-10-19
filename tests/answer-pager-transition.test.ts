@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react-native';
 import React from 'react';
 import AnswerDetailScreen from '../app/answer/[id]';
+import type { AnswerReadSession } from '../hooks/useAnswerDetailRead';
 import { calculateDetailHeaderAppearance } from '../utils/detailHeaderAppearance';
 
 interface PagerProps {
@@ -17,6 +18,7 @@ interface PagerProps {
 
 interface AnswerProps {
   id: string;
+  readSession?: AnswerReadSession;
   endorsementSource?: {
     answerId: string;
     sessionVersion: number;
@@ -441,6 +443,28 @@ afterEach(() => {
 });
 
 describe('answer pager list transitions', () => {
+  it('shares a reading session across pager children and replaces it on account change', async () => {
+    mockPages = [{ data: [{ id: '42' }, { id: '11' }] }];
+    const page = await render(React.createElement(AnswerDetailScreen));
+    const firstSession = mockAnswerProps.get('42')?.readSession;
+    expect(firstSession).toBeDefined();
+    expect(mockAnswerProps.get('11')?.readSession).toBe(firstSession);
+    firstSession?.recorded.add('question:7');
+
+    await selectPage(1);
+    expect(mockAnswerProps.get('11')?.readSession).toBe(firstSession);
+    expect(
+      mockAnswerProps.get('11')?.readSession?.recorded.has('question:7'),
+    ).toBe(true);
+
+    mockSessionVersion = 2;
+    await page.rerender(React.createElement(AnswerDetailScreen));
+    const nextSession = mockAnswerProps.get('42')?.readSession;
+    expect(nextSession).not.toBe(firstSession);
+    expect(nextSession?.recorded.size).toBe(0);
+    expect(mockAnswerProps.get('11')?.readSession).toBe(nextSession);
+  });
+
   it('passes metadata-only list endorsements to their matching pages across reordering and account sessions', async () => {
     const firstEndorsements = [
       { elements: [{ type: 'TEXT', content: '合成入口回答标签' }] },

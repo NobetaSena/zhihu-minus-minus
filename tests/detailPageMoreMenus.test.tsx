@@ -79,6 +79,10 @@ const mockCollectionButton = jest.fn(
   (_props: React.ComponentProps<typeof CollectionButton>) => {},
 );
 const mockRichContent = jest.fn((_props: ZhihuContentProps) => {});
+const mockQuestionRead = jest.fn();
+let mockSessionVersion = 1;
+const mockQueryKeys: Array<readonly unknown[]> = [];
+const mockOptimisticQueryKeys: Array<readonly unknown[] | undefined> = [];
 const mockAnswer: AnswerDetail = {
   id: '84',
   question: { id: '7', title: '合成问题', type: 'question' },
@@ -113,15 +117,18 @@ jest.mock('expo-router', () => {
   };
 });
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => ({
-    data: mockQueryData[String(queryKey[0])],
-    isLoading: false,
-    isPending: mockQueryData[String(queryKey[0])] === undefined,
-    isPaused: mockPausedQueries.has(String(queryKey[0])),
-    isError: false,
-    isFetchedAfterMount: false,
-    refetch: jest.fn(),
-  }),
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => {
+    mockQueryKeys.push(queryKey);
+    return {
+      data: mockQueryData[String(queryKey[0])],
+      isLoading: false,
+      isPending: mockQueryData[String(queryKey[0])] === undefined,
+      isPaused: mockPausedQueries.has(String(queryKey[0])),
+      isError: false,
+      isFetchedAfterMount: false,
+      refetch: jest.fn(),
+    };
+  },
   useInfiniteQuery: () => ({
     data: { pages: [{ data: [mockAnswer] }] },
     hasNextPage: false,
@@ -348,7 +355,14 @@ jest.mock('../hooks/useReadingProgress', () => ({
   useReadingProgress: () => ({ restoredOffset: null }),
 }));
 jest.mock('../hooks/useOptimisticToggle', () => ({
-  useOptimisticToggle: () => ({ mutate: jest.fn(), isPending: false }),
+  useOptimisticToggle: (options: { queryKey?: readonly unknown[] }) => {
+    mockOptimisticQueryKeys.push(options.queryKey);
+    return { mutate: jest.fn(), isPending: false };
+  },
+}));
+jest.mock('../hooks/useQuestionRead', () => ({
+  useQuestionRead: (id: string, sessionVersion: number, ready: boolean) =>
+    mockQuestionRead(id, sessionVersion, ready),
 }));
 jest.mock('../hooks/useScrollAnimation', () => ({
   useScrollHeaderAnim: () => ({ handleScroll: jest.fn() }),
@@ -374,6 +388,7 @@ jest.mock('../hooks/useViewableItems', () => ({
   }),
 }));
 jest.mock('../store/useAuthStore', () => ({
+  getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: (selector: (state: { cookies: null }) => unknown) =>
     selector({ cookies: null }),
 }));
@@ -440,6 +455,9 @@ const pressButton = (button: Parameters<typeof fireEvent.press>[0]) =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSessionVersion = 1;
+  mockQueryKeys.length = 0;
+  mockOptimisticQueryKeys.length = 0;
   mockParams = { id: '7' };
   mockPausedQueries = new Set();
   mockQueryData = {
@@ -465,6 +483,26 @@ beforeEach(() => {
       share_url: 'https://daily.zhihu.com/story/7',
     },
   };
+});
+
+test('question reads wait for the requested question and use a session-scoped detail cache', async () => {
+  mockQueryData.question = undefined;
+  const host = await render(<QuestionDetail />);
+  expect(mockQuestionRead).toHaveBeenLastCalledWith('7', 1, false);
+  mockQueryData.question = { id: '8', title: '旧问题', topics: [] };
+  await host.rerender(<QuestionDetail />);
+  expect(mockQuestionRead).toHaveBeenLastCalledWith('7', 1, false);
+  mockQueryData.question = { id: '7', title: '合成问题', topics: [] };
+  await host.rerender(<QuestionDetail />);
+  expect(mockQuestionRead).toHaveBeenLastCalledWith('7', 1, true);
+  expect(mockQueryKeys).toContainEqual(['question', '7', false, 1]);
+  expect(mockOptimisticQueryKeys).toContainEqual(['question', '7', false, 1]);
+  mockSessionVersion = 2;
+  mockQueryData.question = undefined;
+  await host.rerender(<QuestionDetail />);
+  expect(mockQuestionRead).toHaveBeenLastCalledWith('7', 2, false);
+  expect(mockQueryKeys).toContainEqual(['question', '7', false, 2]);
+  expect(mockOptimisticQueryKeys).toContainEqual(['question', '7', false, 2]);
 });
 
 test.each([

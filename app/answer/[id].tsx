@@ -14,6 +14,7 @@ import { DetailNavigationHeader } from '@/components/DetailNavigationHeader';
 import { ShareMenu } from '@/components/ShareMenu';
 import { View } from '@/components/Themed';
 import { RICH_CONTENT_STALE_TIME } from '@/features/rich-content';
+import { useAnswerReadSession } from '@/hooks/useAnswerDetailRead';
 import { useAnswerHeaderState } from '@/hooks/useAnswerHeaderState';
 import { useAnswerPagerSource } from '@/hooks/useAnswerPagerSource';
 import { useNeighborAnswerPrefetch } from '@/hooks/useNeighborAnswerPrefetch';
@@ -118,6 +119,7 @@ function AnswerDetailScreen() {
     context: answerContext,
     initialAnswer,
   });
+  const readSession = useAnswerReadSession(pagerKey);
   const questionIdsByAnswer = useMemo(() => {
     const ids = new Map<string, string>();
     for (const page of answersData?.pages ?? []) {
@@ -456,6 +458,7 @@ function AnswerDetailScreen() {
           <View key={aid} className="flex-1">
             <AnswerDetailView
               id={aid}
+              readSession={readSession}
               endorsementSource={endorsementSourcesByAnswer.get(aid)}
               initialTitle={aid === initialId ? initialTitle : undefined}
               questionId={

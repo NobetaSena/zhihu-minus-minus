@@ -10,7 +10,7 @@ import { getAllContentCollectionStatus } from '../api/zhihu/collection';
 import { AnswerDetailView } from '../components/AnswerDetailView';
 import type { CollectionButton } from '../components/CollectionButton';
 import type { RichContentLoadingPhase } from '../features/rich-content';
-import { useAnswerReadTouch } from '../hooks/useAnswerReadTouch';
+import { useAnswerDetailRead } from '../hooks/useAnswerDetailRead';
 import {
   getAnswerEndorsementsKey,
   seedAnswerEndorsements,
@@ -215,8 +215,8 @@ jest.mock('../components/VoterListModal', () => ({
 jest.mock('../hooks/useOptimisticToggle', () => ({
   useOptimisticToggle: () => ({ mutate: jest.fn(), isPending: false }),
 }));
-jest.mock('../hooks/useAnswerReadTouch', () => ({
-  useAnswerReadTouch: jest.fn(),
+jest.mock('../hooks/useAnswerDetailRead', () => ({
+  useAnswerDetailRead: jest.fn(),
 }));
 jest.mock('../hooks/useReadingProgress', () => ({
   useReadingProgress: (options: ReadingOptions) => mockReadingProgress(options),
@@ -468,13 +468,33 @@ test('mounts a cached neighboring body before focus without starting detail, col
 
 test('reports only the focused answer after its body layout is ready', async () => {
   const host = await renderAnswer();
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    '7',
+    false,
+    undefined,
+  );
   await act(() => mockLayoutReady());
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    '7',
+    false,
+    undefined,
+  );
   await host.rerender(host.page(true, true));
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], true);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    '7',
+    true,
+    undefined,
+  );
   await host.rerender(host.page(false, true));
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    '7',
+    false,
+    undefined,
+  );
 });
 
 test('a selected answer does not report while fetching or waiting for native layout', async () => {
@@ -485,14 +505,29 @@ test('a selected answer does not report while fetching or waiting for native lay
     }),
   );
   const host = await renderAnswer({ cached: false, isFocused: true });
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    undefined,
+    false,
+    undefined,
+  );
   await act(() => finish(answer));
   await waitFor(() =>
     expect(host.getByTestId('answer-body')).toBeOnTheScreen(),
   );
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], false);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    '7',
+    false,
+    undefined,
+  );
   await act(() => mockLayoutReady());
-  expect(useAnswerReadTouch).toHaveBeenLastCalledWith(['84'], true);
+  expect(useAnswerDetailRead).toHaveBeenLastCalledWith(
+    '84',
+    '7',
+    true,
+    undefined,
+  );
 });
 
 test('an active answer enables collection immediately before comments using its collection state', async () => {

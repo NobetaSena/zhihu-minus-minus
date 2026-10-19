@@ -7,6 +7,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { CanceledError } from 'axios';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -53,8 +54,9 @@ import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
 import { useDetailHeaderState } from '@/hooks/useDetailHeaderState';
 import { useGestureScrollView } from '@/hooks/useGestureScrollView';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
+import { useQuestionRead } from '@/hooks/useQuestionRead';
 import { useScrollHeaderAnim } from '@/hooks/useScrollAnimation';
-import { useAuthStore } from '@/store/useAuthStore';
+import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { useCollectionStore } from '@/store/useCollectionStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { seedAnswerPreviewEntry } from '@/utils/answerPreviewEntry';
@@ -258,6 +260,7 @@ export default function QuestionDetail() {
   const isAuthenticated = useAuthStore((state) =>
     hasAuthenticationCookie(state.cookies),
   );
+  const sessionVersion = useAuthStore(() => getAuthSessionVersion());
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const navigationHeight = insets.top + useDetailNavigationHeight();
   const queryClient = useQueryClient();
@@ -391,13 +394,21 @@ export default function QuestionDetail() {
     isError: questionError,
     refetch: refetchQuestion,
   } = useQuery({
-    queryKey: ['question', id, isAuthenticated],
-    queryFn: async () => await getQuestion(id as string),
+    queryKey: ['question', id, isAuthenticated, sessionVersion],
+    queryFn: async ({ signal }) => {
+      if (sessionVersion !== getAuthSessionVersion())
+        throw new CanceledError('登录会话已切换');
+      const result = await getQuestion(id, undefined, { signal });
+      if (sessionVersion !== getAuthSessionVersion())
+        throw new CanceledError('登录会话已切换');
+      return result;
+    },
     staleTime: RICH_CONTENT_STALE_TIME,
   });
+  useQuestionRead(id, sessionVersion, String(question?.id ?? '') === id);
 
   const followMutation = useOptimisticToggle<ZhihuQuestionDetail>({
-    queryKey: ['question', id, isAuthenticated],
+    queryKey: ['question', id, isAuthenticated, sessionVersion],
     isActive: question?.relationship?.is_following,
     mutationFn: async () => {
       if (question?.relationship?.is_following)

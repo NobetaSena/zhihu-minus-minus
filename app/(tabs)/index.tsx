@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useIsFocused } from '@react-navigation/native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import {
+  type InfiniteData,
   type QueryClient,
   useInfiniteQuery,
   useQueryClient,
@@ -66,6 +67,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { hasReusableAnswerDetail } from '@/features/rich-content';
 import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
+import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
 import { useScopedAsyncValue } from '@/hooks/useScopedAsyncValue';
 import {
@@ -76,7 +78,7 @@ import {
   type FeedExposureContext,
   feedExposureRepository,
 } from '@/storage/feedExposureRepository';
-import { useAuthStore } from '@/store/useAuthStore';
+import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { formatRelativeTime } from '@/utils/date';
 import { supportsLocalFeedDedup } from '@/utils/feedDedup';
@@ -98,6 +100,10 @@ import {
   getFeedRequestUrl,
   getNextUnvisitedFeedPage,
 } from '@/utils/feedPagination';
+import {
+  createFeedReadTouchBatch,
+  type FeedReadTouchBatch,
+} from '@/utils/feedReadTouch';
 import { resolveLocalAccountKey } from '@/utils/localAccount';
 import { refreshInfiniteQuery, shouldRetryQuery } from '@/utils/query';
 import { normalizeAnswerType, parseRecommendData } from '@/utils/recommendFeed';
@@ -119,6 +125,11 @@ const TABS = [
 type TabType = (typeof TABS)[number];
 type FeedTabType = keyof typeof FEED_URLS;
 type FeedListItem = FeedItem | HotItem | CollapsedGroup;
+interface FeedPage {
+  items: FeedListItem[];
+  nextUrl: string | null;
+  readTouchBatch: FeedReadTouchBatch | null;
+}
 const AUTO_HIDE_NAV_TABS: readonly TabType[] = [
   'following',
   'recommend',
@@ -968,13 +979,22 @@ const FeedList = React.forwardRef<
       readExposureKeys,
     );
     const readLaunchCache = useCallback(
-      async (context: FeedCacheContext) => {
+      async (
+        context: FeedCacheContext,
+      ): Promise<InfiniteData<FeedPage, string> | null> => {
         try {
           const cached =
             await feedCacheRepository.getFeedCache<FeedListItem>(context);
           return cached && cached.items.length > 0
             ? {
-                pages: [{ items: cached.items, nextUrl: cached.nextUrl }],
+                // Disk cache contains truncated parsed cards, not an API batch.
+                pages: [
+                  {
+                    items: cached.items,
+                    nextUrl: cached.nextUrl,
+                    readTouchBatch: null,
+                  },
+                ],
                 pageParams: [String(FEED_URLS[tab])],
               }
             : null;
@@ -1053,7 +1073,7 @@ const FeedList = React.forwardRef<
     const isGuestRecommend = tab === 'recommend' && !cookies;
     const {
       data,
-      fetchNextPage,
+      fetchNextPage: fetchNextFeedPage,
       hasNextPage,
       isFetchingNextPage,
       isFetching,
@@ -1068,6 +1088,7 @@ const FeedList = React.forwardRef<
     } = useInfiniteQuery({
       queryKey: feedQueryKey,
       queryFn: async ({ pageParam = FEED_URLS[tab], signal }) => {
+        const sessionVersion = getAuthSessionVersion();
         const requestUrl = getFeedRequestUrl(
           pageParam,
           FEED_URLS[tab],
@@ -1102,6 +1123,7 @@ const FeedList = React.forwardRef<
         return {
           items,
           nextUrl,
+          readTouchBatch: createFeedReadTouchBatch(rawItems, sessionVersion),
         };
       },
       initialPageParam: FEED_URLS[tab],
@@ -1123,6 +1145,11 @@ const FeedList = React.forwardRef<
       isFeedLoading ||
       (isPending && isPaused) ||
       (!cookies && !guestCookieReady);
+    const fetchNextPage = useFeedPageReadTouch(
+      feedQueryKey,
+      fetchNextFeedPage,
+      isActive && !isRefreshing,
+    );
 
     const handleRefresh = useCallback(async () => {
       if (refreshInFlightRef.current) return;
@@ -1266,7 +1293,7 @@ const FeedList = React.forwardRef<
         return;
       }
       autoFetchRounds.current += 1;
-      void fetchNextPage({ cancelRefetch: false });
+      void fetchNextPage();
     }, [
       isActive,
       localDedupEnabled,
@@ -1327,7 +1354,7 @@ const FeedList = React.forwardRef<
               (!(filterEnabled || localDedupEnabled) ||
                 flattenedData.length >= MIN_RENDERABLE_ITEMS)
             )
-              void fetchNextPage({ cancelRefetch: false });
+              void fetchNextPage();
           }}
           onEndReachedThreshold={0.5}
           onViewableItemsChanged={onViewableItemsChanged}
@@ -1388,7 +1415,7 @@ const FeedList = React.forwardRef<
               <QueryErrorView
                 compact
                 message="更多内容加载失败"
-                onRetry={() => void fetchNextPage({ cancelRefetch: false })}
+                onRetry={() => void fetchNextPage()}
               />
             ) : (filterEnabled || localDedupEnabled) &&
               !isRefreshing &&
@@ -1398,7 +1425,7 @@ const FeedList = React.forwardRef<
               (!hasNextPage || autoFetchExhausted) ? (
               hasNextPage ? (
                 <BouncyButton
-                  onPress={() => void fetchNextPage({ cancelRefetch: false })}
+                  onPress={() => void fetchNextPage()}
                   className="items-center p-5"
                 >
                   <Text type="primary">过滤后内容偏少，点击继续加载</Text>
