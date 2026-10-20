@@ -1,17 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import Animated, { SharedTransition } from 'react-native-reanimated';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
 import { colors } from '@/constants/designTokens';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { contrastingText } from '@/utils/colorContrast';
 import { getCachedImageSource } from '@/utils/imageSource';
 import { BouncyButton } from './BouncyButton';
-import { Text, View } from './Themed';
-
-const _slowTransition = SharedTransition.duration(600);
+import { Text, useRuntimeThemeColors } from './Themed';
 
 export interface HotItem {
   id: string;
@@ -35,11 +34,11 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
   const router = useRouter();
   const { cookies } = useAuthStore();
   const colorScheme = useColorScheme();
+  const palette = useRuntimeThemeColors();
+  const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
+  const { fontScale } = useWindowDimensions();
   const isGuest = !cookies;
 
-  const _isTop3 = item.rank <= 3;
-
-  // Custom Rank Colors
   const rankBgColor =
     item.rank === 1
       ? colors.light.hotRankFirst
@@ -47,13 +46,10 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
         ? colors.light.hotRankSecond
         : item.rank === 3
           ? colors.light.hotRankThird
-          : Colors[colorScheme].backgroundTertiary;
+          : palette.backgroundTertiary;
   const rankTextColor =
-    item.rank <= 3
-      ? contrastingText(rankBgColor)
-      : Colors[colorScheme].textSecondary;
+    item.rank <= 3 ? contrastingText(rankBgColor) : palette.textSecondary;
 
-  // Dynamic Label Style
   const labelColor =
     colorScheme === 'dark'
       ? item.labelArea?.night_color || colors.light.hotLabel
@@ -62,9 +58,15 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
     () => getCachedImageSource(item.image),
     [item.image],
   );
+  const labelText =
+    item.labelArea?.type === 'text' ? item.labelArea.text : undefined;
+  const hasTrend = item.labelArea?.type === 'trend';
+  const hasAnswerCount = (item.answerCount ?? 0) > 0;
+  const hasMetadata = labelText || hasTrend || item.hotValue || hasAnswerCount;
 
   return (
     <BouncyButton
+      accessibilityRole="button"
       onPress={() => {
         if (isGuest) {
           router.push({
@@ -85,108 +87,163 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
           router.push(`/question/${item.questionId}`);
         }
       }}
-      style={{
-        backgroundColor: Colors[colorScheme].backgroundSecondary,
-        borderRadius: 14,
-      }}
-      className="p-4 mb-3 mx-4 "
+      style={[styles.card, { backgroundColor: palette.backgroundSecondary }]}
     >
-      <View className="flex-col">
-        <View className="flex-row">
-          <View className="flex-1 bg-transparent pr-4">
-            {/* Title & Rank Badge */}
-            <View className="flex-row bg-transparent mb-1">
-              <View
-                className="w-[20px] h-[20px] rounded-[4px] items-center justify-center mr-2 mt-0.5"
-                style={{ backgroundColor: rankBgColor }}
-              >
-                <Text
-                  className="font-extrabold text-[11px]"
-                  style={{ color: rankTextColor }}
-                >
-                  {item.rank}
-                </Text>
-              </View>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.textColumn,
+            // 窄屏或大字体时让配图换到下一行，保留标题的阅读宽度。
+            { flexBasis: 180 * fontSizeScale * fontScale },
+          ]}
+        >
+          <View style={styles.titleRow}>
+            <View style={[styles.rankBadge, { backgroundColor: rankBgColor }]}>
               <Text
-                className="text-[17px] font-bold leading-[25px] text-foreground dark:text-foreground-dark flex-1"
-                numberOfLines={4}
+                style={[styles.rankText, { color: rankTextColor }]}
+                numberOfLines={1}
               >
-                {item.title}
+                {item.rank}
               </Text>
             </View>
+            <Text style={styles.title}>{item.title}</Text>
           </View>
-
-          {/* Image Area */}
-          {item.image && (
-            <View className="justify-center bg-transparent ml-auto">
-              <Animated.Image
-                source={imageSource}
-                className="w-[100px] h-[90px] rounded-[10px]"
-                sharedTransitionTag={`image-${item.id}`}
-                style={{
-                  borderWidth: 0.5,
-                  borderColor: 'rgba(0,0,0,0.05)',
-                }}
-              />
-            </View>
-          )}
-        </View>
-        {/* Bottom Info Bar */}
-        <View className="flex-row items-center mt-auto pt-2 bg-transparent flex-wrap">
-          {item.labelArea &&
-            item.labelArea.type === 'text' &&
-            item.labelArea.text && (
-              <View
-                className="px-1.5 py-[2px] rounded mr-2"
-                style={{ backgroundColor: `${labelColor}15` }}
-              >
-                <Text
-                  className="text-[11px] font-bold"
-                  style={{ color: labelColor }}
+          {hasMetadata ? (
+            <View style={styles.metadata}>
+              {labelText ? (
+                <View
+                  style={[styles.label, { backgroundColor: `${labelColor}15` }]}
                 >
-                  {item.labelArea.text}
+                  <Text style={[styles.labelText, { color: labelColor }]}>
+                    {labelText}
+                  </Text>
+                </View>
+              ) : null}
+              {hasTrend ? (
+                <View
+                  accessibilityLabel="热度上升"
+                  accessible
+                  style={[styles.label, { backgroundColor: `${labelColor}15` }]}
+                >
+                  <Ionicons name="trending-up" size={12} color={labelColor} />
+                </View>
+              ) : null}
+              {item.hotValue ? (
+                <Text
+                  style={[
+                    styles.metadataText,
+                    { color: colors.light.hotLabel },
+                  ]}
+                >
+                  {item.hotValue}
                 </Text>
-              </View>
-            )}
-          {item.labelArea && item.labelArea.type === 'trend' && (
-            <View
-              className="flex-row items-center px-1.5 py-[2px] rounded mr-2"
-              style={{ backgroundColor: `${labelColor}15` }}
-            >
-              <Ionicons name="trending-up" size={12} color={labelColor} />
+              ) : null}
+              {hasAnswerCount ? (
+                <Text type="secondary" style={styles.metadataText}>
+                  {item.answerCount} 个回答
+                </Text>
+              ) : null}
             </View>
-          )}
-
-          {/* 热和新都没有的时候占位 */}
-          {(!item.labelArea ||
-            (!item.labelArea.type &&
-              !item.labelArea.text &&
-              !item.labelArea.trend)) && (
-            <View
-              className="flex-row items-center mt-auto pt-2 bg-transparent flex-wrap"
-              style={{ marginRight: 32 }}
-            ></View>
-          )}
-
-          {item.hotValue ? (
-            <Text
-              className="text-[12px] font-medium mr-2"
-              style={{ color: colors.light.hotLabel }}
-            >
-              {item.hotValue}
-            </Text>
-          ) : null}
-
-          {item.answerCount ? (
-            <Text className="text-[12px] text-secondary dark:text-secondary-dark font-medium">
-              {item.answerCount} 个回答
-            </Text>
           ) : null}
         </View>
+        {imageSource ? (
+          <Animated.Image
+            source={imageSource}
+            sharedTransitionTag={`image-${item.id}`}
+            style={styles.image}
+            resizeMode="cover"
+            accessible={false}
+          />
+        ) : null}
       </View>
     </BouncyButton>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    marginBottom: 12,
+    marginHorizontal: 12,
+    borderRadius: 14,
+  },
+  content: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  textColumn: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  rankBadge: {
+    // 序号随字体和行高增长，不用固定尺寸裁切两位数或大字体。
+    minWidth: 20,
+    minHeight: 20,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    marginTop: 2,
+    borderRadius: 4,
+  },
+  // 显式传给 Themed.Text，确保它按实际字号和行高应用阅读偏好。
+  rankText: {
+    fontSize: 11,
+    lineHeight: 16.5,
+    fontWeight: '800',
+  },
+  title: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 17,
+    lineHeight: 25.5,
+    fontWeight: '700',
+  },
+  image: {
+    width: 85,
+    maxWidth: '100%',
+    aspectRatio: 10 / 9,
+    marginLeft: 'auto',
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  metadata: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  label: {
+    maxWidth: '100%',
+    flexShrink: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  labelText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  metadataText: {
+    maxWidth: '100%',
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});
 
 export const HotCard = React.memo(
   HotCardComponent,
