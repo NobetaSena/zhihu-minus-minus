@@ -1,7 +1,16 @@
 import type { Event, StackFrame } from '@sentry/react-native';
+import {
+  classifyDiagnosticMessage,
+  sanitizeCodeFilename,
+  sanitizeDiagnosticContext,
+} from './errorDiagnostics';
 
 export interface TelemetryBuildContext {
   appVersion?: string;
+  buildNumber?: string;
+  commit?: string;
+  sourceFingerprint?: string;
+  sourceFiles?: readonly string[];
   osVersion?: string | null;
   platform: 'ios' | 'android' | 'other';
   environment: 'development' | 'production';
@@ -89,50 +98,21 @@ function enumValue<T extends string>(
     : undefined;
 }
 
-const BUNDLE_FILENAMES = new Set([
-  'index.bundle',
-  'index.android.bundle',
-  'index.ios.bundle',
-  'main.jsbundle',
-  'entry.bundle',
-  'index.js',
-]);
-
-/** Retain known app bundle names; arbitrary script names can contain user data. */
-function codeFilename(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const path = value.split(/[?#]/, 1)[0].replace(/\\/g, '/');
-  const basename = path.slice(path.lastIndexOf('/') + 1);
-  if (
-    basename.length > 128 ||
-    !/^[\w.-]+\.(?:js|mjs|cjs|jsx|ts|tsx|bundle|jsbundle|hbc)$/.test(basename)
-  )
-    return undefined;
-  if (!BUNDLE_FILENAMES.has(basename)) return 'source.js';
-  return path.startsWith('app:///') ? `app:///${basename}` : basename;
-}
-
-function sanitizeFrame(frame: StackFrame): StackFrame {
+function sanitizeFrame(
+  frame: StackFrame,
+  sourceFiles?: readonly string[],
+): StackFrame {
   // Function/module names, source context and vars may contain runtime values.
   return compact({
-    filename: codeFilename(frame.filename ?? frame.abs_path),
+    filename: sanitizeCodeFilename(
+      frame.filename ?? frame.abs_path,
+      sourceFiles,
+    ),
     lineno: integer(frame.lineno),
     colno: integer(frame.colno),
     in_app: typeof frame.in_app === 'boolean' ? frame.in_app : undefined,
     debug_id: uuid(frame.debug_id),
   });
-}
-
-function safeExceptionMessage(value: unknown): string {
-  if (
-    typeof value === 'string' &&
-    (/^HTTP failure: [1-5]\d{2}$/.test(value) ||
-      /^Network failure: (?:canceled|timeout|offline|dns-error|tls-error|connection-reset|connection-refused|connection-error|network-error)$/.test(
-        value,
-      ))
-  )
-    return value;
-  return 'Application failure';
 }
 
 /** Rebuild the event instead of trying to blacklist arbitrary SDK additions. */
@@ -157,6 +137,9 @@ export function sanitizeSentryEvent<T extends Event>(
     environment: build.environment,
     tags: compact({
       app_version: version(build.appVersion),
+      build_number: version(build.buildNumber),
+      commit: hex(build.commit, 40),
+      source_fingerprint: hex(build.sourceFingerprint, 24),
       platform: build.platform,
     }),
   });
@@ -167,12 +150,12 @@ export function sanitizeSentryEvent<T extends Event>(
         const mechanism = exception.mechanism;
         return compact({
           type: enumValue(exception.type, ERROR_TYPES) ?? 'Error',
-          value: safeExceptionMessage(exception.value),
+          value: classifyDiagnosticMessage(exception.value).summary,
           stacktrace: exception.stacktrace?.frames
             ? {
                 frames: exception.stacktrace.frames
                   .slice(-100)
-                  .map(sanitizeFrame),
+                  .map((frame) => sanitizeFrame(frame, build.sourceFiles)),
               }
             : undefined,
           mechanism: mechanism
@@ -205,10 +188,20 @@ export function sanitizeSentryEvent<T extends Event>(
   } else if (event.message || event.logentry) {
     safe.message = 'Application event';
   }
+  if (safe.exception?.values?.[0]) {
+    safe.tags = {
+      ...safe.tags,
+      error_code: classifyDiagnosticMessage(safe.exception.values[0].value)
+        .code,
+    };
+  }
 
   const device = event.contexts?.device;
   safe.contexts = {
-    app: compact({ app_version: version(build.appVersion) }),
+    app: compact({
+      app_version: version(build.appVersion),
+      app_build: version(build.buildNumber),
+    }),
     os: compact({ name: build.platform, version: version(build.osVersion) }),
     device: compact({
       arch: enumValue(
@@ -227,6 +220,8 @@ export function sanitizeSentryEvent<T extends Event>(
       screen_width_pixels: integer(device?.screen_width_pixels),
     }),
   };
+  const diagnostic = sanitizeDiagnosticContext(event.contexts?.diagnostic);
+  if (diagnostic) safe.contexts.diagnostic = { ...diagnostic };
   const trace = event.contexts?.trace;
   const traceId = hex(trace?.trace_id, 32);
   const spanId = hex(trace?.span_id, 16);
@@ -243,7 +238,7 @@ export function sanitizeSentryEvent<T extends Event>(
   // Debug IDs preserve production source-map symbolication without full paths.
   const images = event.debug_meta?.images?.flatMap((image) => {
     const debugId = uuid(image.debug_id);
-    const codeFile = codeFilename(image.code_file);
+    const codeFile = sanitizeCodeFilename(image.code_file, build.sourceFiles);
     return image.type === 'sourcemap' && debugId && codeFile
       ? [{ type: 'sourcemap' as const, debug_id: debugId, code_file: codeFile }]
       : [];

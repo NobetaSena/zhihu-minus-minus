@@ -35,6 +35,40 @@ test('keeps an absent selected user available ahead of the remaining strip', () 
   expect(stream.entries[1].id).toBe('other');
 });
 
+test('skips malformed cached actors and preserves valid read tokens in the pager', () => {
+  const selected = moment('selected', 'selected-token');
+  const stream = createRecentMomentStream('selected-token', '4', [
+    {},
+    selected,
+    null,
+    { actor: { id: 'other' } },
+    { actor: { id: 'broken', name: {} } },
+  ]);
+
+  expect(stream.initialPage).toBe(0);
+  expect(stream.entries).toEqual([
+    { id: 'selected-token', unreadCount: 4, moment: selected },
+    {
+      id: 'other',
+      unreadCount: 0,
+      moment: {
+        actor: { id: 'other', url_token: '', name: '', avatar_url: '' },
+        unread_count: 0,
+      },
+    },
+  ]);
+});
+
+test.each([
+  null,
+  {},
+  'invalid',
+])('keeps the selected route usable when the cached array is %j', (value) => {
+  expect(createRecentMomentStream('selected', '3', value).entries).toEqual([
+    { id: 'selected', unreadCount: 3 },
+  ]);
+});
+
 test.each([
   undefined,
   '-1',

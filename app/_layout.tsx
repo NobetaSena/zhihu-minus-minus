@@ -32,12 +32,15 @@ import '../global.css';
 import * as Clipboard from 'expo-clipboard';
 import { AppState, type AppStateStatus, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useTelemetryStore } from '@/store/useTelemetryStore';
 import { consumeAppClipboardText } from '@/utils/clipboard';
 import { createAppQueryClient } from '@/utils/queryClient';
-import { initializeTelemetry, setTelemetryEnabled } from '@/utils/telemetry';
+import { initializeTelemetry } from '@/utils/telemetry';
+import { initializeTelemetryPreferences } from '@/utils/telemetryPreferences';
+
+export { AppErrorBoundary as ErrorBoundary } from '@/components/AppErrorBoundary';
 
 initializeTelemetry();
+initializeTelemetryPreferences();
 
 // 保持启动页显示，直到资源加载完成
 SplashScreen.preventAutoHideAsync();
@@ -53,8 +56,6 @@ function RootLayout() {
   const router = useRouter();
   const isDark = useThemeStore((state) => state.isDark);
   const hasThemeHydrated = useThemeStore((state) => state.hasHydrated);
-  const telemetryEnabled = useTelemetryStore((state) => state.enabled);
-  const hasTelemetryHydrated = useTelemetryStore((state) => state.hasHydrated);
   const appThemeColors = useRuntimeThemeColors();
   const currentTint = appThemeColors.primary;
   const baseNavigationTheme = isDark ? DarkTheme : DefaultTheme;
@@ -73,11 +74,6 @@ function RootLayout() {
 
   // Sync NativeWind dark mode with zustand store
   useSyncThemeWithNativeWind();
-
-  useEffect(() => {
-    if (!hasTelemetryHydrated) return;
-    void setTelemetryEnabled(telemetryEnabled);
-  }, [hasTelemetryHydrated, telemetryEnabled]);
 
   // 默认开启感应自动旋转
   useEffect(() => {

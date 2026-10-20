@@ -1,6 +1,11 @@
 import { getAnalytics } from '@react-native-firebase/analytics';
 import * as Sentry from '@sentry/react-native';
 import { AxiosError, AxiosHeaders } from 'axios';
+import { installDiagnosticErrorHandler } from '../utils/diagnosticErrorHandler';
+import {
+  recordDiagnosticError,
+  recordDiagnosticEvent,
+} from '../utils/diagnosticLogs';
 import {
   captureTelemetryException,
   logTelemetryEvent,
@@ -17,16 +22,24 @@ jest.mock('expo-constants', () => ({
         sentryDsn: 'https://test@example.invalid/1',
       },
     },
-    systemVersion: '18.0',
     platform: { ios: {} },
   },
 }));
+jest.mock('expo-device', () => ({ osVersion: '18.0' }));
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
   setContext: jest.fn(),
   setTag: jest.fn(),
   setUser: jest.fn(),
   captureException: jest.fn(),
+  captureEvent: jest.fn(),
+}));
+jest.mock('../utils/diagnosticLogs', () => ({
+  recordDiagnosticError: jest.fn(),
+  recordDiagnosticEvent: jest.fn(),
+}));
+jest.mock('../utils/diagnosticErrorHandler', () => ({
+  installDiagnosticErrorHandler: jest.fn(() => true),
 }));
 jest.mock('@react-native-firebase/analytics', () => {
   const analytics = {
@@ -45,6 +58,34 @@ const analytics = getAnalytics();
 const collection = jest.mocked(analytics.setAnalyticsCollectionEnabled);
 const logEvent = jest.mocked(analytics.logEvent);
 const sentryOptions = jest.mocked(Sentry.init).mock.calls[0]?.[0];
+type SentryEventHint = Parameters<
+  NonNullable<Sentry.ReactNativeOptions['beforeSend']>
+>[1];
+
+function stampAutomaticCapture(
+  options: Sentry.ReactNativeOptions | undefined,
+  event: Sentry.Event,
+  hint: SentryEventHint,
+) {
+  const integrations = options?.integrations;
+  if (typeof integrations !== 'function')
+    throw new Error('Missing integrations');
+  const privacy = integrations([]).find(
+    (integration) => integration.name === 'TelemetryPrivacy',
+  );
+  if (!privacy?.preprocessEvent) throw new Error('Missing privacy integration');
+  privacy.preprocessEvent(event, hint, {} as Sentry.ReactNativeClient);
+}
+
+function createIsolatedTelemetry() {
+  let telemetry: typeof import('../utils/telemetry') | undefined;
+  jest.isolateModules(() => {
+    telemetry = require('../utils/telemetry');
+  });
+  const options = jest.mocked(Sentry.init).mock.calls.at(-1)?.[0];
+  if (!telemetry || !options?.beforeSend) throw new Error('Missing telemetry');
+  return { telemetry, options, beforeSend: options.beforeSend };
+}
 
 beforeEach(async () => {
   await setTelemetryEnabled(false);
@@ -122,6 +163,231 @@ test('exception capture contains a safe category without Axios session data', as
   expect(captured).not.toHaveProperty('config');
   expect(captured).not.toHaveProperty('request');
   expect(captured).not.toHaveProperty('response');
+});
+
+test('render errors are retained locally while telemetry is disabled', () => {
+  const error = new TypeError('synthetic-private-detail');
+  captureTelemetryException(error, 'react-render');
+  expect(recordDiagnosticError).toHaveBeenCalledWith(error, 'react-render');
+  expect(Sentry.captureException).not.toHaveBeenCalled();
+});
+
+test('automatic errors are retained locally without overriding opt-out', async () => {
+  const event: Sentry.ErrorEvent = {
+    type: undefined,
+    exception: {
+      values: [
+        {
+          type: 'TypeError',
+          value: 'synthetic-private-detail',
+          mechanism: { type: 'onunhandledrejection' },
+        },
+      ],
+    },
+  };
+  expect(await sentryOptions?.beforeSend?.(event, {})).toBeNull();
+  expect(recordDiagnosticEvent).toHaveBeenCalledWith(
+    event,
+    'unhandled-rejection',
+  );
+});
+
+test('manual captures are not written locally a second time by beforeSend', async () => {
+  await setTelemetryEnabled(true);
+  captureTelemetryException(new TypeError('synthetic-private-detail'));
+  const captured = jest.mocked(Sentry.captureException).mock.calls[0]?.[0];
+  await sentryOptions?.beforeSend?.(
+    { type: undefined, exception: { values: [{ type: 'TypeError' }] } },
+    { originalException: captured },
+  );
+  expect(recordDiagnosticError).toHaveBeenCalledTimes(1);
+  expect(recordDiagnosticEvent).not.toHaveBeenCalled();
+});
+
+test('does not revive a manually captured error after opt-out and re-enabling', async () => {
+  await setTelemetryEnabled(true);
+  captureTelemetryException(new TypeError('synthetic-private-detail'));
+  const [captured, captureHint] = jest.mocked(Sentry.captureException).mock
+    .calls[0];
+  await setTelemetryEnabled(false);
+  await setTelemetryEnabled(true);
+
+  expect(
+    await sentryOptions?.beforeSend?.(
+      { type: undefined, exception: { values: [{ type: 'TypeError' }] } },
+      { ...captureHint, originalException: captured },
+    ),
+  ).toBeNull();
+  expect(recordDiagnosticError).toHaveBeenCalledTimes(1);
+  expect(recordDiagnosticEvent).not.toHaveBeenCalled();
+});
+
+test('rejects automatic events crossing opt-out during SDK processing', async () => {
+  await setTelemetryEnabled(true);
+  const event: Sentry.ErrorEvent = {
+    type: undefined,
+    exception: { values: [{ type: 'TypeError' }] },
+  };
+  const hint: SentryEventHint = {};
+  stampAutomaticCapture(sentryOptions, event, hint);
+  await setTelemetryEnabled(false);
+  await setTelemetryEnabled(true);
+
+  expect(await sentryOptions?.beforeSend?.(event, hint)).toBeNull();
+  expect(recordDiagnosticEvent).toHaveBeenCalledTimes(1);
+});
+
+test('global errors preserve capture-time consent before the SDK awaits event creation', async () => {
+  const { telemetry, beforeSend } = createIsolatedTelemetry();
+  await telemetry.setTelemetryEnabled(true);
+  const record = jest
+    .mocked(installDiagnosticErrorHandler)
+    .mock.calls.at(-1)?.[0];
+  if (!record) throw new Error('Missing global recorder');
+  const error = new TypeError('synthetic-private-detail');
+  record(error);
+  await telemetry.setTelemetryEnabled(false);
+  await telemetry.setTelemetryEnabled(true);
+
+  expect(
+    await beforeSend(
+      { type: undefined, exception: { values: [{ type: 'TypeError' }] } },
+      { originalException: error },
+    ),
+  ).toBeNull();
+  expect(recordDiagnosticError).toHaveBeenCalledTimes(1);
+  expect(recordDiagnosticEvent).not.toHaveBeenCalled();
+});
+
+test('does not send an automatic event captured while consent was disabled', async () => {
+  const event: Sentry.ErrorEvent = {
+    type: undefined,
+    exception: { values: [{ type: 'TypeError' }] },
+  };
+  const hint: SentryEventHint = {};
+  stampAutomaticCapture(sentryOptions, event, hint);
+  await setTelemetryEnabled(true);
+
+  expect(await sentryOptions?.beforeSend?.(event, hint)).toBeNull();
+});
+
+test('startup render errors wait for hydration and use a bounded sanitized queue', async () => {
+  let isolated: typeof import('../utils/telemetry') | undefined;
+  jest.isolateModules(() => {
+    isolated = require('../utils/telemetry');
+  });
+  if (!isolated) throw new Error('Missing isolated telemetry');
+  for (let index = 0; index < 12; index += 1) {
+    isolated.captureTelemetryException(
+      new TypeError('synthetic-private-detail'),
+      'react-render',
+    );
+  }
+  expect(Sentry.captureException).not.toHaveBeenCalled();
+  expect(recordDiagnosticError).toHaveBeenCalledTimes(12);
+  await isolated.setTelemetryEnabled(true);
+  expect(Sentry.captureException).toHaveBeenCalledTimes(10);
+  for (const [error] of jest.mocked(Sentry.captureException).mock.calls) {
+    expect(error).toMatchObject({
+      name: 'TypeError',
+      message: 'Application failure',
+    });
+  }
+});
+
+test('startup automatic errors replay sanitized events once without repeating local logs', async () => {
+  const { telemetry, options, beforeSend } = createIsolatedTelemetry();
+  const privateValue = 'synthetic-private-detail';
+  const event: Sentry.ErrorEvent = {
+    type: undefined,
+    user: { email: privateValue },
+    request: { headers: { Cookie: privateValue } },
+    extra: { config: privateValue },
+    exception: {
+      values: [
+        {
+          type: 'TypeError',
+          value: privateValue,
+          mechanism: { type: 'onunhandledrejection' },
+        },
+      ],
+    },
+  };
+  const hint: SentryEventHint = {
+    attachments: [{ filename: privateValue, data: privateValue }],
+  };
+  stampAutomaticCapture(options, event, hint);
+  expect(await beforeSend(event, hint)).toBeNull();
+  expect(hint.attachments).toEqual([]);
+  expect(Sentry.captureEvent).not.toHaveBeenCalled();
+
+  await telemetry.setTelemetryEnabled(true);
+  expect(Sentry.captureEvent).toHaveBeenCalledTimes(1);
+  const [replayed, replayHint] = jest.mocked(Sentry.captureEvent).mock.calls[0];
+  expect(JSON.stringify(replayed)).not.toContain(privateValue);
+  expect(replayed).not.toBe(event);
+  expect(
+    await beforeSend(replayed as Sentry.ErrorEvent, replayHint ?? {}),
+  ).toEqual(replayed);
+  await telemetry.setTelemetryEnabled(true);
+  expect(Sentry.captureEvent).toHaveBeenCalledTimes(1);
+  expect(recordDiagnosticEvent).toHaveBeenCalledTimes(1);
+});
+
+test('manual and automatic startup reports share the same ten-entry limit', async () => {
+  const { telemetry, beforeSend } = createIsolatedTelemetry();
+  for (let index = 0; index < 12; index += 1) {
+    if (index % 2 === 0) {
+      telemetry.captureTelemetryException(
+        new TypeError('synthetic-private-detail'),
+      );
+    } else {
+      await beforeSend(
+        { type: undefined, exception: { values: [{ type: 'TypeError' }] } },
+        {},
+      );
+    }
+  }
+  await telemetry.setTelemetryEnabled(true);
+  expect(Sentry.captureException).toHaveBeenCalledTimes(5);
+  expect(Sentry.captureEvent).toHaveBeenCalledTimes(5);
+});
+
+test('first hydration permits automatic events already in SDK processing', async () => {
+  const { telemetry, options, beforeSend } = createIsolatedTelemetry();
+  const event: Sentry.ErrorEvent = {
+    type: undefined,
+    exception: { values: [{ type: 'TypeError' }] },
+  };
+  const hint: SentryEventHint = {};
+  stampAutomaticCapture(options, event, hint);
+  await telemetry.setTelemetryEnabled(true);
+
+  expect(await beforeSend(event, hint)).not.toBeNull();
+});
+
+test('persisted opt-out permanently discards automatic startup reports too', async () => {
+  const { telemetry, beforeSend } = createIsolatedTelemetry();
+  await beforeSend(
+    { type: undefined, exception: { values: [{ type: 'TypeError' }] } },
+    {},
+  );
+  await telemetry.setTelemetryEnabled(false);
+  await telemetry.setTelemetryEnabled(true);
+
+  expect(Sentry.captureEvent).not.toHaveBeenCalled();
+});
+
+test('persisted opt-out discards pending startup errors permanently', async () => {
+  let isolated: typeof import('../utils/telemetry') | undefined;
+  jest.isolateModules(() => {
+    isolated = require('../utils/telemetry');
+  });
+  if (!isolated) throw new Error('Missing isolated telemetry');
+  isolated.captureTelemetryException(new TypeError('synthetic-private-detail'));
+  await isolated.setTelemetryEnabled(false);
+  await isolated.setTelemetryEnabled(true);
+  expect(Sentry.captureException).not.toHaveBeenCalled();
 });
 
 test('keeps known exception types and symbolication frames without original message', async () => {

@@ -29,15 +29,29 @@ Firebase 已公告自 2026 年 10 月起停止向 CocoaPods 发布新版本，�
 - Sentry 不再接受事件，并清理当前用户上下文；
 - 已经发送到服务商的数据不会因为关闭开关而自动删除。
 
-业务页面不应直接导入 Firebase 或 Sentry；根布局的 `Sentry.wrap` 是崩溃边界特例，事件仍统一通过适配层并遵守隐私开关。需要新增事件时，调用 `utils/telemetry.ts` 的适配方法，并只传递脱敏的事件名、类型和数值。
+业务页面不应直接导入 Firebase 或 Sentry。根布局保留 SDK 的 `Sentry.wrap` 包装，但它不是 React 错误边界；根路由导出的 `AppErrorBoundary` 才负责捕获渲染异常、展示重试和复制日志入口，并通过 `utils/telemetry.ts` 上报。需要新增事件时，调用适配层方法，并只传递脱敏的事件名、类型和数值。
 
 ## 自动 JS 异常的边界
 
-`beforeSend` 与 `beforeSendTransaction` 重新构造白名单事件。异常正文采用固定分类，保留允许的异常类型、栈帧行列、已知 bundle 文件名和 debug ID；设备/context 只保留枚举及数值，清除 user、request、extra、breadcrumbs、任意 tags、路由名、span description/data 和 hint attachments。截图、视图树、replay、profile、SDK logs、session 与 client reports 均关闭。
+`beforeSend` 与 `beforeSendTransaction` 重新构造白名单事件。异常正文保留可识别的引擎错误安全摘要和稳定错误码，例如 `Cannot read property 'length' of undefined` / `js.undefined-property`；属性名仅允许固定结构字段，动态属性名替换为 `<redacted>`，未知消息降级为 `Application failure`。不复制任意原始异常消息或其中的表达式、值、请求内容。
 
-当前 `enableNative: false`：Sentry 原生崩溃通道绕过 JS 脱敏及实时隐私开关，因此暂不启用原生 crash/原生离线缓存。`Sentry.wrap` 和 JS 自动异常仍可采集并符号化；这会减少原生层崩溃诊断信息。要恢复原生通道，应先实现并验证等价的原生脱敏与 opt-out，不能直接打开开关。
+允许保留的定位字段包括异常类型、白名单代码路径及栈帧行列、已知 bundle 文件名、`debug_id`，以及应用/系统版本、`buildNumber`、`commit`、`sourceFingerprint`（可用时）。业务上下文仅接受固定枚举 `area` / `operation`；例如关注头像栏通过 `DiagnosticScope` 标注 `following.recent-moments` / `render`，再将同一异常交给根边界统一记录和上报，不使用动态路由或用户 ID。其余设备/context 仅保留明确允许的枚举及数值，清除 user、request、extra、breadcrumbs、任意 tags、路由名、span description/data 和 hint attachments。截图、视图树、replay、profile、SDK logs、session 与 client reports 均关闭。
+
+RN 0.83 的未捕获 React 渲染异常可以直接进入 `ExceptionsManager`，绕过 Sentry 的 `ErrorUtils` 自动捕获入口。根路由的错误边界显式调用 `captureTelemetryException(error, 'react-render')`，覆盖根布局和子页面。遥测偏好在模块级订阅，不依赖根布局成功提交 effect；偏好尚未恢复时，最多暂存 10 条已去除原始消息的错误于内存，恢复为开启后上报，关闭则丢弃，之后开启不会补发关闭期间的事件。
+
+当前 `enableNative: false`：Sentry 原生崩溃通道绕过 JS 脱敏及实时隐私开关，因此暂不启用原生 crash/原生离线缓存。React 错误边界、JS 全局异常和未处理 Promise 的 SDK 捕获仍走 JS 脱敏通道；原生进程退出、系统终止及没有送达 JS 的异常不在覆盖范围内。要恢复原生通道，应先实现并验证等价的原生脱敏与 opt-out，不能直接打开开关。
 
 Firebase 默认自动收集及自动页面上报关闭，collection 只在偏好 hydrate 后启用；手动事件仍须遵守前述脱敏规则。关闭开关会阻止后续事件，不能撤回已发送数据。
+
+## 本机报错日志
+
+“设置 → 报错日志”提供预览、刷新、复制和清空，错误边界也提供复制入口。`utils/diagnosticLogs.ts` 在本机同步保留最近 30 条记录，每条最多 12 个代码位置；两份交替快照各不超过 64 KiB，以保留上次完整写入的记录。文件使用独立的 version 1 格式，读回与复制时再次白名单脱敏。存储不可用时退化为本次运行的内存记录，并在界面提示。
+
+日志包含时间、来源和上述安全错误摘要、稳定错误码、固定业务上下文、版本构建标识与代码位置。只保留诊断 manifest 白名单中的仓库相对源码路径和已知 bundle 名；文件位置中的主机、绝对目录、query 和 fragment 不保留，未知代码文件降级为 `source.js`。不保存任意原始异常消息、动态属性名、函数名、任意 URL/路径、账号、Cookie、请求/响应对象或正文。记录与“分享数据”开关独立，不会自动上传日志文件；只有用户主动复制后才进入剪贴板。全局 JS 异常在调用既有 Sentry/平台处理器前同步落盘，SDK 的其他自动异常在 `beforeSend` 内记录，手动上报和渲染边界避免重复记录。清空同时删除两份快照，删除失败会提示，不能宣称历史记录已清除。
+
+诊断 manifest 由 `app.config.ts` 生成，包含固定源码目录下的允许路径和内容指纹；不包含源码内容、用户目录、配置文件、fixture 或账号数据，也不跟随符号链接。`commit` 取当前 Git HEAD，无 Git 元数据时省略；`sourceFingerprint` 反映纳入清单的源码内容，包括这些文件的未提交改动。开发时更改源码后须重启 Metro 并重新加载应用来刷新 manifest，Fast Refresh 本身不会更新指纹。指纹有助于区分源码状态，不能替代 source map：生产 bundle 的栈帧仍须对应同次构建的 source map，并核对 `debug_id`（若有），不能仅凭应用版本套用另一构建的映射。
+
+本机日志不能保证捕获原生崩溃、系统强制结束或 JS 执行前的失败。验证时运行 `npm test -- tests/diagnosticLogs.test.ts tests/diagnosticLogsSettings.test.tsx tests/diagnosticErrorHandler.test.ts tests/diagnosticScope.test.tsx tests/appErrorBoundary.test.tsx tests/errorDiagnostics.test.ts tests/diagnosticsManifest.test.ts tests/telemetryBuildContext.test.ts tests/telemetrySanitizer.test.ts tests/telemetryPreferences.test.ts tests/telemetryPrivacy.test.ts tests/telemetrySdk.test.ts --runInBand`；真机还需检查渲染异常后的重试、复制、重启保留及关闭分享数据后的行为。SDK 测试使用内存 transport，不代表线上 Sentry 已收到事件。
 
 ## CI 配置
 

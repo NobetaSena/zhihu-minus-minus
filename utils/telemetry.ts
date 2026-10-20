@@ -2,12 +2,21 @@ import type { Analytics, EventParams } from '@react-native-firebase/analytics';
 import * as Sentry from '@sentry/react-native';
 import axios from 'axios';
 import Constants from 'expo-constants';
+import {
+  getDiagnosticContext,
+  rememberDiagnosticContext,
+} from './diagnosticContext';
+import { installDiagnosticErrorHandler } from './diagnosticErrorHandler';
+import {
+  type DiagnosticLogSource,
+  recordDiagnosticError,
+  recordDiagnosticEvent,
+} from './diagnosticLogs';
+import { classifyDiagnosticMessage } from './errorDiagnostics';
 import { loadFirebaseAnalytics } from './firebaseAnalytics';
 import { classifyNetworkError } from './networkFailure';
-import {
-  sanitizeSentryEvent,
-  type TelemetryBuildContext,
-} from './telemetrySanitizer';
+import { getTelemetryBuildContext } from './telemetryBuildContext';
+import { sanitizeSentryEvent } from './telemetrySanitizer';
 
 interface AppExtra {
   firebaseAnalyticsEnabled?: unknown;
@@ -24,31 +33,104 @@ const firebaseAnalyticsConfigured =
   appExtra?.firebaseAnalyticsEnabled === true;
 
 let telemetryEnabled = false;
+let telemetryPreferenceResolved = false;
+type PendingStartupReport =
+  | { type: 'error'; error: Error }
+  | { type: 'event'; event: Sentry.Event };
+type SentryEventHint = Parameters<
+  NonNullable<Sentry.ReactNativeOptions['beforeSend']>
+>[1];
+interface CapturePrivacy {
+  generation: number;
+  allowed: boolean;
+  locallyRecorded: boolean;
+  startupReplay: boolean;
+}
+const pendingStartupReports: PendingStartupReport[] = [];
+let privacyGeneration = 0;
+// SDK processing may be asynchronous. Keep capture-time policy out of the
+// serialized event while retaining it across the SDK's shallow hint copies.
+const capturePrivacy = new WeakMap<object, CapturePrivacy>();
 let sentryInitialized = false;
 let firebaseAnalyticsPromise: Promise<Analytics | null> | null = null;
 let telemetryVersion = 0;
 let collectionUpdateChain: Promise<void> = Promise.resolve();
+let diagnosticHandlerInstalled = false;
+const locallyRecordedErrors = new WeakSet<object>();
 
-const buildContext: TelemetryBuildContext = {
-  appVersion: Constants.expoConfig?.version,
-  osVersion:
-    Constants.systemVersion === undefined
-      ? undefined
-      : String(Constants.systemVersion),
-  platform: Constants.platform?.ios
-    ? 'ios'
-    : Constants.platform?.android
-      ? 'android'
-      : 'other',
-  environment: __DEV__ ? 'development' : 'production',
-};
+const buildContext = getTelemetryBuildContext();
+
+function createCapturePrivacy(): CapturePrivacy {
+  return {
+    generation: privacyGeneration,
+    allowed: !telemetryPreferenceResolved || telemetryEnabled,
+    locallyRecorded: false,
+    startupReplay: false,
+  };
+}
+
+function getCapturePrivacy(hint: SentryEventHint): CapturePrivacy {
+  const data = hint.data ?? {};
+  hint.data = data;
+  const originalPrivacy =
+    hint.originalException instanceof Object
+      ? capturePrivacy.get(hint.originalException)
+      : undefined;
+  const privacy =
+    capturePrivacy.get(data) ?? originalPrivacy ?? createCapturePrivacy();
+  capturePrivacy.set(data, privacy);
+  return privacy;
+}
+
+function recordedCaptureHint(startupReplay = false): SentryEventHint {
+  const hint: SentryEventHint = {};
+  const privacy = getCapturePrivacy(hint);
+  privacy.locallyRecorded = true;
+  privacy.startupReplay = startupReplay;
+  return hint;
+}
+
+function queueStartupReport(report: PendingStartupReport): void {
+  pendingStartupReports.push(report);
+  if (pendingStartupReports.length > 10) pendingStartupReports.shift();
+}
 
 function sanitizeTelemetryEvent<T extends Sentry.Event>(
   event: T,
-  hint: Parameters<NonNullable<Sentry.ReactNativeOptions['beforeSend']>>[1],
+  hint: SentryEventHint,
 ): T | null {
   // Attachments live outside Event and would bypass the field whitelist.
   hint.attachments = [];
+  const diagnostic = getDiagnosticContext(hint.originalException);
+  if (diagnostic) {
+    event.contexts = { ...event.contexts, diagnostic: { ...diagnostic } };
+  }
+  const privacy = getCapturePrivacy(hint);
+  const isError = event.type === undefined && event.exception?.values?.length;
+  if (
+    isError &&
+    !privacy.locallyRecorded &&
+    !(
+      hint.originalException instanceof Object &&
+      locallyRecordedErrors.has(hint.originalException)
+    )
+  ) {
+    const isRejection = event.exception?.values?.some(
+      (exception) => exception.mechanism?.type === 'onunhandledrejection',
+    );
+    recordDiagnosticEvent(
+      event,
+      isRejection ? 'unhandled-rejection' : 'javascript',
+    );
+    privacy.locallyRecorded = true;
+  }
+  if (!privacy.allowed || privacy.generation !== privacyGeneration) return null;
+  if (!telemetryPreferenceResolved) {
+    // Never retain the original SDK event, hints, attachments, or user fields.
+    const safe = isError ? sanitizeSentryEvent(event, buildContext) : null;
+    if (safe) queueStartupReport({ type: 'event', event: safe });
+    return null;
+  }
   if (!telemetryEnabled) return null;
   return sanitizeSentryEvent(event, buildContext);
 }
@@ -76,6 +158,26 @@ function initializeSentry() {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
     enableAutoSessionTracking: false,
+    integrations: (defaults) => [
+      ...defaults.map((integration) => {
+        if (integration.name !== 'Dedupe' || !integration.processEvent)
+          return integration;
+        const processEvent = integration.processEvent.bind(integration);
+        return {
+          ...integration,
+          processEvent: (...args: Parameters<typeof processEvent>) =>
+            getCapturePrivacy(args[1]).startupReplay
+              ? args[0]
+              : processEvent(...args),
+        };
+      }),
+      {
+        name: 'TelemetryPrivacy',
+        preprocessEvent: (_event, hint) => {
+          if (hint) getCapturePrivacy(hint);
+        },
+      },
+    ],
     beforeSend: sanitizeTelemetryEvent,
     beforeSendTransaction: sanitizeTelemetryEvent,
   });
@@ -94,11 +196,39 @@ async function getFirebaseAnalytics(): Promise<Analytics | null> {
 
 export function initializeTelemetry() {
   initializeSentry();
+  // Install outside Sentry's handler so fatal JS errors reach disk before its
+  // asynchronous flush or the platform's default fatal handler can terminate us.
+  if (!diagnosticHandlerInstalled) {
+    diagnosticHandlerInstalled = installDiagnosticErrorHandler((error) => {
+      recordDiagnosticError(error, 'javascript');
+      if (error instanceof Object) {
+        locallyRecordedErrors.add(error);
+        // Sentry's global handler awaits eventFromException before preprocessing.
+        const privacy = createCapturePrivacy();
+        privacy.locallyRecorded = true;
+        capturePrivacy.set(error, privacy);
+      }
+    });
+  }
 }
 
 export async function setTelemetryEnabled(enabled: boolean): Promise<void> {
+  // An opt-out permanently invalidates pending captures, including those whose
+  // asynchronous SDK processors finish only after telemetry is enabled again.
+  if (!enabled) privacyGeneration += 1;
   telemetryEnabled = enabled;
+  telemetryPreferenceResolved = true;
   telemetryVersion += 1;
+
+  // Root rendering can fail before persisted privacy preferences finish loading.
+  // Keep only bounded, sanitized in-memory errors until the preference is known.
+  const startupReports = pendingStartupReports.splice(0);
+  if (enabled) {
+    for (const report of startupReports) {
+      if (report.type === 'error') sendSentryError(report.error);
+      else sendSentryEvent(report.event);
+    }
+  }
 
   if (!enabled) {
     Sentry.setUser(null);
@@ -135,8 +265,11 @@ export async function logTelemetryEvent(
   }
 }
 
-export function captureTelemetryException(error: unknown): void {
-  if (!telemetryEnabled) return;
+export function captureTelemetryException(
+  error: unknown,
+  source: DiagnosticLogSource = 'handled',
+): void {
+  recordDiagnosticError(error, source);
   // Axios errors carry config/request objects containing the complete session.
   // Send a new error with a fixed category instead of forwarding that object.
   const status = axios.isAxiosError(error) ? error.response?.status : undefined;
@@ -144,8 +277,12 @@ export function captureTelemetryException(error: unknown): void {
     ? status === undefined
       ? `Network failure: ${classifyNetworkError(error, axios.isCancel(error))}`
       : `HTTP failure: ${status}`
-    : 'Application failure';
+    : classifyDiagnosticMessage(
+        error instanceof Error ? error.message : undefined,
+      ).summary;
   const safeError = new Error(message);
+  const diagnostic = getDiagnosticContext(error);
+  if (diagnostic) rememberDiagnosticContext(safeError, diagnostic);
   if (error instanceof Error) {
     const knownNames = [
       'Error',
@@ -177,7 +314,29 @@ export function captureTelemetryException(error: unknown): void {
     if (frames?.length)
       safeError.stack = `${safeError.name}: ${message}\n${frames.join('\n')}`;
   }
-  Sentry.captureException(safeError);
+  if (!telemetryPreferenceResolved) {
+    queueStartupReport({ type: 'error', error: safeError });
+    return;
+  }
+  if (telemetryEnabled) sendSentryError(safeError);
+}
+
+function sendSentryError(error: Error): void {
+  locallyRecordedErrors.add(error);
+  try {
+    Sentry.captureException(error, recordedCaptureHint());
+  } catch {
+    // The local diagnostic already exists; telemetry must not break recovery.
+  }
+}
+
+function sendSentryEvent(event: Sentry.Event): void {
+  try {
+    // Dedupe may already have seen the original before beforeSend queued it.
+    Sentry.captureEvent(event, recordedCaptureHint(true));
+  } catch {
+    // Replay has already been recorded locally and must not affect startup.
+  }
 }
 
 export function isTelemetryConfigured(): boolean {

@@ -60,6 +60,8 @@ npx expo run:ios --configuration Debug --device
 
 需要真机 Release 验证时，在 Xcode 打开生成的 `ios/*.xcworkspace`，选择自己的 Team 后构建。Release IPA 是未签名的，不能替代签名流程。
 
+个人签名安装 Development Build 时，选择证书所属的 Personal Team；证书名称括号里的标识不一定是 Team ID，实际 Team 可由证书主体的 OU 核实。使用 `xcodebuild` 时通过命令参数传入 `DEVELOPMENT_TEAM`，不要把个人 Team 固定进仓库配置。完成构建后用 `xcrun devicectl device install app --device <设备标识> <Debug-iphoneos/*.app>` 安装，再启动 Metro（`npm run start -- --dev-client`）；设备需已配对并开启开发者模式。
+
 只生成本地未签名 IPA 可运行 `bash build-unsigned-ipa.sh`。脚本每次执行 iOS prebuild（`--no-install`）后安装 Pods，自动发现唯一 workspace 和 scheme，禁用本地 Sentry 上传，并把当前版本 IPA 写入项目根目录。它不会改写 `.xcode.env.local` 或删除其他版本产物；已有同版本 IPA 在构建和打包成功后替换。产物已被 Git 忽略，仍需另行签名才能安装。
 
 使用 Xcode 27 / iOS 27 SDK 时，UIKit 要求采用 Scene 生命周期，否则应用会在创建界面前退出。当前 SDK 55 由 [`withIosSceneLifecycle`](../plugins/withIosSceneLifecycle.js) 在 prebuild 时迁移窗口启动，并注入 [`ZhihuSceneDelegate.swift`](../plugins/ios/ZhihuSceneDelegate.swift)：以 `UIWindow(windowScene:)` 创建单个主窗口，将冷/热链接与前后台事件转给原有 Expo AppDelegate。生成目录无需手改；插件拒绝覆盖未知模板或已有自定义 Scene 配置，升级 Expo SDK 时须重新核对此适配。平台依据见 [Apple 迁移说明](https://developer.apple.com/documentation/uikit/transitioning-to-the-uikit-scene-based-life-cycle) 与 [Expo Scene 说明](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md)。
@@ -94,6 +96,10 @@ Expo Router 的共享布局还会间接导入 `expo-symbols`。其 [补丁](../p
 可用 `npx expo export --platform android --dump-assetmap --output-dir /tmp/zhihu-android-export` 检查生产资源清单：当前应包含 Ionicons 和 MaterialSymbols Regular，不应包含 FontAwesome6 字体。字体清单验证后仍需在真机检查菜单、收藏和导航图标；最终 APK 大小以同一构建环境的 Release 产物为准。
 
 ## 验证命令
+
+排查页面异常时，可在“设置 → 报错日志”复制本机脱敏记录；根路由错误界面也可直接复制并重试。日志跨重启保留错误安全摘要、稳定错误码、固定业务 `area` / `operation`，以及可用的 `buildNumber`、`commit`、`sourceFingerprint`、白名单代码路径、行列和 `debug_id`。未知消息、动态属性名、账号和请求数据仍会脱敏，不能替代原生崩溃报告。捕获和隐私约束见 [`TELEMETRY.md`](./TELEMETRY.md)。
+
+`app.config.ts` 在读取配置时生成诊断 manifest，记录允许保留的仓库源码路径及内容指纹。开发期间修改源码后，Fast Refresh 不会自动刷新 manifest 指纹；应重启 Metro 并重新加载应用，再收集定位用日志。`commit` 在无 Git 元数据的源码归档中可能缺失，`sourceFingerprint` 仅标识纳入清单的源码，不能代替精确匹配的构建产物；Release 的 bundle 行列仍须使用同次构建的 source map 还原，并核对 `debug_id`（若有）。
 
 提交前运行聚合检查：
 
@@ -132,7 +138,7 @@ npm run analyze:rich-content:inbox
 - 主题与详情转场：在同一次运行中切换亮色 → 暗色 → 亮色，并验证跟随系统切换；每次切换后从首页 Feed 进入问题、回答、个人主页再返回，分别覆盖已有缓存和首次加载，并在切换阅读背景、前后台切换后重复。问题和回答使用原生淡入淡出，两屏同时半透明时会露出导航下面的背景，因此根 `GestureHandlerRootView` 必须保持与运行时主题一致的不透明底色，不能只给页面或 `Stack.contentStyle` 设置背景。`rootThemeBackground` 回归检查底色随主题和阅读偏好更新且导航不重新挂载；整页闪白是否消除仍需 Android 真机检查，冷启动正常不能替代运行中切换主题的验证。
 - 自定义主题色：色相、饱和度、亮度滑块拖动时更新色块与 Hex 预览，成功松手后提交一次并刷新全局主题；轻点轨道和短距离调整也直接提交。纵向滚动不应改色，拖动取消时恢复开始前的预览。`appearanceSettings` 覆盖提交、取消、连续调整及重新展开后的状态一致性；Android/iOS 真机还需检查滑块与页面滚动竞争，确认不用再点击阅读背景选项才能生效。
 - 首页、搜索和日报：快速点击历史词/建议词、切换分类、刷新过程中触底、分页失败后重试，以及过滤/曝光去重后整页为空。服务端返回结束标记或重复游标时应停止追加。
-- 关注更新：头像栏原生触摸期间锁定首页 PagerView，检查从头像上横滑、滑到首尾、纵向滚动、取消手势及返回后首页横滑恢复。“最近发布”固定进入时的头像顺序，左右切换或按钮切换用户，保留已访问页的列表与刷新状态；相邻用户仅预加载，实际选中才标记已读。检查从中间用户进入、单用户/缺失缓存入口、后台头像刷新后顺序不跳动、每页独立未读分界和分页，以及已读请求失败回滚不覆盖新更新。回归见 `nestedHorizontalGesture`、`recentMomentStream`、`recentMomentRead` 和 `userStreamScreen`；Android/iOS 均需真机检查嵌套横滑与页面边缘返回手势。
+- 关注更新：头像接口返回缺失、null 或非数组的 `data` 时应隐藏头像栏并关闭该区域的手势；数组中的畸形用户条目应丢弃，正常条目仍可显示、进入最近发布和标记已读，后续正常响应能恢复显示。头像栏原生触摸期间锁定首页 PagerView，检查从头像上横滑、滑到首尾、纵向滚动、取消手势及返回后首页横滑恢复。“最近发布”固定进入时的头像顺序，左右切换或按钮切换用户，保留已访问页的列表与刷新状态；相邻用户仅预加载，实际选中才标记已读。检查从中间用户进入、单用户/缺失缓存入口、后台头像刷新后顺序不跳动、每页独立未读分界和分页，以及已读请求失败回滚不覆盖新更新。回归见 `recentMoments`、`nestedHorizontalGesture`、`recentMomentStream`、`recentMomentRead` 和 `userStreamScreen`；Android/iOS 均需真机检查嵌套横滑与页面边缘返回手势。
 - 回答、文章、想法和评论：分别验证首次失败、分页失败、排序切换、多行输入和图片输入栏。文章与想法的根评论、回复统一使用 Comment V5 发布接口，分别验证文字和图片评论发布成功后刷新列表、失败后保留草稿。评论列表和回复详情共用 `useCommentKeyboardLayout`，按页面底边与键盘顶边的实际重叠量定位输入栏，弹起时保持 12px 间距，收起后恢复设备底部安全区。Android 在 edge-to-edge 根视图中使用 `measure` 的 `pageY`，不能直接把已扣系统导航栏的键盘 `height` 当作上移量，也不能重复补偿窗口已经缩小的部分；`keyboardDidShow` 后立即定位。iOS 使用窗口坐标测量，并跟随键盘事件时长和 frame 变化。回归见 `commentKeyboardLayout`；真机需覆盖 Android 手势/三键导航、窗口缩放、有/无底部安全区、多行输入与图片附件，以及 iOS 键盘弹起、收起和高度切换。评论提交期间不得重复发送或清空新编辑；移除图片、重新选择同图及离页后，旧上传结果不得回填。想法多选投票应遵守选择上限、一次提交完整选项，提交及刷新期间不可重复发送。
 - 问题与回答顶部：页顶导航透明，问题页显示返回与右侧更多按钮，回答页顶部保留返回，完整问题标题在正文中；接近折叠边界的最后 48px 随滚动逐渐显示背景、紧凑标题与作者，背景高度与信息位置同步变化。回答导航保留作者小头像和姓名，其顶部更多操作问题、正文底栏更多操作当前回答；横向切页按回答 ID 直接恢复展开/折叠及渐显进度，取消横滑、列表重排、离屏页滚动及旧回调不得污染当前页，切换问题或排序时清空本次导航状态。右侧自绘滚动条只作位置提示，不拦截手势，需检查短文隐藏、长文顶部/底部、弹性过滚、旋转及大字体后比例与导航间距；重新打开内容时应从顶部开始且不出现恢复提示。回归见 `answer-pager-transition`、`detailNavigationHeader`、`detailHeaderAppearance`、`readingProgress`、`readingProgressDisabled` 和 `scrollIndicator`。
 - 回答相邻预加载：前台回答详情立即预取前后各一条完整回答，数据就绪后提前挂载正文；预加载本身不触发收藏查询或阅读进度恢复。切页时保留提升为当前页或仍在相邻窗口中的请求，只取消离开窗口且没有活跃查询的请求。未阅读的预热正文移出窗口后卸载，再次进入需重新确认原生布局就绪。真机需检查慢网下提前请求、请求未完成时快速左右切换、列表追加/重排及三种正文排版；回归见 `answerPrefetchResources`、`answerNeighborRendering` 和 `answer-pager-transition`。
