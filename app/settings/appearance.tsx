@@ -31,6 +31,7 @@ import {
   resolveThemeColors,
   SURFACE_STYLE_OPTIONS,
   TEXT_CONTRAST_OPTIONS,
+  UNREAD_BADGE_STYLE_OPTIONS,
 } from '@/constants/theme';
 import type { RichContentRenderer } from '@/features/rich-content';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -81,6 +82,7 @@ export default function AppearanceSettings() {
     surfaceStyle,
     richContentRenderer,
     answerReadingMode,
+    unreadBadgeStyle,
     updateSettings,
   } = useSettingsStore();
 
@@ -555,6 +557,44 @@ export default function AppearanceSettings() {
                     key={option.value}
                     onPress={() =>
                       updateSettings({ surfaceStyle: option.value })
+                    }
+                    style={[
+                      styles.optionChip,
+                      {
+                        backgroundColor: Colors[colorScheme].backgroundTertiary,
+                      },
+                      isSelected && { backgroundColor: tintColor },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionChipText,
+                        isSelected && {
+                          color: Colors[colorScheme].onPrimary,
+                          fontWeight: 'bold',
+                        },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </BouncyButton>
+                );
+              })}
+            </RNView>
+          </SettingItem>
+          <SettingItem
+            label="未读角标"
+            icon="notifications-circle-outline"
+            colorScheme={colorScheme}
+          >
+            <RNView style={styles.optionRow}>
+              {UNREAD_BADGE_STYLE_OPTIONS.map((option) => {
+                const isSelected = unreadBadgeStyle === option.value;
+                return (
+                  <BouncyButton
+                    key={option.value}
+                    onPress={() =>
+                      updateSettings({ unreadBadgeStyle: option.value })
                     }
                     style={[
                       styles.optionChip,

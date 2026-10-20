@@ -18,6 +18,7 @@ import { BottomSheet } from '@/components/overlays/BottomSheet';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { UnreadBadge } from '@/components/UnreadBadge';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
@@ -37,8 +38,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const accentColor = useThemeColor({}, 'primary');
-  const dangerColor = useThemeColor({}, 'danger');
-  const onDanger = useThemeColor({}, 'onDanger');
   const accentBgColor = useThemeColor({}, 'primaryTransparent');
   const _surfaceColor = Colors[colorScheme].surface;
   const _textColor = Colors[colorScheme].text;
@@ -433,12 +432,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           right={
             unreadCount > 0 ? (
               <View className="flex-row items-center bg-transparent">
-                <Text
-                  className="text-xs font-bold px-1.5 py-0.5 rounded-[10px] overflow-hidden mr-1"
-                  style={{ backgroundColor: dangerColor, color: onDanger }}
-                >
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
+                <UnreadBadge count={unreadCount} placement="inline" />
                 <Ionicons
                   name="chevron-forward"
                   size={16}

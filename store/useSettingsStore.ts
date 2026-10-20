@@ -2,10 +2,12 @@ import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { colors } from '@/constants/designTokens';
-import type {
-  ReadingBackground,
-  SurfaceStyle,
-  TextContrast,
+import {
+  type ReadingBackground,
+  type SurfaceStyle,
+  type TextContrast,
+  UNREAD_BADGE_STYLE_OPTIONS,
+  type UnreadBadgeStyle,
 } from '@/constants/theme';
 import type { RichContentRenderer } from '@/features/rich-content';
 import type { FilterMode, FilterQualityLevel } from '@/utils/feedFilter';
@@ -96,6 +98,10 @@ function isValidDoubleTapAction(value: unknown): value is DoubleTapAction {
   return value === 'off' || value === 'like' || value === 'comments';
 }
 
+function isValidUnreadBadgeStyle(value: unknown): value is UnreadBadgeStyle {
+  return UNREAD_BADGE_STYLE_OPTIONS.some((option) => option.value === value);
+}
+
 function isValidRichContentRenderer(v: unknown): v is RichContentRenderer {
   return v === 'webview' || v === 'native-v2';
 }
@@ -145,6 +151,8 @@ export interface AppSettings {
   androidFeedbackType: 'ripple' | 'scale-opacity';
   /** 是否开启应用内震动反馈 */
   enableHapticFeedback: boolean;
+  /** 关注动态、消息通知与私信的未读角标样式 */
+  unreadBadgeStyle: UnreadBadgeStyle;
   /** iOS 是否使用系统原生底部 Tab（iOS 26+ 显示 Liquid Glass） */
   useNativeIOSBottomTabs: boolean;
   /** 是否开启浏览历史记录 */
@@ -221,6 +229,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pressScale: 0.98,
   androidFeedbackType: 'ripple',
   enableHapticFeedback: true,
+  unreadBadgeStyle: 'count',
   useNativeIOSBottomTabs: true,
   enableBrowseHistory: true,
   enableLocalFeedDedup: false,
@@ -293,6 +302,9 @@ export const useSettingsStore = create<SettingsState>()(
           if (typeof nextSettings.enablePressFeedback !== 'boolean') {
             nextSettings.enablePressFeedback = true;
           }
+          if (!isValidUnreadBadgeStyle(nextSettings.unreadBadgeStyle)) {
+            nextSettings.unreadBadgeStyle = 'count';
+          }
           if (
             typeof nextSettings.recommendRequestIncludeDesktop !== 'boolean'
           ) {
@@ -337,7 +349,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'zhihu-settings-storage',
       storage: createJSONStorage(() => settingsStorage),
-      version: 18,
+      version: 19,
       migrate: (rawPersistedState: unknown, version: number) => {
         const persistedState =
           normalizePersistedSettingsState(rawPersistedState);
@@ -495,6 +507,13 @@ export const useSettingsStore = create<SettingsState>()(
         )
           ? persistedState.doubleTapAction
           : undefined;
+
+        // v19 adds unread badge styles; existing installs keep red counts.
+        persistedState.unreadBadgeStyle = isValidUnreadBadgeStyle(
+          persistedState.unreadBadgeStyle,
+        )
+          ? persistedState.unreadBadgeStyle
+          : 'count';
 
         return persistedState as unknown as SettingsState;
       },

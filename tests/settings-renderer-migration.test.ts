@@ -30,12 +30,12 @@ beforeEach(() => {
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
 });
 
-test('defaults to tiqian-super-mini with visual feedback and filtering enabled in settings version 18', () => {
+test('defaults to tiqian-super-mini with visual feedback and filtering enabled in settings version 19', () => {
   expect(useSettingsStore.getState().richContentRenderer).toBe('native-v2');
   expect(useSettingsStore.getState().enablePressFeedback).toBe(true);
   expect(useSettingsStore.getState().enableLocalFeedFilter).toBe(true);
   expect(useSettingsStore.getState().filterRegexPatterns).toEqual([]);
-  expect(useSettingsStore.persist.getOptions().version).toBe(18);
+  expect(useSettingsStore.persist.getOptions().version).toBe(19);
 });
 
 test('leaves the double-tap action unset until the user picks one', () => {
@@ -56,6 +56,23 @@ test('keeps a previously saved double-tap action and defaults unset legacy data'
     (await migrate({ doubleTapAction: 'unknown' }, 17)).doubleTapAction,
   ).toBeUndefined();
   expect((await migrate({}, 17)).doubleTapAction).toBeUndefined();
+});
+
+test('keeps red unread counts for existing installs and accepts quieter badge styles', async () => {
+  expect(useSettingsStore.getState().unreadBadgeStyle).toBe('count');
+  expect((await migrate({}, 18)).unreadBadgeStyle).toBe('count');
+  expect(
+    (await migrate({ unreadBadgeStyle: 'dot' }, 19)).unreadBadgeStyle,
+  ).toBe('dot');
+  expect(
+    (await migrate({ unreadBadgeStyle: 'loud' }, 19)).unreadBadgeStyle,
+  ).toBe('count');
+  useSettingsStore.getState().updateSettings({ unreadBadgeStyle: 'hidden' });
+  expect(useSettingsStore.getState().unreadBadgeStyle).toBe('hidden');
+  useSettingsStore.getState().updateSettings({
+    unreadBadgeStyle: 'loud',
+  } as unknown as Partial<AppSettings>);
+  expect(useSettingsStore.getState().unreadBadgeStyle).toBe('count');
 });
 
 test.each([
@@ -144,7 +161,7 @@ test('hydrates legacy settings and writes back only the new renderer field', asy
       fontSizeScale: 1.3,
       enablePressFeedback: true,
     },
-    version: 18,
+    version: 19,
   });
   expect(JSON.parse(persistedJson).state).not.toHaveProperty('useWebView');
 });
@@ -271,7 +288,7 @@ test('persists and restores sanitized custom regex rules together with a disable
       enableLocalFeedFilter: false,
       filterRegexPatterns: expectedPatterns,
     },
-    version: 18,
+    version: 19,
   });
   useSettingsStore.setState({
     enableLocalFeedFilter: true,
