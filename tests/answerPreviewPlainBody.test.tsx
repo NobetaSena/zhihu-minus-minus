@@ -1,15 +1,41 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
+import type { ComponentProps } from 'react';
 import type { ZhihuPlainPreviewAnswer } from '../api/zhihu/nextRender';
 import { AnswerPreviewPlainBody } from '../components/AnswerPreviewPlainBody';
-import type { ZhihuContentProps } from '../features/rich-content';
+import type {
+  CollapsibleRichContent,
+  ZhihuContentProps,
+} from '../features/rich-content';
 
 let mockBodyProps: ZhihuContentProps;
+type CollapseProps = ComponentProps<typeof CollapsibleRichContent>;
+let mockCollapseProps: CollapseProps;
 
 jest.mock('../features/rich-content', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {
+    CollapsibleRichContent: (props: CollapseProps) => {
+      mockCollapseProps = props;
+      return react.createElement(
+        native.View,
+        null,
+        props.children,
+        react.createElement(
+          native.Pressable,
+          {
+            testID: 'plain-toggle',
+            onPress: () => props.onExpandedChange(!props.expanded),
+          },
+          react.createElement(
+            native.Text,
+            null,
+            props.expanded ? '收起回答' : '展开回答',
+          ),
+        ),
+      );
+    },
     ZhihuContent: (props: ZhihuContentProps) => {
       mockBodyProps = props;
       return react.createElement(native.View, { testID: 'ordinary-body-host' });
@@ -66,7 +92,7 @@ function answer(
   };
 }
 
-test('keeps the selected HTML fully expanded with its original metadata and interaction', async () => {
+test('collapses the selected HTML without replacing its renderer, metadata or interaction', async () => {
   const html = answer(
     '<p data-pid="synthetic-duplicate-pid">合成&lt;&amp;第一段<strong>加粗</strong></p>' +
       '<a class="LinkCard" href="https://example.invalid/card">卡片</a>' +
@@ -75,13 +101,20 @@ test('keeps the selected HTML fully expanded with its original metadata and inte
   );
   const original = JSON.stringify(html);
   const onRefresh = jest.fn();
-  const host = await render(
-    <AnswerPreviewPlainBody
-      item={html}
-      scope="synthetic-session:42"
-      onRefresh={onRefresh}
-    />,
-  );
+  const onExpandedChange = jest.fn();
+  const props = {
+    item: html,
+    scope: 'synthetic-session:42',
+    expanded: true,
+    onExpandedChange,
+    onRefresh,
+  };
+  const host = await render(<AnswerPreviewPlainBody {...props} />);
+  expect(mockCollapseProps).toMatchObject({
+    contentKey: 'synthetic-session:42:42',
+    expanded: true,
+    onExpandedChange,
+  });
   expect(mockBodyProps).toMatchObject({
     objectId: html.id,
     type: 'answer',
@@ -94,13 +127,22 @@ test('keeps the selected HTML fully expanded with its original metadata and inte
   expect(mockBodyProps.linkCardInfo).toBe(html.linkCardInfo);
   mockBodyProps.onRefresh?.();
   expect(onRefresh).toHaveBeenCalledTimes(1);
-  expect(host.queryByText('收起回答')).toBeNull();
-  expect(host.queryByText('展开回答')).toBeNull();
+  expect(host.getByText('收起回答')).toBeTruthy();
+  await fireEvent.press(host.getByTestId('plain-toggle'));
+  expect(onExpandedChange).toHaveBeenLastCalledWith(false);
+  await host.rerender(<AnswerPreviewPlainBody {...props} expanded={false} />);
+  expect(mockBodyProps.content).toBe(html.content);
+  expect(mockBodyProps.segmentInfos).toBe(html.segmentInfos);
+  expect(mockBodyProps.linkCardInfo).toBe(html.linkCardInfo);
+  expect(mockCollapseProps.expanded).toBe(false);
+  expect(host.getByText('展开回答')).toBeTruthy();
+  await fireEvent.press(host.getByTestId('plain-toggle'));
+  expect(onExpandedChange).toHaveBeenLastCalledWith(true);
   expect(JSON.stringify(html)).toBe(original);
   await host.unmount();
 });
 
-test('keeps all array segments available and preserves incomplete-body notices without collapse', async () => {
+test('keeps every array segment and incomplete-body notices when collapsed', async () => {
   const array = answer([
     { type: 'text', content: '<p>数组原文&lt;&amp;</p>' },
     { type: 'image', url: 'https://example.invalid/image.png' },
@@ -114,6 +156,8 @@ test('keeps all array segments available and preserves incomplete-body notices w
   const props = {
     item: array,
     scope: 'synthetic-session:42',
+    expanded: false,
+    onExpandedChange: jest.fn(),
     onRefresh: jest.fn(),
   };
   const host = await render(<AnswerPreviewPlainBody {...props} />);
@@ -122,7 +166,8 @@ test('keeps all array segments available and preserves incomplete-body notices w
   expect(mockBodyProps.segmentInfos).toBe(array.segmentInfos);
   expect(mockBodyProps.linkCardInfo).toBe(array.linkCardInfo);
   expect(mockBodyProps.selectable).toBe(true);
-  expect(host.queryByText('收起回答')).toBeNull();
+  expect(mockCollapseProps.expanded).toBe(false);
+  expect(host.getByText('展开回答')).toBeTruthy();
   const partial = {
     ...answer('<p>短正文</p>'),
     contentNeedTruncated: true,
@@ -131,7 +176,7 @@ test('keeps all array segments available and preserves incomplete-body notices w
   await host.rerender(<AnswerPreviewPlainBody {...props} item={partial} />);
   expect(host.getByText('当前仅展示部分正文')).toBeTruthy();
   expect(mockBodyProps.content).toBe(partial.content);
-  expect(host.queryByText('展开回答')).toBeNull();
-  expect(host.queryByText('收起回答')).toBeNull();
+  expect(mockCollapseProps.expanded).toBe(false);
+  expect(host.getByText('展开回答')).toBeTruthy();
   await host.unmount();
 });
