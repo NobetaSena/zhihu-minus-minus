@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import type { ErrorBoundaryProps } from 'expo-router';
+import { Try } from 'expo-router/build/views/Try';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import {
@@ -10,12 +12,14 @@ import {
 } from '../api/zhihu';
 import { RecentMoments } from '../components/RecentMoments';
 import { useNestedHorizontalGesture } from '../hooks/useNestedHorizontalGesture';
+import { getDiagnosticContext } from '../utils/diagnosticContext';
 
 const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
+jest.mock('expo-router/build/views/Splash', () => ({ hideAsync: jest.fn() }));
 jest.mock('../api/zhihu', () => ({
   fetchRecentMoments: jest.fn(),
   markRecentMomentsRead: jest.fn(),
@@ -108,6 +112,36 @@ test.each([
   await host.unmount();
 });
 
+test('annotates an actual malformed actor render failure before forwarding to the root boundary', async () => {
+  queryClient.setQueryData<unknown>(['recent-moments'], { data: [{}] });
+  const consoleError = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+  let caught: Error | undefined;
+  function RootFallback({ error }: ErrorBoundaryProps) {
+    caught = error;
+    return null;
+  }
+
+  try {
+    const host = await render(
+      <Try catch={RootFallback}>
+        <RecentMoments />
+      </Try>,
+      { wrapper },
+    );
+
+    expect(caught).toBeInstanceOf(TypeError);
+    expect(getDiagnosticContext(caught)).toEqual({
+      area: 'following.recent-moments',
+      operation: 'render',
+    });
+    await host.unmount();
+  } finally {
+    consoleError.mockRestore();
+  }
+});
+
 test('keeps hooks mounted across loading, empty results, restoration and focus changes', async () => {
   const onInteractionChange = jest.fn();
   const parentGesture = Gesture.Native();
@@ -175,5 +209,29 @@ test('keeps hooks mounted across loading, empty results, restoration and focus c
     true,
     parentGesture,
   );
+  await host.unmount();
+});
+
+test.each([
+  {},
+  { data: null },
+  { data: { length: 1 } },
+  { data: 'invalid' },
+])('handles an invalid moments array on first load and after populated results: %j', async (response) => {
+  queryClient.setQueryData<unknown>(['recent-moments'], response);
+  const host = await render(<RecentMoments />, { wrapper });
+  const item = moment();
+  expect(host.toJSON()).toBeNull();
+
+  await act(() => seed([item]));
+  await waitFor(() => expect(host.getByText(item.actor.name)).toBeTruthy());
+
+  await act(() =>
+    queryClient.setQueryData<unknown>(['recent-moments'], response),
+  );
+  await waitFor(() => expect(host.toJSON()).toBeNull());
+
+  await act(() => seed([item]));
+  await waitFor(() => expect(host.getByText(item.actor.name)).toBeTruthy());
   await host.unmount();
 });

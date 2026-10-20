@@ -8,6 +8,7 @@ import {
 } from 'react-native-gesture-handler';
 import { fetchRecentMoments } from '@/api/zhihu';
 import { useNestedHorizontalGesture } from '@/hooks/useNestedHorizontalGesture';
+import { DiagnosticScope } from './DiagnosticScope';
 import { StableAvatar } from './StableAvatar';
 import { Text, useThemeColor, View } from './Themed';
 
@@ -38,14 +39,17 @@ function RecentMomentsComponent({
     refetchOnWindowFocus: true,
   });
 
+  // Missing or invalid response data must be safe before configuring gestures.
+  const recentMoments = data?.data;
+  const items = Array.isArray(recentMoments) ? recentMoments : [];
   const scrollGesture = useNestedHorizontalGesture(
     onInteractionChange,
-    isActive && !!data?.data.length,
+    isActive && items.length > 0,
     parentGesture,
   );
 
   // 如果没有数据或数据为空，则不渲染
-  if (!data?.data || data.data.length === 0) {
+  if (items.length === 0) {
     return null;
   }
 
@@ -57,7 +61,7 @@ function RecentMomentsComponent({
           showsHorizontalScrollIndicator={false}
           contentContainerClassName="px-4 py-4"
         >
-          {data.data.map((item) => (
+          {items.map((item) => (
             <Pressable
               key={item.actor.id}
               onPress={() => {
@@ -125,5 +129,17 @@ function RecentMomentsComponent({
   );
 }
 
-export const RecentMoments = React.memo(RecentMomentsComponent);
+function RecentMomentsWithDiagnostics(
+  props: React.ComponentProps<typeof RecentMomentsComponent>,
+) {
+  return (
+    <DiagnosticScope
+      context={{ area: 'following.recent-moments', operation: 'render' }}
+    >
+      <RecentMomentsComponent {...props} />
+    </DiagnosticScope>
+  );
+}
+
+export const RecentMoments = React.memo(RecentMomentsWithDiagnostics);
 RecentMoments.displayName = 'RecentMoments';

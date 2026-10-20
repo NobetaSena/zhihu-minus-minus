@@ -97,7 +97,7 @@ jest.mock('../hooks/useQueryConnectivity', () => ({
 }));
 jest.mock('../utils/telemetry', () => ({
   initializeTelemetry: jest.fn(),
-  setTelemetryEnabled: jest.fn(),
+  setTelemetryEnabled: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../store/useTelemetryStore', () => ({
   useTelemetryStore: jest

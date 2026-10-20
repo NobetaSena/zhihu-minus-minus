@@ -76,6 +76,13 @@ const SEARCH_ENTRIES: ReadonlyArray<SearchEntry> = [
     kind: 'telemetry',
   },
   {
+    label: '报错日志',
+    description: '查看、复制或清除本机的脱敏报错记录',
+    icon: 'document-text-outline',
+    href: '/settings/diagnostics',
+    keywords: '日志 报错 错误 闪退 崩溃 诊断 复制 反馈 log crash debug',
+  },
+  {
     label: '关于 知乎--',
     description: '版本、更新、反馈、项目与开源许可',
     icon: 'information-circle-outline',
@@ -285,6 +292,12 @@ export default function SettingsScreen() {
             </Section>
 
             <Section title="关于与支持" colorScheme={colorScheme}>
+              <SettingsRouteRow
+                icon="document-text-outline"
+                label="报错日志"
+                description="查看、复制或清除本机的脱敏报错记录"
+                onPress={() => router.push('/settings/diagnostics' as Href)}
+              />
               <SettingsRouteRow
                 icon="information-circle-outline"
                 label="关于 知乎--"
