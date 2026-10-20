@@ -4,6 +4,7 @@ import type { ZhihuPlainPreviewAnswer } from '@/api/zhihu/nextRender';
 import { getAuthSessionVersion } from '@/store/useAuthStore';
 import type { ZhihuContentSegment, ZhihuSegmentInfo } from '@/types/zhihu';
 import { seedAnswerEndorsements } from './answerEndorsements';
+import { getAnswerPublishInfo } from './answerPreviewDisplay';
 
 /** Ordinary list responses use both raw API fields and normalized feed aliases. */
 export interface AnswerPreviewEntrySource {
@@ -55,6 +56,9 @@ export interface AnswerPreviewEntrySource {
   answer_type?: string;
   answerType?: string;
   paid_info?: unknown;
+  created_time?: number;
+  updated_time?: number;
+  ip_info?: string;
 }
 
 export function getAnswerPreviewEntryKey(
@@ -106,6 +110,7 @@ export function createAnswerPreviewEntry(
   const answerType =
     source.paid_info != null ? 'PAID' : rawAnswerType || undefined;
   const collection = getContentCollectionMetadata(source);
+  const publishInfo = getAnswerPublishInfo(source);
   return {
     id,
     type: 'answer',
@@ -154,6 +159,7 @@ export function createAnswerPreviewEntry(
             ? -1
             : 0,
     },
+    ...(publishInfo && { publishInfo }),
     segmentInfos: source.segment_infos,
     linkCardInfo: source.link_card_info,
     contentNeedTruncated:

@@ -8,6 +8,7 @@ import type {
   ZhihuSegmentInfo,
   ZhihuStructuredContent,
 } from '@/types/zhihu';
+import { getNextRenderPublishInfo } from '@/utils/answerPreviewDisplay';
 import apiClient, { type ApiRequestOptions } from '../client';
 import { getZhihuAppEndpointHeaders } from './appApi';
 import { getContentCollectionMetadata } from './contentCollection';
@@ -38,6 +39,14 @@ export interface ZhihuPreviewAnswerMetadata {
     is_favorited?: boolean;
     voting: -1 | 0 | 1;
   };
+  publishInfo?: AnswerPublishInfo;
+}
+
+/** Labelled display text such as `发布于 …`, `编辑于 …`, `IP 属地…`; never timestamps. */
+export interface AnswerPublishInfo {
+  published?: string;
+  edited?: string;
+  location?: string;
 }
 
 export interface ZhihuPreviewAnswer extends ZhihuPreviewAnswerMetadata {
@@ -162,6 +171,7 @@ function normalizeAnswer(value: Record<string, unknown>): ZhihuPreviewAnswer {
   const structuredContent = parseZhihuStructuredContent(
     value.structured_content,
   );
+  const publishInfo = getNextRenderPublishInfo(record(value.content_end_info));
   return {
     id: identifier(value.id),
     type: 'answer',
@@ -186,6 +196,7 @@ function normalizeAnswer(value: Record<string, unknown>): ZhihuPreviewAnswer {
       is_favorited: collection.isCollected,
       voting: vote === 'up' ? 1 : vote === 'down' ? -1 : 0,
     },
+    ...(publishInfo && { publishInfo }),
     structuredContent,
   };
 }
