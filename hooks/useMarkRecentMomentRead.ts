@@ -6,6 +6,7 @@ import {
   type RecentMomentsResponse,
 } from '@/api/zhihu';
 import { getAuthSessionVersion } from '@/store/useAuthStore';
+import { normalizeRecentMoments } from '@/utils/recentMoments';
 
 const queryKey = ['recent-moments'] as const;
 const pendingReads = new WeakMap<object, Set<string>>();
@@ -22,7 +23,8 @@ export function useMarkRecentMomentRead(): (item: RecentMomentItem) => void {
       const sessionVersion = getAuthSessionVersion();
       const query = queryClient.getQueryCache().find({ queryKey, exact: true });
       const current = queryClient.getQueryData<RecentMomentsResponse>(queryKey);
-      const previousItem = current?.data.find(
+      const currentItems = normalizeRecentMoments(current?.data);
+      const previousItem = currentItems.find(
         (entry) =>
           entry.actor.id === item.actor.id &&
           (entry.brief || entry.id) === readToken,
@@ -43,7 +45,7 @@ export function useMarkRecentMomentRead(): (item: RecentMomentItem) => void {
         queryKey,
         {
           ...current,
-          data: current.data.map((entry) =>
+          data: currentItems.map((entry) =>
             entry === previousItem ? { ...entry, unread_count: 0 } : entry,
           ),
         },
@@ -63,7 +65,9 @@ export function useMarkRecentMomentRead(): (item: RecentMomentItem) => void {
           return;
 
         queryClient.setQueryData<RecentMomentsResponse>(queryKey, (latest) =>
-          optimisticItem && latest?.data.includes(optimisticItem)
+          optimisticItem &&
+          Array.isArray(latest?.data) &&
+          latest.data.includes(optimisticItem)
             ? {
                 ...latest,
                 data: latest.data.map((entry) =>

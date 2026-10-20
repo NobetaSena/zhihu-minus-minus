@@ -8,6 +8,7 @@ import {
 } from 'react-native-gesture-handler';
 import { fetchRecentMoments } from '@/api/zhihu';
 import { useNestedHorizontalGesture } from '@/hooks/useNestedHorizontalGesture';
+import { normalizeRecentMoments } from '@/utils/recentMoments';
 import { DiagnosticScope } from './DiagnosticScope';
 import { StableAvatar } from './StableAvatar';
 import { Text, useThemeColor, View } from './Themed';
@@ -39,9 +40,8 @@ function RecentMomentsComponent({
     refetchOnWindowFocus: true,
   });
 
-  // Missing or invalid response data must be safe before configuring gestures.
-  const recentMoments = data?.data;
-  const items = Array.isArray(recentMoments) ? recentMoments : [];
+  // Validate each entry before configuring gestures or rendering native views.
+  const items = normalizeRecentMoments(data?.data);
   const scrollGesture = useNestedHorizontalGesture(
     onInteractionChange,
     isActive && items.length > 0,

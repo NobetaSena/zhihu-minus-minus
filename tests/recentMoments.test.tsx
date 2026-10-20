@@ -11,6 +11,7 @@ import {
   type RecentMomentsResponse,
 } from '../api/zhihu';
 import { RecentMoments } from '../components/RecentMoments';
+import { StableAvatar } from '../components/StableAvatar';
 import { useNestedHorizontalGesture } from '../hooks/useNestedHorizontalGesture';
 import { getDiagnosticContext } from '../utils/diagnosticContext';
 
@@ -34,7 +35,9 @@ jest.mock('../hooks/useNestedHorizontalGesture', () => ({
       .useNestedHorizontalGesture,
   ),
 }));
-jest.mock('../components/StableAvatar', () => ({ StableAvatar: () => null }));
+jest.mock('../components/StableAvatar', () => ({
+  StableAvatar: jest.fn(() => null),
+}));
 jest.mock('../components/Themed', () => {
   const native = jest.requireActual('react-native');
   return { Text: native.Text, View: native.View, useThemeColor: () => '#00f' };
@@ -77,6 +80,7 @@ function seed(items: RecentMomentItem[]) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(StableAvatar).mockImplementation(() => null);
   queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
@@ -112,8 +116,12 @@ test.each([
   await host.unmount();
 });
 
-test('annotates an actual malformed actor render failure before forwarding to the root boundary', async () => {
-  queryClient.setQueryData<unknown>(['recent-moments'], { data: [{}] });
+test('annotates a child render failure before forwarding the same error to the root boundary', async () => {
+  seed([moment()]);
+  const failure = new Error('synthetic avatar render failure');
+  jest.mocked(StableAvatar).mockImplementation(() => {
+    throw failure;
+  });
   const consoleError = jest
     .spyOn(console, 'error')
     .mockImplementation(() => {});
@@ -131,7 +139,7 @@ test('annotates an actual malformed actor render failure before forwarding to th
       { wrapper },
     );
 
-    expect(caught).toBeInstanceOf(TypeError);
+    expect(caught).toBe(failure);
     expect(getDiagnosticContext(caught)).toEqual({
       area: 'following.recent-moments',
       operation: 'render',
@@ -140,6 +148,85 @@ test('annotates an actual malformed actor render failure before forwarding to th
   } finally {
     consoleError.mockRestore();
   }
+});
+
+test('discards malformed entries without enabling the avatar strip gesture', async () => {
+  const actor = moment().actor;
+  queryClient.setQueryData<unknown>(['recent-moments'], {
+    data: [
+      null,
+      {},
+      { actor: null },
+      { actor: [] },
+      { actor: 'invalid' },
+      { actor: { ...actor, id: {} } },
+      { actor: { ...actor, id: '' } },
+      { actor: { ...actor, url_token: {} } },
+      { actor: { ...actor, name: {} } },
+      { actor: { ...actor, avatar_url: {} } },
+      { actor, unread_count: {} },
+      { actor, unread_count: Number.NaN },
+      { actor, unread_count: -1 },
+    ],
+  });
+  const host = await render(<RecentMoments />, { wrapper });
+
+  expect(host.toJSON()).toBeNull();
+  expect(useNestedHorizontalGesture).toHaveBeenLastCalledWith(
+    undefined,
+    false,
+    undefined,
+  );
+  expect(StableAvatar).not.toHaveBeenCalled();
+  await host.unmount();
+});
+
+test('retains valid entries among malformed data and routes to the selected actor', async () => {
+  const item = moment();
+  const response = { data: [null, {}, item, { actor: null }] };
+  queryClient.setQueryData<unknown>(['recent-moments'], response);
+  const host = await render(<RecentMoments />, { wrapper });
+
+  await fireEvent.press(host.getByText(item.actor.name));
+
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/user/[id]/stream',
+    params: {
+      id: item.actor.url_token,
+      unreadCount: '137',
+      source: 'recent-moments',
+    },
+  });
+  expect(queryClient.getQueryData(['recent-moments'])).toEqual(response);
+  await host.unmount();
+});
+
+test('allows absent optional profile fields and unread counts', async () => {
+  queryClient.setQueryData<unknown>(['recent-moments'], {
+    data: [
+      {
+        actor: {
+          id: 'synthetic-actor-id',
+          name: '可选字段缺省',
+          url_token: null,
+          avatar_url: null,
+        },
+      },
+    ],
+  });
+  const host = await render(<RecentMoments />, { wrapper });
+
+  await fireEvent.press(host.getByText('可选字段缺省'));
+
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/user/[id]/stream',
+    params: {
+      id: 'synthetic-actor-id',
+      unreadCount: '0',
+      source: 'recent-moments',
+    },
+  });
+  await host.unmount();
 });
 
 test('keeps hooks mounted across loading, empty results, restoration and focus changes', async () => {

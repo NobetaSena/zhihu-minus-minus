@@ -1,4 +1,5 @@
 import type { RecentMomentItem } from '@/api/zhihu/moments';
+import { normalizeRecentMoments } from './recentMoments';
 
 interface RecentMomentStreamEntry {
   id: string;
@@ -15,12 +16,12 @@ function parseUnreadCount(value: string | undefined): number {
 export function createRecentMomentStream(
   initialId: string,
   unreadCount: string | undefined,
-  moments: RecentMomentItem[] = [],
+  moments: unknown = [],
 ): { entries: RecentMomentStreamEntry[]; initialPage: number } {
   const entries: RecentMomentStreamEntry[] = [];
   const seen = new Set<string>();
   let initialPage = -1;
-  for (const moment of moments) {
+  for (const moment of normalizeRecentMoments(moments)) {
     const id = moment.actor.url_token || moment.actor.id;
     const identity = moment.actor.id || id;
     if (!id || seen.has(identity)) continue;

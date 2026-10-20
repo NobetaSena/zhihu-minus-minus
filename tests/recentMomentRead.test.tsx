@@ -102,6 +102,37 @@ test('restores on rejected requests and allows a later retry', async () => {
   expect(cachedItems()).toEqual([{ ...item, unread_count: 0 }]);
 });
 
+test('marks a valid cached actor among malformed entries and rolls back on failure', async () => {
+  const item = moment();
+  const current = seed([item]);
+  queryClient.setQueryData<unknown>(queryKey, {
+    ...current,
+    data: [null, {}, item, { actor: null }],
+  });
+  const response = deferredResponse();
+  const hook = await renderHook(useMarkRecentMomentRead, { wrapper });
+
+  await act(() => hook.result.current(item));
+
+  expect(markRecentMomentsRead).toHaveBeenCalledWith(item.brief);
+  expect(cachedItems()).toEqual([{ ...item, unread_count: 0 }]);
+  await act(() => response.resolve({ success: false }));
+  expect(cachedItems()).toEqual([item]);
+});
+
+test.each([
+  null,
+  {},
+  'invalid',
+])('ignores a malformed cached array while marking a previous entry read: %j', async (data) => {
+  queryClient.setQueryData<unknown>(queryKey, { data });
+  const hook = await renderHook(useMarkRecentMomentRead, { wrapper });
+
+  await act(() => hook.result.current(moment()));
+
+  expect(markRecentMomentsRead).not.toHaveBeenCalled();
+});
+
 test('deduplicates repeated selection across hook instances and in-flight refreshes', async () => {
   const item = moment();
   seed([item]);

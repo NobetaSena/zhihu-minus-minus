@@ -79,7 +79,9 @@ export function getTelemetryBuildContext(): TelemetryBuildContext {
     : undefined;
   return {
     appVersion: version(Constants.expoConfig?.version),
-    buildNumber: version(Constants.nativeBuildVersion) ?? version(Constants.platform?.ios?.buildNumber),
+    buildNumber:
+      version(Constants.nativeBuildVersion) ??
+      version(Constants.platform?.ios?.buildNumber),
     osVersion: version(osVersion),
     commit: hex(diagnostics.commit, 40),
     sourceFingerprint: hex(diagnostics.sourceFingerprint, 24),
