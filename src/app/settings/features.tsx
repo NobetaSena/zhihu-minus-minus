@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useRouter } from 'expo-router';
-import { View as RNView, ScrollView, StyleSheet, Switch } from 'react-native';
+import { View as RNView, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BouncyButton } from '@/components/BouncyButton';
 import {
@@ -9,6 +9,7 @@ import {
   settingsChipStyles as s,
 } from '@/components/SettingItem';
 import { Text, useThemeColor } from '@/components/Themed';
+import { ThemedSwitch } from '@/components/ThemedSwitch';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import {
@@ -60,12 +61,11 @@ export default function FeatureSettings() {
             icon="time-outline"
             colorScheme={colorScheme}
           >
-            <Switch
+            <ThemedSwitch
               value={enableBrowseHistory}
               onValueChange={(value) =>
                 updateSettings({ enableBrowseHistory: value })
               }
-              trackColor={{ true: tintColor }}
             />
           </SettingItem>
           <BouncyButton
@@ -131,12 +131,11 @@ export default function FeatureSettings() {
             icon="chatbubbles-outline"
             colorScheme={colorScheme}
           >
-            <Switch
+            <ThemedSwitch
               value={enablePrivateMessaging}
               onValueChange={(value) =>
                 updateSettings({ enablePrivateMessaging: value })
               }
-              trackColor={{ true: tintColor }}
             />
           </SettingItem>
         </Section>
