@@ -10,6 +10,7 @@ import type { AnswerEndorsements } from '../components/AnswerEndorsements';
 import { AnswerPreviewList } from '../components/AnswerPreviewList';
 import type { FeedCardActionRow } from '../components/FeedCardActionRow';
 import type {
+  CollapsibleRichContent,
   ZhihuContentProps,
   ZhihuStructuredContentProps,
 } from '../features/rich-content';
@@ -30,6 +31,8 @@ const mockReadTouch = jest.fn(
   (_answerIds: readonly string[], _enabled?: boolean) => {},
 );
 const mockPlainBodies = new Map<string, ZhihuContentProps>();
+type CollapseProps = ComponentProps<typeof CollapsibleRichContent>;
+const mockPlainCollapses = new Map<string, CollapseProps>();
 const mockStructuredBodies = new Map<string, ZhihuStructuredContentProps>();
 const mockRefetchSelected = jest.fn(() => Promise.resolve(undefined));
 const mockScrollToIndex = jest.fn();
@@ -192,6 +195,28 @@ jest.mock('../features/rich-content', () => {
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {
+    CollapsibleRichContent: (props: CollapseProps) => {
+      const id = props.contentKey.split(':').at(-1) ?? '';
+      mockPlainCollapses.set(id, props);
+      return react.createElement(
+        native.View,
+        null,
+        props.children,
+        react.createElement(
+          native.Pressable,
+          {
+            testID: `plain-toggle:${id}`,
+            accessibilityState: { expanded: props.expanded },
+            onPress: () => props.onExpandedChange(!props.expanded),
+          },
+          react.createElement(
+            native.Text,
+            null,
+            props.expanded ? '收起回答' : '展开回答',
+          ),
+        ),
+      );
+    },
     ZhihuContent: (props: ZhihuContentProps) => {
       mockPlainBodies.set(props.objectId ?? '', props);
       return react.createElement(
@@ -345,10 +370,11 @@ beforeEach(() => {
   mockActiveAnswerId = null;
   mockFollowingAnswers = [structuredAnswer('following-answer')];
   mockPlainBodies.clear();
+  mockPlainCollapses.clear();
   mockStructuredBodies.clear();
 });
 
-test('keeps the selected plain answer complete and interactive while later answers remain collapsible', async () => {
+test('starts the selected answer expanded and lets the floating bar collapse it while preserving its renderer', async () => {
   const { element } = createHost();
   const host = await render(element);
   for (const id of ['selected-answer', 'following-answer']) {
@@ -374,20 +400,45 @@ test('keeps the selected plain answer complete and interactive while later answe
     selectable: true,
     onRefresh: expect.any(Function),
   });
-  expect(host.queryByTestId('answer-preview-plain-toggle')).toBeNull();
+  expect(host.getByTestId('plain-toggle:selected-answer')).toHaveProp(
+    'accessibilityState',
+    { expanded: true },
+  );
+  expect(mockStructuredBodies.get('following-answer')).toMatchObject({
+    collapseMode: 'height',
+  });
   expect(host.getByTestId('structured-toggle:following-answer')).toHaveProp(
     'accessibilityState',
     { expanded: false },
   );
   expectExpandedIds(['selected-answer']);
   expect(mockRenderFloatingBar).toHaveBeenLastCalledWith(
-    expect.objectContaining({ canCollapse: false }),
+    expect.objectContaining({ canCollapse: true }),
   );
   await act(() =>
     mockRenderFloatingBar.mock.calls.at(-1)?.[0].onCollapse('selected-answer'),
   );
+  expectExpandedIds([]);
+  expect(mockScrollToIndex).toHaveBeenCalledWith({
+    index: 0,
+    animated: true,
+    viewOffset: -80,
+  });
+  expect(host.getByTestId('plain-toggle:selected-answer')).toHaveProp(
+    'accessibilityState',
+    { expanded: false },
+  );
+  expect(mockRenderFloatingBar).toHaveBeenLastCalledWith(
+    expect.objectContaining({ canCollapse: false }),
+  );
+  expect(mockPlainBodies.get('selected-answer')?.content).toBe(
+    mockPlainAnswer('selected-answer').content,
+  );
+  await fireEvent.press(host.getByTestId('plain-toggle:selected-answer'));
   expectExpandedIds(['selected-answer']);
-  expect(mockScrollToIndex).not.toHaveBeenCalled();
+  expect(mockRenderFloatingBar).toHaveBeenLastCalledWith(
+    expect.objectContaining({ canCollapse: true }),
+  );
 
   mockActiveAnswerId = 'following-answer';
   await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
@@ -404,7 +455,7 @@ test('keeps the selected plain answer complete and interactive while later answe
   expect(mockScrollToIndex).toHaveBeenCalledWith(
     expect.objectContaining({ index: 1 }),
   );
-  expect(host.queryByTestId('answer-preview-plain-toggle')).toBeNull();
+  await host.unmount();
 });
 
 test('passes each answer collection state and count to its inline actions', async () => {
@@ -426,12 +477,13 @@ test('passes each answer collection state and count to its inline actions', asyn
   );
 });
 
-test('refresh resets later answers while keeping the selected answer expanded for both viewport hooks', async () => {
+test('refresh restores the selected answer and collapses later answers for both viewport hooks', async () => {
   const { client, element } = createHost();
   const resetQueries = jest.spyOn(client, 'resetQueries');
   const host = await render(element);
   await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
-  expectExpandedIds(['selected-answer', 'following-answer']);
+  await fireEvent.press(host.getByTestId('plain-toggle:selected-answer'));
+  expectExpandedIds(['following-answer']);
 
   await fireEvent.press(host.getByTestId('refresh-preview-list'));
   expect(mockRefetchSelected).toHaveBeenCalledTimes(1);
@@ -444,7 +496,11 @@ test('refresh resets later answers while keeping the selected answer expanded fo
     'accessibilityState',
     { expanded: false },
   );
-  expect(host.queryByTestId('answer-preview-plain-toggle')).toBeNull();
+  expect(host.getByTestId('plain-toggle:selected-answer')).toHaveProp(
+    'accessibilityState',
+    { expanded: true },
+  );
+  await host.unmount();
 });
 
 test('route and account changes keep only the current selected answer expanded and discard old callbacks', async () => {
@@ -453,12 +509,19 @@ test('route and account changes keep only the current selected answer expanded a
   await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
   const staleExpansion =
     mockStructuredBodies.get('following-answer')?.onExpandedChange;
+  const staleSelectedExpansion =
+    mockPlainCollapses.get('selected-a')?.onExpandedChange;
   expectExpandedIds(['selected-a', 'following-answer']);
+  await fireEvent.press(host.getByTestId('plain-toggle:selected-a'));
+  expectExpandedIds(['following-answer']);
 
   await host.rerender(screen('selected-b'));
   expectExpandedIds(['selected-b']);
   expect(host.queryByTestId('plain-body:selected-a')).toBeNull();
-  await act(() => staleExpansion?.(true));
+  await act(() => {
+    staleExpansion?.(true);
+    staleSelectedExpansion?.(true);
+  });
   expectExpandedIds(['selected-b']);
 
   await host.rerender(screen('selected-a'));
@@ -467,8 +530,19 @@ test('route and account changes keep only the current selected answer expanded a
     'accessibilityState',
     { expanded: false },
   );
+  mockScrollToIndex.mockClear();
+  await act(() => {
+    staleExpansion?.(true);
+    staleSelectedExpansion?.(false);
+  });
+  expectExpandedIds(['selected-a']);
+  expect(mockScrollToIndex).not.toHaveBeenCalled();
 
   await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
+  await fireEvent.press(host.getByTestId('plain-toggle:selected-a'));
+  const previousAccountExpansion =
+    mockPlainCollapses.get('selected-a')?.onExpandedChange;
+  expectExpandedIds(['following-answer']);
   mockSessionVersion = 2;
   await host.rerender(screen('selected-a'));
   expectExpandedIds(['selected-a']);
@@ -477,10 +551,16 @@ test('route and account changes keep only the current selected answer expanded a
     'accessibilityState',
     { expanded: false },
   );
-  expect(host.queryByTestId('answer-preview-plain-toggle')).toBeNull();
+  await act(() => previousAccountExpansion?.(false));
+  expectExpandedIds(['selected-a']);
+  expect(host.getByTestId('plain-toggle:selected-a')).toHaveProp(
+    'accessibilityState',
+    { expanded: true },
+  );
+  await host.unmount();
 });
 
-test('touches only visible bodies and requires structured previews to be expanded', async () => {
+test('touches only visible expanded bodies and pauses the selected answer when collapsed', async () => {
   const { element } = createHost();
   const host = await render(element);
   expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
@@ -499,6 +579,13 @@ test('touches only visible bodies and requires structured previews to be expande
     ['selected-answer', 'following-answer'],
     true,
   );
+  await fireEvent.press(host.getByTestId('plain-toggle:selected-answer'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(['following-answer'], true);
+  await fireEvent.press(host.getByTestId('plain-toggle:selected-answer'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith(
+    ['selected-answer', 'following-answer'],
+    true,
+  );
   await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
   expect(mockReadTouch).toHaveBeenLastCalledWith(['selected-answer'], true);
   await act(() =>
@@ -512,19 +599,26 @@ test('touches only visible bodies and requires structured previews to be expande
   expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
   await fireEvent.press(host.getByTestId('structured-toggle:following-answer'));
   expect(mockReadTouch).toHaveBeenLastCalledWith(['following-answer'], true);
+  await host.unmount();
 });
 
-test('touches visible plain neighboring bodies without an expansion control', async () => {
+test('requires a visible plain neighboring body to be expanded before touching it', async () => {
   mockFollowingAnswers = [mockPlainAnswer('plain-neighbor')];
   const { element } = createHost();
-  await render(element);
+  const host = await render(element);
   expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
 
   await act(() => viewabilityCallback()(visibleAnswers('plain-neighbor')));
   expectExpandedIds(['selected-answer']);
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await fireEvent.press(host.getByTestId('plain-toggle:plain-neighbor'));
+  expectExpandedIds(['selected-answer', 'plain-neighbor']);
   expect(mockReadTouch).toHaveBeenLastCalledWith(['plain-neighbor'], true);
+  await fireEvent.press(host.getByTestId('plain-toggle:plain-neighbor'));
+  expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
   await act(() => viewabilityCallback()(visibleAnswers()));
   expect(mockReadTouch).toHaveBeenLastCalledWith([], true);
+  await host.unmount();
 });
 
 test('clears visible answers across route and account changes and ignores previous list callbacks', async () => {

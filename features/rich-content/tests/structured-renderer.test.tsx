@@ -266,6 +266,7 @@ describe('isolated structured-content renderer', () => {
         documentId="answer:42"
         objectId="42"
         renderer="shared"
+        collapseMode="height"
         onRefresh={onRefresh}
         selectable={false}
       />,
@@ -280,7 +281,7 @@ describe('isolated structured-content renderer', () => {
       selectable: false,
     });
     expect(preview?.renderer).toBeUndefined();
-    expect(document.blocks).toHaveLength(3);
+    expect(document.blocks).toHaveLength(4);
     expect(document.blocks[2]).not.toHaveProperty('paragraphId');
     expect(preview?.segmentInfos).toEqual(
       getStructuredContentSegmentInfos(source),
@@ -319,10 +320,14 @@ describe('isolated structured-content renderer', () => {
       ),
     ).toMatchObject({ interaction: { seg_ids: ['200', '201'] } });
 
+    await fireEvent(
+      screen.getByTestId('collapsible-rich-content-body'),
+      'layout',
+      { nativeEvent: { layout: { width: 340, height: 1000 } } },
+    );
     await fireEvent.press(screen.getByTestId('structured-content-toggle'));
     const expanded = mockSharedInputs.at(-1);
-    expect(expanded?.document?.blocks).toHaveLength(4);
-    expect(expanded?.document?.blocks.slice(0, 3)).toEqual(document.blocks);
+    expect(expanded?.document).toBe(document);
     expect(expanded?.document?.blocks[3]).not.toHaveProperty('paragraphId');
     expect(expanded?.segmentInfos).toEqual(preview?.segmentInfos);
     expanded?.onRefresh?.();
@@ -335,6 +340,7 @@ describe('isolated structured-content renderer', () => {
         documentId="answer:42"
         objectId="42"
         renderer="shared"
+        collapseMode="height"
         onRefresh={onRefresh}
         selectable
       />,
@@ -343,6 +349,93 @@ describe('isolated structured-content renderer', () => {
     expect(JSON.stringify(source)).toBe(original);
     expect(mockNativeInputs).toHaveLength(0);
     expect(parseDocument).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'one long paragraph',
+      texts: ['长段正文'.repeat(200)],
+      height: 1600,
+      collapsed: true,
+    },
+    {
+      name: 'several short paragraphs',
+      texts: ['甲', '乙', '丙', '丁', '戊'],
+      height: 140,
+      collapsed: false,
+    },
+  ])('uses measured height for $name instead of counting source segments', async ({
+    texts,
+    height,
+    collapsed,
+  }) => {
+    const source: ZhihuStructuredContent = {
+      paging: content().paging,
+      segments: texts.map((text, index) => ({
+        type: 'paragraph',
+        id: `synthetic:${index}`,
+        paragraph: { pid: `synthetic-pid:${index}`, text, marks: [] },
+      })),
+    };
+    await render(
+      <StructuredRenderer
+        content={source}
+        documentId="answer:height"
+        renderer="shared"
+        collapseMode="height"
+      />,
+    );
+    await fireEvent(
+      screen.getByTestId('collapsible-rich-content-body'),
+      'layout',
+      { nativeEvent: { layout: { width: 340, height } } },
+    );
+    expect(mockSharedInputs.at(-1)?.document?.blocks).toHaveLength(
+      texts.length,
+    );
+    expect(Boolean(screen.queryByTestId('structured-content-toggle'))).toBe(
+      collapsed,
+    );
+  });
+
+  it('keeps short paged bodies expandable and retry controls outside the clipped body', async () => {
+    const source: ZhihuStructuredContent = {
+      paging: content().paging,
+      segments: [content().segments[0]],
+    };
+    const onExpandedChange = jest.fn();
+    const onLoadMore = jest.fn();
+    const props = {
+      content: source,
+      documentId: 'answer:paged-height',
+      renderer: 'shared' as const,
+      collapseMode: 'height' as const,
+      hasMore: true,
+      onExpandedChange,
+      onLoadMore,
+      showLoadMoreControl: false,
+    };
+    const host = await render(<StructuredRenderer {...props} />);
+    await fireEvent(
+      screen.getByTestId('collapsible-rich-content-body'),
+      'layout',
+      { nativeEvent: { layout: { width: 340, height: 40 } } },
+    );
+    await fireEvent.press(screen.getByTestId('structured-content-toggle'));
+    expect(onExpandedChange).toHaveBeenLastCalledWith(true);
+    expect(screen.queryByText('加载更多正文')).toBeNull();
+
+    await host.rerender(
+      <StructuredRenderer
+        {...props}
+        expanded={false}
+        loadMoreError="合成续页错误"
+      />,
+    );
+    expect(screen.getByText('合成续页错误')).toBeVisible();
+    await fireEvent.press(screen.getByText('重新加载正文'));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+    expect(mockSharedInputs.at(-1)?.document?.blocks).toHaveLength(1);
   });
 
   it('uses actual segment slicing for preview, expansion and collapse without mutating JSON', async () => {

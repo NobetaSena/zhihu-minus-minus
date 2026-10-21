@@ -210,8 +210,7 @@ export default function AppearanceSettings() {
               {
                 value: 'preview-list',
                 label: '预览卡片列表',
-                description:
-                  '点击卡片后进入回答预览列表，按正文分段展开或收起。',
+                description: '点击卡片后进入回答预览列表，长正文可展开或收起。',
               },
             ] as const
           ).map((option) => (

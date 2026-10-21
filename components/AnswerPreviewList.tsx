@@ -135,7 +135,7 @@ function AnswerPreviewStructuredBody({
       objectId={item.id}
       renderer="shared"
       onRefresh={() => void body.refresh()}
-      previewSegmentCount={3}
+      collapseMode="height"
       expanded={expanded}
       onExpandedChange={(nextExpanded) => {
         onExpandedChange(nextExpanded);
@@ -242,6 +242,8 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
         <AnswerPreviewPlainBody
           item={item}
           scope={scope}
+          expanded={expanded}
+          onExpandedChange={onExpandedChange}
           onRefresh={onRefresh}
         />
       )}
@@ -318,8 +320,6 @@ export function AnswerPreviewList({
     answerContext.scene === 'profile_answer' ? answerContext.memberId : null,
     answerContext.scene === 'profile_answer' ? answerContext.memberSort : null,
   ]);
-  const currentScope = useRef(scope);
-  currentScope.current = scope;
   const selectedSettledScope = useRef<string | null>(null);
   useEffect(() => {
     if (!query.selectedIsPending) selectedSettledScope.current = scope;
@@ -349,18 +349,18 @@ export function AnswerPreviewList({
   useEffect(() => recordAnswer(answerId), [recordAnswer, answerId]);
   const [expandedState, setExpandedState] = useState({
     scope,
-    ids: new Set<string>(),
+    ids: new Set([answerId]),
   });
   useEffect(() => {
     setExpandedState((current) =>
-      current.scope === scope ? current : { scope, ids: new Set() },
+      current.scope === scope ? current : { scope, ids: new Set([answerId]) },
     );
-  }, [scope]);
-  const expandedIds = useMemo(() => {
-    const ids = new Set(expandedState.scope === scope ? expandedState.ids : []);
-    ids.add(answerId);
-    return ids;
-  }, [answerId, expandedState, scope]);
+  }, [answerId, scope]);
+  const expandedIds = useMemo(
+    () =>
+      expandedState.scope === scope ? expandedState.ids : new Set([answerId]),
+    [answerId, expandedState, scope],
+  );
   const visibleScope = useMemo(() => ({ scope }), [scope]);
   const currentVisibleScope = useRef(visibleScope);
   currentVisibleScope.current = visibleScope;
@@ -374,7 +374,7 @@ export function AnswerPreviewList({
         ? query.items.flatMap((item) =>
             item.type === 'answer' &&
             visibleAnswers.ids.has(item.id) &&
-            (!('structuredContent' in item) || expandedIds.has(item.id))
+            expandedIds.has(item.id)
               ? [item.id]
               : [],
           )
@@ -497,10 +497,10 @@ export function AnswerPreviewList({
   );
   const changeExpanded = useCallback(
     (id: string, expanded: boolean) => {
-      if (currentScope.current !== scope || id === answerId) return;
+      if (currentVisibleScope.current !== visibleScope) return;
       if (expanded) recordAnswer(id);
       setExpandedState((current) => {
-        const ids = new Set(current.scope === scope ? current.ids : []);
+        const ids = new Set(current.scope === scope ? current.ids : [answerId]);
         if (expanded) ids.add(id);
         else ids.delete(id);
         return { scope, ids };
@@ -518,7 +518,15 @@ export function AnswerPreviewList({
           });
       }
     },
-    [recordAnswer, scope, answerId, query.items, insets.top, navigationHeight],
+    [
+      recordAnswer,
+      scope,
+      visibleScope,
+      answerId,
+      query.items,
+      insets.top,
+      navigationHeight,
+    ],
   );
   const selectedQuestion =
     query.items.find(
@@ -634,7 +642,7 @@ export function AnswerPreviewList({
             <RefreshControl
               refreshing={refreshingScope === scope}
               onRefresh={() => {
-                setExpandedState({ scope, ids: new Set() });
+                setExpandedState({ scope, ids: new Set([answerId]) });
                 setRefreshingScope(scope);
                 const finishRefresh = () =>
                   setRefreshingScope((current) =>
@@ -713,7 +721,10 @@ export function AnswerPreviewList({
         answer={floatingBar.activeAnswer}
         visible={floatingBar.visible}
         bottomInset={insets.bottom}
-        canCollapse={floatingBar.activeAnswer?.id !== answerId}
+        canCollapse={
+          floatingBar.activeAnswer !== null &&
+          expandedIds.has(floatingBar.activeAnswer.id)
+        }
         onCollapse={(id) => changeExpanded(id, false)}
         onMore={(item) => setMenuState({ scope, item })}
       />

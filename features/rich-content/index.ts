@@ -4,6 +4,10 @@ export {
   getRichTextSelectionText,
   mapRichTextSelection,
 } from './compileRichText';
+export {
+  CollapsibleRichContent,
+  type CollapsibleRichContentProps,
+} from './components/CollapsibleRichContent';
 export { LinkCard, ZhihuContent } from './components/ZhihuContent';
 export type { ZhihuDOMContentProps } from './components/ZhihuDOMContent';
 export {
