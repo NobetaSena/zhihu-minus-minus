@@ -168,7 +168,7 @@ export interface AppSettings {
   largeScreenListRatio: number;
   /** 是否开启浏览历史记录 */
   enableBrowseHistory: boolean;
-  /** 列表提前加载下一页并多渲染一段屏外内容 */
+  /** 列表预加载：提前请求下一页并多渲染一段屏外内容 */
   enableListPreload: boolean;
   /** 是否在本地记录并过滤近期看过的推荐内容 */
   enableLocalFeedDedup: boolean;

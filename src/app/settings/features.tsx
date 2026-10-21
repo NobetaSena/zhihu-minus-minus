@@ -64,22 +64,18 @@ export default function FeatureSettings() {
             />
           </SettingItem>
           <SettingItem
-            label="列表提前加载"
+            label="列表预加载"
             icon="download-outline"
             colorScheme={colorScheme}
           >
             <ThemedSwitch
-              accessibilityLabel="列表提前加载"
+              accessibilityLabel="列表预加载"
               value={enableListPreload}
               onValueChange={(value) =>
                 updateSettings({ enableListPreload: value })
               }
             />
           </SettingItem>
-          <Text type="secondary" style={styles.itemHint}>
-            离底部还有约 3
-            屏时就加载下一页，并多渲染一段屏幕外的内容，快速滑动时少见空白；会多用一些流量和内存。
-          </Text>
           <BouncyButton
             onPress={() => router.push('/settings/appearance')}
             accessibilityRole="button"
@@ -126,12 +122,6 @@ export default function FeatureSettings() {
 }
 
 const styles = StyleSheet.create({
-  itemHint: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 12,
-    lineHeight: 18,
-  },
   container: { flex: 1 },
   content: { padding: 16 },
   intro: { paddingHorizontal: 4, marginBottom: 24 },

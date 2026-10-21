@@ -62,7 +62,7 @@ const SEARCH_ENTRIES: ReadonlyArray<SearchEntry> = [
   },
   {
     label: '功能开关',
-    description: '正文排版、私信、浏览历史与列表提前加载',
+    description: '正文排版、私信、浏览历史与列表预加载',
     icon: 'options-outline',
     href: '/settings/features',
     keywords:
@@ -277,7 +277,7 @@ export default function SettingsScreen() {
               <SettingsRouteRow
                 icon="options-outline"
                 label="功能开关"
-                description="WebView、私信、浏览历史与提前加载"
+                description="WebView、私信、浏览历史与预加载"
                 onPress={() => router.push('/settings/features' as Href)}
               />
             </Section>
