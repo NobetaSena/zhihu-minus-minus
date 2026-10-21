@@ -1,4 +1,4 @@
-/** With 多页同时加载 on, request this many pages at once. */
+/** With 多页同时加载 on, offset-paged lists request this many pages at once. */
 export const PARALLEL_PAGE_COUNT = 3;
 
 interface Page<T> {
@@ -112,52 +112,32 @@ export function predictRecommendUrls(
   });
 }
 
-function sameRecommendCursor(a: string | null | undefined, b: string) {
-  if (!a) return false;
-  try {
-    const left = new URL(a, 'https://www.zhihu.com');
-    const right = new URL(b);
-    return (
-      left.searchParams.get('session_token') ===
-        right.searchParams.get('session_token') &&
-      RECOMMEND_CURSOR_KEYS.every(
-        (key) => left.searchParams.get(key) === right.searchParams.get(key),
-      )
-    );
-  } catch {
-    return false;
-  }
-}
+/** The Web recommendation feed returns this many items per page. */
+export const RECOMMEND_PAGE_SIZE = 6;
 
 /**
- * Request a recommendation page together with predicted following pages. A
- * predicted page is kept only while each kept page's own `next` names exactly
- * the page requested after it and it has items, so a changed cursor scheme
- * degrades to one page at a time instead of skipping or repeating content, and
- * an empty predicted page cannot end the feed.
+ * With 多页同时加载 on, recommendation requests kept in flight ahead of the
+ * list (see PageQueue): about 24 items per request round trip.
  */
-export async function fetchRecommendPages<P extends Page<unknown>>(
-  fetchPage: (url: string) => Promise<P>,
-  url: string,
-  count = PARALLEL_PAGE_COUNT,
-  pageSize = 6,
-): Promise<P> {
-  const predicted = predictRecommendUrls(url, count - 1, pageSize) ?? [];
-  const [first, ...settled] = await Promise.allSettled(
-    [url, ...predicted].map((pageUrl) => fetchPage(pageUrl)),
-  );
-  if (first.status === 'rejected') throw first.reason;
-  const pages = [first.value];
-  for (const [index, result] of settled.entries()) {
-    const previous = pages[pages.length - 1];
-    if (
-      previous.paging?.is_end ||
-      result.status !== 'fulfilled' ||
-      result.value.data.length === 0 ||
-      !sameRecommendCursor(previous.paging?.next, predicted[index])
-    )
-      break;
-    pages.push(result.value);
+export const RECOMMEND_QUEUE_DEPTH = 4;
+
+/**
+ * Identity of a recommendation page: its session and cursor, whatever the
+ * scheme (`next` arrives as http) or parameter order. Other URLs are their own
+ * identity.
+ */
+export function recommendPageKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const session = parsed.searchParams.get('session_token');
+    if (parsed.pathname.endsWith(RECOMMEND_PATH) && session)
+      return [
+        'recommend',
+        session,
+        ...RECOMMEND_CURSOR_KEYS.map((key) => parsed.searchParams.get(key)),
+      ].join(':');
+  } catch {
+    // Not an absolute URL: fall back to the text itself.
   }
-  return joinPages(pages);
+  return url;
 }

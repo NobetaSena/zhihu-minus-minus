@@ -43,6 +43,7 @@ import {
   getFeed,
   type RawFeedItem,
   type RawFeedTarget,
+  type ZhihuFeedResponse,
 } from '@/api/zhihu';
 import { BouncyButton } from '@/components/BouncyButton';
 import { DailyList } from '@/components/DailyList';
@@ -109,7 +110,13 @@ import {
   type FeedReadTouchBatch,
 } from '@/utils/feedReadTouch';
 import { resolveLocalAccountKey } from '@/utils/localAccount';
-import { fetchRecommendPages } from '@/utils/parallelPaging';
+import { PageQueue } from '@/utils/pageQueue';
+import {
+  predictRecommendUrls,
+  RECOMMEND_PAGE_SIZE,
+  RECOMMEND_QUEUE_DEPTH,
+  recommendPageKey,
+} from '@/utils/parallelPaging';
 import { refreshInfiniteQuery, shouldRetryQuery } from '@/utils/query';
 import { normalizeAnswerType, parseRecommendData } from '@/utils/recommendFeed';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -1126,6 +1133,25 @@ const FeedList = React.forwardRef<
     const parallelPaging = useSettingsStore(
       (state) => state.enableParallelPaging,
     );
+    // 多页同时加载: recommendation pages are requested ahead of the list and
+    // handed over when the list asks for them.
+    const queueRecommendations =
+      parallelPaging && tab === 'recommend' && !isGuestRecommend;
+    const [recommendQueue] = useState(
+      () =>
+        new PageQueue<ZhihuFeedResponse>({
+          fetchPage: (url, signal) => getFeed(url, { signal }),
+          predict: (url, count) =>
+            predictRecommendUrls(url, count, RECOMMEND_PAGE_SIZE) ?? [],
+          // A page queued under another account session is never handed over.
+          key: (url) => `${getAuthSessionVersion()}|${recommendPageKey(url)}`,
+          depth: RECOMMEND_QUEUE_DEPTH,
+        }),
+    );
+    useEffect(() => {
+      if (!queueRecommendations) recommendQueue.clear();
+    }, [queueRecommendations, recommendQueue]);
+    useEffect(() => () => recommendQueue.clear(), [recommendQueue]);
     const {
       data,
       fetchNextPage: fetchNextFeedPage,
@@ -1150,18 +1176,9 @@ const FeedList = React.forwardRef<
           refreshInFlightRef.current,
         );
         const isInitialUrl = pageParam === FEED_URLS[tab];
-        // 多页同时加载: predicted recommendation pages join this request; any
-        // page that does not continue the cursor is dropped.
-        const data =
-          parallelPaging &&
-          tab === 'recommend' &&
-          !isInitialUrl &&
-          !refreshInFlightRef.current
-            ? await fetchRecommendPages(
-                (url) => getFeed(url, { signal }),
-                requestUrl,
-              )
-            : await getFeed(requestUrl, { signal });
+        const data = queueRecommendations
+          ? await recommendQueue.take(requestUrl, signal)
+          : await getFeed(requestUrl, { signal });
         if (sessionVersion !== getAuthSessionVersion())
           throw new Error('登录状态已改变');
         const rawItems = data.data || [];
@@ -1182,6 +1199,7 @@ const FeedList = React.forwardRef<
 
         const nextUrl = getFeedNextUrl(data.paging);
         if (tab === 'recommend') items = filterRecommendations(items);
+        if (queueRecommendations) recommendQueue.ahead(nextUrl);
 
         if (launchCacheContext && isInitialUrl && items.length > 0) {
           void feedCacheRepository
@@ -1232,6 +1250,8 @@ const FeedList = React.forwardRef<
       if (refreshInFlightRef.current) return;
 
       refreshInFlightRef.current = true;
+      // Queued pages continue the session this refresh replaces.
+      recommendQueue.clear();
       const startedAt = Date.now();
       setIsRefreshing(true);
       onRefreshStateChange?.(true);
@@ -1276,6 +1296,7 @@ const FeedList = React.forwardRef<
       onRefreshStateChange,
       queryClient,
       feedQueryKey,
+      recommendQueue,
       refetch,
       setRecentExposureKeys,
       tab,

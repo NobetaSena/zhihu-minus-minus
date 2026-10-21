@@ -1,7 +1,7 @@
 import {
   fetchOffsetPages,
-  fetchRecommendPages,
   predictRecommendUrls,
+  recommendPageKey,
 } from '../utils/parallelPaging';
 
 jest.mock('../api/client', () => ({ __esModule: true, default: {} }));
@@ -69,22 +69,6 @@ test('keeps the pages before a failed one, and fails only with the first', async
 const recommendUrl = (pageNumber: number, offset: number) =>
   `https://www.zhihu.com/api/v3/feed/topstory/recommend?action=down&after_id=${offset}&desktop=true&end_offset=${offset}&page_number=${pageNumber}&session_token=tok`;
 
-/** Behaves like the Web recommendation feed: six items, cursor in `next`. */
-function recommendSource(shift = 6) {
-  return jest.fn(async (url: string): Promise<Page> => {
-    const parsed = new URL(url);
-    const pageNumber = Number(parsed.searchParams.get('page_number'));
-    const offset = Number(parsed.searchParams.get('end_offset'));
-    return {
-      data: answers(offset, offset + 6),
-      paging: {
-        is_end: false,
-        next: recommendUrl(pageNumber + 1, offset + shift),
-      },
-    };
-  });
-}
-
 test('predicts the following recommendation pages from the cursor', () => {
   expect(predictRecommendUrls(recommendUrl(2, 5), 2, 6)).toEqual([
     recommendUrl(3, 11),
@@ -93,36 +77,6 @@ test('predicts the following recommendation pages from the cursor', () => {
   expect(
     predictRecommendUrls('https://api.zhihu.com/topstory/recommend', 2, 6),
   ).toBeUndefined();
-});
-
-test('joins predicted recommendation pages that continue the cursor', async () => {
-  const fetchPage = recommendSource();
-  const page = await fetchRecommendPages(fetchPage, recommendUrl(2, 5));
-  expect(fetchPage).toHaveBeenCalledTimes(3);
-  expect(page.data).toHaveLength(18);
-  expect(page.paging.next).toBe(recommendUrl(5, 23));
-});
-
-test('falls back to one page when the cursor no longer follows the pattern', async () => {
-  const page = await fetchRecommendPages(
-    recommendSource(10),
-    recommendUrl(2, 5),
-  );
-  expect(page.data).toHaveLength(6);
-  expect(page.paging.next).toBe(recommendUrl(3, 15));
-});
-
-test('an empty predicted recommendation page cannot end the feed', async () => {
-  const source = recommendSource();
-  const fetchPage = jest.fn(async (url: string): Promise<Page> => {
-    const page = await source(url);
-    return url === recommendUrl(4, 17)
-      ? { data: [], paging: { ...page.paging, is_end: true } }
-      : page;
-  });
-  const page = await fetchRecommendPages(fetchPage, recommendUrl(2, 5));
-  expect(page.data).toHaveLength(12);
-  expect(page.paging).toEqual({ is_end: false, next: recommendUrl(4, 17) });
 });
 
 test('an empty extra offset page is requested again on its own', async () => {
@@ -137,4 +91,18 @@ test('an empty extra offset page is requested again on its own', async () => {
   expect(page.data).toHaveLength(40);
   expect(page.paging.is_end).toBe(false);
   expect(page.paging.next).toContain('offset=40');
+});
+
+test('a recommendation page is known by its session and cursor', () => {
+  const page = recommendUrl(3, 11);
+  expect(recommendPageKey(page.replace('https:', 'http:'))).toBe(
+    recommendPageKey(page),
+  );
+  expect(recommendPageKey(recommendUrl(4, 17))).not.toBe(
+    recommendPageKey(page),
+  );
+  expect(recommendPageKey(page.replace('tok', 'other'))).not.toBe(
+    recommendPageKey(page),
+  );
+  expect(recommendPageKey('zhihu://local-feed')).toBe('zhihu://local-feed');
 });
