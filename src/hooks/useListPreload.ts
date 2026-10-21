@@ -6,16 +6,17 @@ import { useSettingsStore } from '@/store/useSettingsStore';
  * buffer that hides a slow page request during a fast fling.
  */
 export const PRELOAD_END_THRESHOLD = 8;
-/** With preloading on, keep this many pixels of off-screen rows rendered. */
-export const PRELOAD_DRAW_DISTANCE = 1500;
 
-/** 列表分页与屏外渲染的距离；开启「列表预加载」后提前请求下一页并多渲染屏外内容。 */
+/**
+ * 列表分页距离；开启「列表预加载」后提前请求下一页。
+ * 只提前请求、不加大屏外渲染：真机实测 drawDistance 1500px 让快速滑动的掉帧
+ * 从约 3% 升到 10–17%（回答卡片挂载开销大）。
+ */
 export function useListPreload(endThreshold: number) {
   const enabled = useSettingsStore((state) => state.enableListPreload);
-  return enabled
-    ? {
-        onEndReachedThreshold: Math.max(endThreshold, PRELOAD_END_THRESHOLD),
-        drawDistance: PRELOAD_DRAW_DISTANCE,
-      }
-    : { onEndReachedThreshold: endThreshold };
+  return {
+    onEndReachedThreshold: enabled
+      ? Math.max(endThreshold, PRELOAD_END_THRESHOLD)
+      : endThreshold,
+  };
 }
