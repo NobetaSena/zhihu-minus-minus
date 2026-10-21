@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { parseDocument } from 'htmlparser2';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { RichTextNativeViewProps } from '../../../modules/zhihu-rich-text';
 import type { ZhihuStructuredContent } from '../../../types/zhihu';
 import { compileZhihuDocument, mapRichTextSelection } from '../compileRichText';
@@ -383,6 +383,7 @@ describe('isolated structured-content renderer', () => {
         documentId="answer:height"
         renderer="shared"
         collapseMode="height"
+        footerContent={<Text>发布于 2026-10-18 · IP 属地天津</Text>}
       />,
     );
     await fireEvent(
@@ -396,6 +397,7 @@ describe('isolated structured-content renderer', () => {
     expect(Boolean(screen.queryByTestId('structured-content-toggle'))).toBe(
       collapsed,
     );
+    expect(screen.getByText('发布于 2026-10-18 · IP 属地天津')).toBeVisible();
   });
 
   it('keeps short paged bodies expandable and retry controls outside the clipped body', async () => {

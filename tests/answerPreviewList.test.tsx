@@ -202,6 +202,8 @@ jest.mock('../features/rich-content', () => {
         native.View,
         null,
         props.children,
+        props.footer,
+        props.footerContent,
         react.createElement(
           native.Pressable,
           {
@@ -228,16 +230,21 @@ jest.mock('../features/rich-content', () => {
     ZhihuStructuredContent: (props: ZhihuStructuredContentProps) => {
       mockStructuredBodies.set(props.objectId ?? '', props);
       return react.createElement(
-        native.Pressable,
-        {
-          testID: `structured-toggle:${props.objectId}`,
-          accessibilityState: { expanded: props.expanded },
-          onPress: () => props.onExpandedChange?.(!props.expanded),
-        },
+        native.View,
+        null,
+        props.footerContent,
         react.createElement(
-          native.Text,
-          null,
-          props.expanded ? props.collapseLabel : props.expandLabel,
+          native.Pressable,
+          {
+            testID: `structured-toggle:${props.objectId}`,
+            accessibilityState: { expanded: props.expanded },
+            onPress: () => props.onExpandedChange?.(!props.expanded),
+          },
+          react.createElement(
+            native.Text,
+            null,
+            props.expanded ? props.collapseLabel : props.expandLabel,
+          ),
         ),
       );
     },
@@ -312,6 +319,11 @@ function mockPlainAnswer(id: string): ZhihuPlainPreviewAnswer {
     favlists_count: 0,
     relationship: { is_author: false, is_favorited: false, voting: 0 },
     endorsements: [{ elements: [{ type: 'TEXT', content: `合成标签:${id}` }] }],
+    publishInfo: {
+      published: '发布于 2026-10-18',
+      edited: '编辑于 2026-10-19',
+      location: 'IP 属地天津',
+    },
     content: '<p>第一段</p><p>第二段</p><p>第三段</p><p>完整第四段</p>',
   };
 }
@@ -377,6 +389,8 @@ beforeEach(() => {
 test('starts the selected answer expanded and lets the floating bar collapse it while preserving its renderer', async () => {
   const { element } = createHost();
   const host = await render(element);
+  expect(host.getAllByText('发布于 2026-10-18 · IP 属地天津')).toHaveLength(2);
+  expect(host.getAllByText('编辑于 2026-10-19')).toHaveLength(2);
   for (const id of ['selected-answer', 'following-answer']) {
     expect(mockRenderEndorsements).toHaveBeenCalledWith(
       expect.objectContaining({

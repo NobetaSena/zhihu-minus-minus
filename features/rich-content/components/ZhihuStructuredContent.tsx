@@ -38,6 +38,8 @@ export interface ZhihuStructuredContentProps {
   previewSegmentCount?: number;
   /** Production cards clip measured height; the dev comparison can slice segments. */
   collapseMode?: 'segments' | 'height';
+  /** Auxiliary information beside the toggle when using measured-height collapse. */
+  footerContent?: React.ReactNode;
   resources?: Readonly<Record<string, ZhihuImageResource>>;
   onLinkPress?: (url: string) => void;
   onImagePress?: (url: string, gallery: readonly string[]) => void;
@@ -101,6 +103,7 @@ export const ZhihuStructuredContent = React.memo(
     onRefresh,
     previewSegmentCount = 3,
     collapseMode = 'segments',
+    footerContent,
     resources,
     onLinkPress,
     onImagePress,
@@ -472,6 +475,7 @@ export const ZhihuStructuredContent = React.memo(
             onExpandedChange={changeExpanded}
             hasMore={hasMore}
             footer={pagingControls}
+            footerContent={footerContent}
             expandLabel={expandLabel}
             collapseLabel={collapseLabel}
             toggleTestID="structured-content-toggle"

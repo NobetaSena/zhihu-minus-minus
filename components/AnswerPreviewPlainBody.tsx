@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import type { ZhihuPlainPreviewAnswer } from '@/api/zhihu/nextRender';
 import { Text } from '@/components/Themed';
@@ -9,6 +10,7 @@ export interface AnswerPreviewPlainBodyProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   onRefresh: () => void;
+  footerContent?: ReactNode;
 }
 
 /** Keep the original renderer and metadata while clipping the collapsed preview. */
@@ -18,6 +20,7 @@ export function AnswerPreviewPlainBody({
   expanded,
   onExpandedChange,
   onRefresh,
+  footerContent,
 }: AnswerPreviewPlainBodyProps) {
   const html = typeof item.content === 'string' ? item.content : undefined;
   const contentArray =
@@ -32,6 +35,14 @@ export function AnswerPreviewPlainBody({
         contentKey={`${scope}:${item.id}`}
         expanded={expanded}
         onExpandedChange={onExpandedChange}
+        footerContent={footerContent}
+        footer={
+          incomplete ? (
+            <Text type="secondary" className="text-xs mt-2">
+              当前仅展示部分正文
+            </Text>
+          ) : undefined
+        }
       >
         <View testID="answer-preview-plain-body">
           <ZhihuContent
@@ -46,11 +57,6 @@ export function AnswerPreviewPlainBody({
           />
         </View>
       </CollapsibleRichContent>
-      {incomplete ? (
-        <Text type="secondary" className="text-xs mt-2">
-          当前仅展示部分正文
-        </Text>
-      ) : null}
     </View>
   );
 }

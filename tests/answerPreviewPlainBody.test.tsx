@@ -22,6 +22,8 @@ jest.mock('../features/rich-content', () => {
         native.View,
         null,
         props.children,
+        props.footer,
+        props.footerContent,
         react.createElement(
           native.Pressable,
           {

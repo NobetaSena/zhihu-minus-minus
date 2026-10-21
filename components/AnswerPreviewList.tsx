@@ -2,6 +2,7 @@ import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, {
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -103,6 +104,7 @@ function AnswerPreviewStructuredBody({
   onExpandedChange,
   onRefresh,
   onBodyLoader,
+  footerContent,
 }: Pick<
   AnswerPreviewCardProps,
   | 'scope'
@@ -111,7 +113,7 @@ function AnswerPreviewStructuredBody({
   | 'onExpandedChange'
   | 'onRefresh'
   | 'onBodyLoader'
-> & { item: ZhihuPreviewAnswer }) {
+> & { item: ZhihuPreviewAnswer; footerContent?: ReactNode }) {
   const initialContent = item.structuredContent;
   const sourceId = initialContentId(initialContent);
   const body = useAnswerPreviewBody({
@@ -136,6 +138,7 @@ function AnswerPreviewStructuredBody({
       renderer="shared"
       onRefresh={() => void body.refresh()}
       collapseMode="height"
+      footerContent={footerContent}
       expanded={expanded}
       onExpandedChange={(nextExpanded) => {
         onExpandedChange(nextExpanded);
@@ -173,6 +176,15 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
     (view: NativeView | null) => onFooterRef(item.id, view),
     [item.id, onFooterRef],
   );
+  const footerContent = item.publishInfo ? (
+    <View className="bg-transparent">
+      {formatAnswerPublishInfo(item.publishInfo).map((line) => (
+        <Text key={line} type="secondary" className="text-xs leading-5">
+          {line}
+        </Text>
+      ))}
+    </View>
+  ) : undefined;
 
   return (
     <View
@@ -237,6 +249,7 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
           onExpandedChange={onExpandedChange}
           onRefresh={onRefresh}
           onBodyLoader={onBodyLoader}
+          footerContent={footerContent}
         />
       ) : (
         <AnswerPreviewPlainBody
@@ -245,22 +258,14 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
           expanded={expanded}
           onExpandedChange={onExpandedChange}
           onRefresh={onRefresh}
+          footerContent={footerContent}
         />
       )}
-      {item.publishInfo ? (
-        <View className="mt-3 bg-transparent">
-          {formatAnswerPublishInfo(item.publishInfo).map((line) => (
-            <Text key={line} type="secondary" className="text-xs leading-5">
-              {line}
-            </Text>
-          ))}
-        </View>
-      ) : null}
       <NativeView
         ref={footerRef}
         collapsable={false}
         onLayout={onFooterLayout}
-        className="mt-3 bg-transparent"
+        className="mt-2 bg-transparent"
       >
         <FeedCardActionRow
           id={item.id}

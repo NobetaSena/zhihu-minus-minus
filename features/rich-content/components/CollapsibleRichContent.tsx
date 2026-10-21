@@ -13,6 +13,8 @@ export interface CollapsibleRichContentProps {
   hasMore?: boolean;
   /** Paging controls stay outside the measured and clipped body. */
   footer?: ReactNode;
+  /** Auxiliary information shares the toggle row and stays visible for short bodies. */
+  footerContent?: ReactNode;
   expandLabel?: string;
   collapseLabel?: string;
   toggleTestID?: string;
@@ -26,6 +28,7 @@ export function CollapsibleRichContent({
   onExpandedChange,
   hasMore = false,
   footer,
+  footerContent,
   expandLabel = '展开回答',
   collapseLabel = '收起回答',
   toggleTestID = 'collapsible-rich-content-toggle',
@@ -130,22 +133,29 @@ export function CollapsibleRichContent({
         ) : null}
       </View>
       {footer}
-      {showToggle ? (
-        <ContentActionButton
-          testID={toggleTestID}
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          accessibilityHint={clipped ? '展开后可阅读完整正文' : undefined}
-          hitSlop={8}
-          onPress={() => {
-            if (currentEpoch.current === epoch) onExpandedChange(!expanded);
-          }}
-          style={styles.toggle}
-        >
-          <Text style={{ color: colors.link, fontSize: 13 }}>
-            {expanded ? collapseLabel : expandLabel}
-          </Text>
-        </ContentActionButton>
+      {showToggle || footerContent ? (
+        <View style={styles.footer}>
+          {footerContent ? (
+            <View style={styles.footerContent}>{footerContent}</View>
+          ) : null}
+          {showToggle ? (
+            <ContentActionButton
+              testID={toggleTestID}
+              accessibilityRole="button"
+              accessibilityState={{ expanded }}
+              accessibilityHint={clipped ? '展开后可阅读完整正文' : undefined}
+              hitSlop={8}
+              onPress={() => {
+                if (currentEpoch.current === epoch) onExpandedChange(!expanded);
+              }}
+              style={styles.toggle}
+            >
+              <Text style={{ color: colors.link, fontSize: 13 }}>
+                {expanded ? collapseLabel : expandLabel}
+              </Text>
+            </ContentActionButton>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -165,11 +175,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 48,
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    columnGap: 12,
+    marginTop: 4,
+  },
+  footerContent: {
+    flex: 1,
+    minWidth: 0,
+  },
   toggle: {
-    alignSelf: 'flex-end',
+    flexShrink: 0,
     backgroundColor: 'transparent',
     paddingVertical: 6,
     paddingHorizontal: 2,
-    marginTop: 4,
   },
 });

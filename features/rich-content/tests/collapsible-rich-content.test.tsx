@@ -63,6 +63,7 @@ test('collapses a tall single paragraph by its measured height and keeps toggles
       expanded={false}
       onExpandedChange={onExpandedChange}
       footer={<Text testID="body-footer">重新加载正文</Text>}
+      footerContent={<Text>发布于 2026-10-18 · IP 属地天津</Text>}
     >
       <Text testID="complete-paragraph">{'长段落'.repeat(500)}</Text>
     </CollapsibleRichContent>,
@@ -76,6 +77,7 @@ test('collapses a tall single paragraph by its measured height and keeps toggles
   ).toHaveTextContent('长段落'.repeat(500));
   expect(StyleSheet.flatten(viewport.props.style).maxHeight).toBeLessThan(1200);
   expect(host.getByTestId('body-footer')).toBeVisible();
+  expect(host.getByText('发布于 2026-10-18 · IP 属地天津')).toBeVisible();
   expect(
     host.getByTestId('collapsible-rich-content-fade', {
       includeHiddenElements: true,
@@ -96,6 +98,7 @@ test('keeps several short paragraphs and a small remainder fully visible without
       contentKey="short-paragraphs"
       expanded={false}
       onExpandedChange={jest.fn()}
+      footerContent={<Text>发布于 2026-10-18</Text>}
     >
       <Text>甲</Text>
       <Text>乙</Text>
@@ -111,6 +114,7 @@ test('keeps several short paragraphs and a small remainder fully visible without
     layout(previewHeight + 24),
   );
   expect(host.getByText('丁')).toBeVisible();
+  expect(host.getByText('发布于 2026-10-18')).toBeVisible();
   expect(StyleSheet.flatten(viewport.props.style).maxHeight).toBeUndefined();
   expect(host.queryByTestId('collapsible-rich-content-toggle')).toBeNull();
   expect(host.queryByTestId('collapsible-rich-content-fade')).toBeNull();
