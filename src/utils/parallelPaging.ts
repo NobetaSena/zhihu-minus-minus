@@ -117,9 +117,11 @@ export const RECOMMEND_PAGE_SIZE = 6;
 
 /**
  * With 多页同时加载 on, recommendation requests kept in flight ahead of the
- * list (see PageQueue): about 24 items per request round trip.
+ * list (see PageQueue). On device only 3–4 of a page's 6 items survive
+ * filtering and de-duplication, and a page takes 1.5–3 s, so 6 pages keep a
+ * fast fling fed.
  */
-export const RECOMMEND_QUEUE_DEPTH = 4;
+export const RECOMMEND_QUEUE_DEPTH = 6;
 
 /**
  * Identity of a recommendation page: its session and cursor, whatever the

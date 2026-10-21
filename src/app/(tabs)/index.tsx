@@ -1235,7 +1235,9 @@ const FeedList = React.forwardRef<
         depth: RECOMMEND_QUEUE_DEPTH,
       },
       {
-        enabled: queueRecommendations,
+        // Only the list on screen prefetches; a copy kept mounted under
+        // another screen would double every request.
+        enabled: queueRecommendations && isActive,
         nextUrl:
           getNextUnvisitedFeedPage(
             data?.pages.at(-1)?.nextUrl ?? null,
