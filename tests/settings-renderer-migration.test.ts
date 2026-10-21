@@ -30,7 +30,7 @@ beforeEach(() => {
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
 });
 
-test('defaults to tiqian-super-mini with visual feedback and filtering enabled in settings version 19', () => {
+test('defaults to tiqian-super-mini with visual feedback and filtering enabled in settings version 21', () => {
   expect(useSettingsStore.getState().richContentRenderer).toBe('native-v2');
   expect(useSettingsStore.getState().enablePressFeedback).toBe(true);
   expect(useSettingsStore.getState().enableLocalFeedFilter).toBe(true);
@@ -39,7 +39,7 @@ test('defaults to tiqian-super-mini with visual feedback and filtering enabled i
   expect(useSettingsStore.getState().filterEnableQuality).toBe(false);
   expect(useSettingsStore.getState().filterBlockLabeled).toBe(false);
   expect(useSettingsStore.getState().filterRegexPatterns).toEqual([]);
-  expect(useSettingsStore.persist.getOptions().version).toBe(20);
+  expect(useSettingsStore.persist.getOptions().version).toBe(21);
 });
 
 test('leaves the double-tap action unset until the user picks one', () => {
@@ -78,6 +78,20 @@ test('keeps red unread counts for existing installs and accepts quieter badge st
     unreadBadgeStyle: 'loud',
   } as unknown as Partial<AppSettings>);
   expect(useSettingsStore.getState().unreadBadgeStyle).toBe('count');
+});
+
+test('keeps list preloading off for existing installs until chosen', async () => {
+  expect(useSettingsStore.getState().enableListPreload).toBe(false);
+  expect((await migrate({}, 20)).enableListPreload).toBe(false);
+  expect(
+    (await migrate({ enableListPreload: true }, 21)).enableListPreload,
+  ).toBe(true);
+  useSettingsStore.getState().updateSettings({ enableListPreload: true });
+  expect(useSettingsStore.getState().enableListPreload).toBe(true);
+  useSettingsStore.getState().updateSettings({
+    enableListPreload: 'yes',
+  } as unknown as Partial<AppSettings>);
+  expect(useSettingsStore.getState().enableListPreload).toBe(false);
 });
 
 test.each([
@@ -169,7 +183,7 @@ test('hydrates legacy settings and writes back only the new renderer field', asy
       fontSizeScale: 1.3,
       enablePressFeedback: true,
     },
-    version: 20,
+    version: 21,
   });
   expect(JSON.parse(persistedJson).state).not.toHaveProperty('useWebView');
 });
@@ -322,7 +336,7 @@ test('persists and restores sanitized custom regex rules together with a disable
       enableLocalFeedFilter: false,
       filterRegexPatterns: expectedPatterns,
     },
-    version: 20,
+    version: 21,
   });
   useSettingsStore.setState({
     enableLocalFeedFilter: true,

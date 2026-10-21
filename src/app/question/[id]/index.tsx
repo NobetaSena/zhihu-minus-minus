@@ -58,6 +58,7 @@ import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRo
 import { RICH_CONTENT_STALE_TIME } from '@/features/rich-content';
 import { useDetailHeaderState } from '@/hooks/useDetailHeaderState';
 import { useGestureScrollView } from '@/hooks/useGestureScrollView';
+import { useListPreload } from '@/hooks/useListPreload';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { useQuestionRead } from '@/hooks/useQuestionRead';
 import { useScrollHeaderAnim } from '@/hooks/useScrollAnimation';
@@ -272,6 +273,7 @@ export default function QuestionDetail() {
     title?: string;
   }>();
   const router = useRouter();
+  const listPreload = useListPreload(0.5);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isAuthenticated = useAuthStore((state) =>
@@ -831,7 +833,7 @@ export default function QuestionDetail() {
           onEndReached={() =>
             hasNextPage && !isFetchingNextPage && fetchNextPage()
           }
-          onEndReachedThreshold={0.5}
+          {...listPreload}
           ListEmptyComponent={
             qLoading ? null : answersPending ? (
               <ActivityIndicator

@@ -27,7 +27,7 @@ test('defaults adaptive panes to disabled with a one-third list width', () => {
     enableLargeScreenLayout: false,
     largeScreenListRatio: 1 / 3,
   });
-  expect(useSettingsStore.persist.getOptions().version).toBe(20);
+  expect(useSettingsStore.persist.getOptions().version).toBe(21);
 });
 
 test('migrates v18 settings without changing unrelated preferences or the input object', async () => {
@@ -126,7 +126,7 @@ test('rehydrates both layout preferences after restart', async () => {
     .mock.calls.at(-1)?.[1];
   if (!persistedJson) throw new Error('Layout preferences must be persisted');
   expect(JSON.parse(persistedJson)).toMatchObject({
-    version: 20,
+    version: 21,
     state: { enableLargeScreenLayout: false, largeScreenListRatio: 0.45 },
   });
 
@@ -156,7 +156,7 @@ test('rehydrates v18 settings and persists the v19 layout defaults', async () =>
     .mock.calls.at(-1)?.[1];
   if (!persistedJson) throw new Error('Migrated settings must be persisted');
   expect(JSON.parse(persistedJson)).toMatchObject({
-    version: 20,
+    version: 21,
     state: { enableLargeScreenLayout: false, largeScreenListRatio: 1 / 3 },
   });
 });

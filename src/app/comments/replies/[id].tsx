@@ -43,6 +43,7 @@ import { useCommentKeyboardLayout } from '@/hooks/useCommentKeyboardLayout';
 import { useCommentRepliesQuery } from '@/hooks/useCommentQueries';
 import { useParentComment } from '@/hooks/useParentComment';
 import { getAuthSessionVersion } from '@/store/useAuthStore';
+import { useListPreload } from '@/hooks/useListPreload';
 import { formatDate } from '@/utils/date';
 import { buildZhihuContent, buildZhihuImageHtml } from '@/utils/zhihuContent';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -55,6 +56,7 @@ export default function ReplyDetailScreen() {
     resourceType?: string;
   }>();
   const [inputText, setInputText] = useState('');
+  const listPreload = useListPreload(0.3);
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(
     null,
   );
@@ -490,7 +492,7 @@ export default function ReplyDetailScreen() {
             !isFetchNextPageError &&
             fetchNextPage()
           }
-          onEndReachedThreshold={0.3}
+          {...listPreload}
           keyboardDismissMode="on-drag"
           ListFooterComponent={
             isFetchingNextPage ? (

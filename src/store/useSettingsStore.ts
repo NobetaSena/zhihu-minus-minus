@@ -168,6 +168,8 @@ export interface AppSettings {
   largeScreenListRatio: number;
   /** 是否开启浏览历史记录 */
   enableBrowseHistory: boolean;
+  /** 列表提前加载下一页并多渲染一段屏外内容 */
+  enableListPreload: boolean;
   /** 是否在本地记录并过滤近期看过的推荐内容 */
   enableLocalFeedDedup: boolean;
   /** 是否在冷启动时保留上次的推荐流内容 */
@@ -245,6 +247,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   enableLargeScreenLayout: false,
   largeScreenListRatio: DEFAULT_LARGE_SCREEN_LIST_RATIO,
   enableBrowseHistory: true,
+  enableListPreload: false,
   enableLocalFeedDedup: false,
   enableFeedCacheOnLaunch: false,
   recommendRequestIncludeDesktop: true,
@@ -324,6 +327,9 @@ export const useSettingsStore = create<SettingsState>()(
           if (!isValidUnreadBadgeStyle(nextSettings.unreadBadgeStyle)) {
             nextSettings.unreadBadgeStyle = 'count';
           }
+          if (typeof nextSettings.enableListPreload !== 'boolean') {
+            nextSettings.enableListPreload = false;
+          }
           if (
             typeof nextSettings.recommendRequestIncludeDesktop !== 'boolean'
           ) {
@@ -368,7 +374,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'zhihu-settings-storage',
       storage: createJSONStorage(() => settingsStorage),
-      version: 20,
+      version: 21,
       migrate: (rawPersistedState: unknown, version: number) => {
         const persistedState =
           normalizePersistedSettingsState(rawPersistedState);
@@ -541,6 +547,10 @@ export const useSettingsStore = create<SettingsState>()(
         )
           ? persistedState.unreadBadgeStyle
           : 'count';
+
+        // v21 adds list preloading, off unless chosen.
+        persistedState.enableListPreload =
+          persistedState.enableListPreload === true;
 
         return persistedState as unknown as SettingsState;
       },

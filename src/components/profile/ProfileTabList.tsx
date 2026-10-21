@@ -20,6 +20,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { useListPreload } from '@/hooks/useListPreload';
 import { useRefreshAction } from '@/hooks/useRefreshAction';
 import {
   getProfileMinContentHeight,
@@ -90,6 +91,7 @@ export const ProfileTabList = forwardRef<
   ref,
 ) {
   const primaryColor = useThemeColor({}, 'primary');
+  const listPreload = useListPreload(0.4);
   const listRef = useRef<FlashListRef<unknown> | null>(null);
   const contentRef = useRef<NativeView>(null);
   const loadedRef = useRef(false);
@@ -311,7 +313,7 @@ export const ProfileTabList = forwardRef<
         applyPendingScroll();
       }}
       onEndReached={() => loadNextPage()}
-      onEndReachedThreshold={0.4}
+      {...listPreload}
       onRefresh={handleRefresh}
       refreshing={refreshing}
       progressViewOffset={headerHeight}

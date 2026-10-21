@@ -72,6 +72,7 @@ import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
 import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
+import { useListPreload } from '@/hooks/useListPreload';
 import { useScopedAsyncValue } from '@/hooks/useScopedAsyncValue';
 import {
   type FeedCacheContext,
@@ -1330,6 +1331,7 @@ const FeedList = React.forwardRef<
     );
 
     const flashListRef = useRef<FlashListRef<FeedListItem>>(null);
+    const listPreload = useListPreload(0.5);
 
     const scrollHandler = useCollapsibleChromeScroll({
       enabled: isActive && AUTO_HIDE_NAV_TABS.includes(tab),
@@ -1417,7 +1419,7 @@ const FeedList = React.forwardRef<
             )
               void fetchNextPage();
           }}
-          onEndReachedThreshold={0.5}
+          {...listPreload}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           onScroll={scrollHandler}
