@@ -66,7 +66,7 @@ const SEARCH_ENTRIES: ReadonlyArray<SearchEntry> = [
     icon: 'options-outline',
     href: '/settings/features',
     keywords:
-      '功能 开关 正文 排版 原生 tiqian-super-mini native v2 webview 网页 渲染 私信 im 聊天 浏览 历史 记录 列表 提前 预加载 分页 加载',
+      '功能 开关 正文 排版 原生 tiqian-super-mini native v2 webview 网页 渲染 私信 im 聊天 浏览 历史 记录 列表 提前 预加载 分页 加载 多页 同时 并行',
   },
   {
     label: '分享数据（App崩溃报告&匿名数据）',

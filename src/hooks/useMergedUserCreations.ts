@@ -7,6 +7,7 @@ import {
   MEMBER_PINS_INCLUDE,
   type ZhihuMember,
 } from '@/api/zhihu';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import {
   type CreationKind,
   fetchMergedCreationsPage,
@@ -14,6 +15,7 @@ import {
   type MergedCreation,
   type MergedCreationsCursor,
 } from '@/utils/mergedCreations';
+import { fetchOffsetPages } from '@/utils/parallelPaging';
 import { refreshInfiniteQuery } from '@/utils/query';
 import { useRefreshAction } from './useRefreshAction';
 
@@ -40,6 +42,9 @@ export function useMergedUserCreations(
   enabled = true,
 ) {
   const queryClient = useQueryClient();
+  const parallelPaging = useSettingsStore(
+    (state) => state.enableParallelPaging,
+  );
   const memberKey = member?.url_token || member?.id;
   const queryKey = useMemo(
     () => ['user-merged-creations', memberKey] as const,
@@ -51,13 +56,22 @@ export function useMergedUserCreations(
       if (!memberKey) throw new Error('用户资料尚未加载');
       return fetchMergedCreationsPage(
         pageParam,
-        (kind, offset) =>
-          getMemberRelations(
-            memberKey,
-            kind,
-            { ...CREATION_PARAMS[kind], offset, limit: CREATIONS_PAGE_SIZE },
-            { signal },
-          ),
+        (kind, offset) => {
+          const fetchPage = (pageOffset: number) =>
+            getMemberRelations(
+              memberKey,
+              kind,
+              {
+                ...CREATION_PARAMS[kind],
+                offset: pageOffset,
+                limit: CREATIONS_PAGE_SIZE,
+              },
+              { signal },
+            );
+          return parallelPaging
+            ? fetchOffsetPages(fetchPage, offset, CREATIONS_PAGE_SIZE)
+            : fetchPage(offset);
+        },
         CREATIONS_PAGE_SIZE,
       );
     },

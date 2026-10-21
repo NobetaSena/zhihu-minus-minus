@@ -109,6 +109,7 @@ import {
   type FeedReadTouchBatch,
 } from '@/utils/feedReadTouch';
 import { resolveLocalAccountKey } from '@/utils/localAccount';
+import { fetchRecommendPages } from '@/utils/parallelPaging';
 import { refreshInfiniteQuery, shouldRetryQuery } from '@/utils/query';
 import { normalizeAnswerType, parseRecommendData } from '@/utils/recommendFeed';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -1122,6 +1123,9 @@ const FeedList = React.forwardRef<
       [queryAccountKey, recommendationRequestKey, tab],
     );
     const isGuestRecommend = tab === 'recommend' && !cookies;
+    const parallelPaging = useSettingsStore(
+      (state) => state.enableParallelPaging,
+    );
     const {
       data,
       fetchNextPage: fetchNextFeedPage,
@@ -1146,7 +1150,18 @@ const FeedList = React.forwardRef<
           refreshInFlightRef.current,
         );
         const isInitialUrl = pageParam === FEED_URLS[tab];
-        const data = await getFeed(requestUrl, { signal });
+        // 多页同时加载: predicted recommendation pages join this request; any
+        // page that does not continue the cursor is dropped.
+        const data =
+          parallelPaging &&
+          tab === 'recommend' &&
+          !isInitialUrl &&
+          !refreshInFlightRef.current
+            ? await fetchRecommendPages(
+                (url) => getFeed(url, { signal }),
+                requestUrl,
+              )
+            : await getFeed(requestUrl, { signal });
         if (sessionVersion !== getAuthSessionVersion())
           throw new Error('登录状态已改变');
         const rawItems = data.data || [];

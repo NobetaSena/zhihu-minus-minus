@@ -101,6 +101,7 @@ jest.mock('../src/store/useSettingsStore', () => ({
     fontSizeScale: 1,
     lineHeightScale: 1.5,
     enableBrowseHistory: false,
+    enableParallelPaging: false,
   })),
 }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -550,6 +551,24 @@ test('a page swipe records the synced offsets so the header holds its place', as
   offsets.value.forEach((offset, index) => {
     if (index !== answersIndex) expect(offset).toBe(collapse);
   });
+  await host.unmount();
+});
+
+test('with 多页同时加载 on, the answers tab requests three offsets per load', async () => {
+  const { useSettingsStore } = jest.requireMock<
+    typeof import('../store/useSettingsStore')
+  >('../store/useSettingsStore');
+  useSettingsStore.setState({ enableParallelPaging: true });
+  mockRoute.tab = 'answers';
+  const host = await render(screen());
+  await flushQueries();
+  expect(
+    jest
+      .mocked(getMemberRelations)
+      .mock.calls.filter(([, kind]) => kind === 'answers')
+      .map(([, , params]) => params.offset),
+  ).toEqual([0, 20, 40]);
+  useSettingsStore.setState({ enableParallelPaging: false });
   await host.unmount();
 });
 

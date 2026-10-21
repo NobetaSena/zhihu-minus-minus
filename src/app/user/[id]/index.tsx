@@ -79,6 +79,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import type { ZhihuAuthor, ZhihuColumnSummary } from '@/types/zhihu';
 import { getProfileAnswerReadingContext } from '@/utils/answerReadingContext';
 import type { MergedCreation } from '@/utils/mergedCreations';
+import { fetchOffsetPages } from '@/utils/parallelPaging';
 import {
   getProfileCoverState,
   getProfileHeaderOffset,
@@ -172,6 +173,8 @@ function getProfileListItemKey(item: unknown) {
 }
 
 const AnimatedPagerView = Reanimated.createAnimatedComponent(PagerView);
+/** Items per request on the offset-paged profile tabs. */
+const PROFILE_PAGE_LIMIT = 20;
 /** Keep page swipes off this long after a list stops scrolling. */
 const PAGER_UNLOCK_DELAY_MS = 250;
 
@@ -410,6 +413,15 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
   const isMe = isOwnMemberProfile(id, me, user);
 
   const enableBrowseHistory = useSettingsStore((s) => s.enableBrowseHistory);
+  const parallelPaging = useSettingsStore((s) => s.enableParallelPaging);
+  // 多页同时加载: offset-paged tabs request several pages per page load.
+  const fetchRelationPages = <P extends { data: unknown[] }>(
+    offset: number,
+    fetchPage: (offset: number) => Promise<P>,
+  ) =>
+    parallelPaging
+      ? fetchOffsetPages(fetchPage, offset, PROFILE_PAGE_LIMIT)
+      : fetchPage(offset);
 
   useEffect(() => {
     if (cookies && enableBrowseHistory && user?.id) {
@@ -452,13 +464,15 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     queryKey: ['user-answers', id, sortBy],
     queryFn: ({ pageParam = 0 }) => {
       const targetId = (user?.url_token || id) as string;
-      return getMemberRelations(targetId, 'answers', {
-        include: MEMBER_ANSWERS_INCLUDE,
-        offset: pageParam,
-        limit: 20,
-        sort_by: sortBy,
-        ws_qiangzhisafe: 0,
-      });
+      return fetchRelationPages(pageParam, (offset) =>
+        getMemberRelations(targetId, 'answers', {
+          include: MEMBER_ANSWERS_INCLUDE,
+          offset,
+          limit: PROFILE_PAGE_LIMIT,
+          sort_by: sortBy,
+          ws_qiangzhisafe: 0,
+        }),
+      );
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
@@ -475,11 +489,13 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
       const targetId = (user?.url_token || id) as string;
       const include =
         'data[*].created,answer_count,follower_count,admin_closed_comment,title,reaction,relationship.is_following;data[*].author';
-      return getMemberRelations(targetId, 'questions', {
-        limit: 20,
-        offset: pageParam,
-        include,
-      });
+      return fetchRelationPages(pageParam, (offset) =>
+        getMemberRelations(targetId, 'questions', {
+          limit: PROFILE_PAGE_LIMIT,
+          offset,
+          include,
+        }),
+      );
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
@@ -494,11 +510,13 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     queryKey: ['user-articles', id],
     queryFn: ({ pageParam = 0 }) => {
       const targetId = (user?.url_token || id) as string;
-      return getMemberRelations(targetId, 'articles', {
-        limit: 20,
-        offset: pageParam,
-        include: MEMBER_ARTICLES_INCLUDE,
-      });
+      return fetchRelationPages(pageParam, (offset) =>
+        getMemberRelations(targetId, 'articles', {
+          limit: PROFILE_PAGE_LIMIT,
+          offset,
+          include: MEMBER_ARTICLES_INCLUDE,
+        }),
+      );
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
@@ -518,11 +536,13 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     queryKey: ['user-pins', id],
     queryFn: ({ pageParam = 0 }) => {
       const targetId = (user?.url_token || id) as string;
-      return getMemberRelations(targetId, 'pins', {
-        limit: 20,
-        offset: pageParam,
-        include: MEMBER_PINS_INCLUDE,
-      });
+      return fetchRelationPages(pageParam, (offset) =>
+        getMemberRelations(targetId, 'pins', {
+          limit: PROFILE_PAGE_LIMIT,
+          offset,
+          include: MEMBER_PINS_INCLUDE,
+        }),
+      );
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {

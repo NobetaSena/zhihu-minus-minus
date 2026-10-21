@@ -27,6 +27,7 @@ export default function FeatureSettings() {
   const {
     enableBrowseHistory,
     enableListPreload,
+    enableParallelPaging,
     enablePrivateMessaging,
     doubleTapAction,
     updateSettings,
@@ -73,6 +74,19 @@ export default function FeatureSettings() {
               value={enableListPreload}
               onValueChange={(value) =>
                 updateSettings({ enableListPreload: value })
+              }
+            />
+          </SettingItem>
+          <SettingItem
+            label="多页同时加载"
+            icon="layers-outline"
+            colorScheme={colorScheme}
+          >
+            <ThemedSwitch
+              accessibilityLabel="多页同时加载"
+              value={enableParallelPaging}
+              onValueChange={(value) =>
+                updateSettings({ enableParallelPaging: value })
               }
             />
           </SettingItem>
