@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { ContentActionButton } from '@/components/ContentActionButton';
 import { useRuntimeThemeColors } from '@/components/Themed';
+import { withAlpha } from '@/utils/colorContrast';
 
 export interface CollapsibleRichContentProps {
   contentKey: string;
@@ -120,7 +121,10 @@ export function CollapsibleRichContent({
             pointerEvents="none"
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
-            colors={['transparent', colors.backgroundSecondary]}
+            colors={[
+              withAlpha(colors.backgroundSecondary, 0),
+              colors.backgroundSecondary,
+            ]}
             style={styles.fade}
           />
         ) : null}
