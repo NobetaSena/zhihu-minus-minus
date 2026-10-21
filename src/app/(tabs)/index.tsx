@@ -74,6 +74,7 @@ import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
 import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
 import { useListPreload, useLoadMoreNearEnd } from '@/hooks/useListPreload';
+import { usePageQueue } from '@/hooks/usePageQueue';
 import { useScopedAsyncValue } from '@/hooks/useScopedAsyncValue';
 import {
   type FeedCacheContext,
@@ -110,7 +111,7 @@ import {
   type FeedReadTouchBatch,
 } from '@/utils/feedReadTouch';
 import { resolveLocalAccountKey } from '@/utils/localAccount';
-import { PageQueue } from '@/utils/pageQueue';
+import type { PageQueue } from '@/utils/pageQueue';
 import {
   predictRecommendUrls,
   RECOMMEND_PAGE_SIZE,
@@ -1137,21 +1138,6 @@ const FeedList = React.forwardRef<
     // handed over when the list asks for them.
     const queueRecommendations =
       parallelPaging && tab === 'recommend' && !isGuestRecommend;
-    const [recommendQueue] = useState(
-      () =>
-        new PageQueue<ZhihuFeedResponse>({
-          fetchPage: (url, signal) => getFeed(url, { signal }),
-          predict: (url, count) =>
-            predictRecommendUrls(url, count, RECOMMEND_PAGE_SIZE) ?? [],
-          // A page queued under another account session is never handed over.
-          key: (url) => `${getAuthSessionVersion()}|${recommendPageKey(url)}`,
-          depth: RECOMMEND_QUEUE_DEPTH,
-        }),
-    );
-    useEffect(() => {
-      if (!queueRecommendations) recommendQueue.clear();
-    }, [queueRecommendations, recommendQueue]);
-    useEffect(() => () => recommendQueue.clear(), [recommendQueue]);
     const {
       data,
       fetchNextPage: fetchNextFeedPage,
@@ -1199,7 +1185,6 @@ const FeedList = React.forwardRef<
 
         const nextUrl = getFeedNextUrl(data.paging);
         if (tab === 'recommend') items = filterRecommendations(items);
-        if (queueRecommendations) recommendQueue.ahead(nextUrl);
 
         if (launchCacheContext && isInitialUrl && items.length > 0) {
           void feedCacheRepository
@@ -1236,6 +1221,28 @@ const FeedList = React.forwardRef<
         (!localDedupEnabled || exposureReady) &&
         (!launchCacheContext || isCacheCheckDone),
     });
+    // The queue follows the list's data, so a first page restored from the
+    // launch cache starts the relay too. The query function above only runs
+    // after this render, once the queue exists.
+    // Annotated: the query function's type would otherwise depend on itself.
+    const recommendQueue: PageQueue<ZhihuFeedResponse> = usePageQueue(
+      {
+        fetchPage: (url, signal) => getFeed(url, { signal }),
+        predict: (url, count) =>
+          predictRecommendUrls(url, count, RECOMMEND_PAGE_SIZE) ?? [],
+        // A page queued under another account session is never handed over.
+        key: (url) => `${getAuthSessionVersion()}|${recommendPageKey(url)}`,
+        depth: RECOMMEND_QUEUE_DEPTH,
+      },
+      {
+        enabled: queueRecommendations,
+        nextUrl:
+          getNextUnvisitedFeedPage(
+            data?.pages.at(-1)?.nextUrl ?? null,
+            data?.pageParams ?? [],
+          ) ?? null,
+      },
+    );
     const isLoading =
       isFeedLoading ||
       (isPending && isPaused) ||
