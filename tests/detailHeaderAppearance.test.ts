@@ -1,4 +1,4 @@
-import { calculateDetailHeaderAppearance } from '../utils/detailHeaderAppearance';
+import { calculateDetailHeaderAppearance } from '../src/utils/detailHeaderAppearance';
 
 describe('detail header appearance', () => {
   it.each([

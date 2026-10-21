@@ -1,4 +1,4 @@
-import { resolveLocalAccountKey } from '../utils/localAccount';
+import { resolveLocalAccountKey } from '../src/utils/localAccount';
 
 test.each([
   null,

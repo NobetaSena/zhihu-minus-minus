@@ -1,20 +1,20 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import type { WebViewProps } from 'react-native-webview';
-import { ContentExportScreen } from '../features/content-export/ContentExportScreen';
-import { ContentExportError } from '../features/content-export/errors';
+import { ContentExportScreen } from '../src/features/content-export/ContentExportScreen';
+import { ContentExportError } from '../src/features/content-export/errors';
 import {
   saveExport,
   saveExportImages,
   shareExport,
-} from '../features/content-export/files';
+} from '../src/features/content-export/files';
 import type {
   ExportResult,
   ExportSource,
   ExportTarget,
   ExportTaskContext,
-} from '../features/content-export/types';
-import type { useContentExport } from '../features/content-export/useContentExport';
+} from '../src/features/content-export/types';
+import type { useContentExport } from '../src/features/content-export/useContentExport';
 
 let mockJob: ReturnType<typeof useContentExport>;
 const mockColors = {
@@ -28,37 +28,37 @@ const mockColors = {
   onPrimary: '#ffffff',
 };
 const mockCapture = jest.fn();
-jest.mock('../features/content-export/useContentExport', () => ({
+jest.mock('../src/features/content-export/useContentExport', () => ({
   useContentExport: () => mockJob,
   exportErrorMessage: (error: unknown, fallback: string) => {
     const { ContentExportError } = jest.requireActual(
-      '../features/content-export/errors',
+      '../src/features/content-export/errors',
     );
     return error instanceof ContentExportError
       ? (error as Error).message
       : fallback;
   },
 }));
-jest.mock('../features/content-export/ImageExportRenderer', () => ({
+jest.mock('../src/features/content-export/ImageExportRenderer', () => ({
   useImageExport: () => ({ capture: mockCapture, renderer: null }),
 }));
-jest.mock('../features/content-export/files', () => ({
+jest.mock('../src/features/content-export/files', () => ({
   saveExport: jest.fn(),
   saveExportImages: jest.fn(),
   shareExport: jest.fn(),
 }));
-jest.mock('../features/content-export/serializers', () => ({
+jest.mock('../src/features/content-export/serializers', () => ({
   serializeExportHtml: () => '<p>合成正文预览</p>',
   serializeExportMarkdown: () => '合成正文预览',
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/Themed', () => ({
+jest.mock('../src/components/Themed', () => ({
   Text: jest.requireActual('react-native').Text,
   useRuntimeThemeColors: () => mockColors,
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: (
     selector: (state: {
       fontSizeScale: number;

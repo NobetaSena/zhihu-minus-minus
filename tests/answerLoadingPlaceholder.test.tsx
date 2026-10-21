@@ -1,9 +1,9 @@
 import { act, render } from '@testing-library/react-native';
 import { Text } from 'react-native';
-import { AnswerLoadingPlaceholder } from '../components/AnswerLoadingPlaceholder';
-import type { RichContentLoadingPhase } from '../features/rich-content';
+import { AnswerLoadingPlaceholder } from '../src/components/AnswerLoadingPlaceholder';
+import type { RichContentLoadingPhase } from '../src/features/rich-content';
 
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {

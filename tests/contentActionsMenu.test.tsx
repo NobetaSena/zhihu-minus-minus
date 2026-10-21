@@ -8,16 +8,16 @@ import {
 } from '@testing-library/react-native';
 import type { ComponentProps, PropsWithChildren } from 'react';
 import { Share } from 'react-native';
-import { getAllContentCollectionStatus } from '../api/zhihu/collection';
-import type { CollectionStarIcon } from '../components/CollectionStarIcon';
-import { ShareMenu } from '../components/ShareMenu';
-import { useContentActions } from '../hooks/useContentActions';
-import { useCollectionStore } from '../store/useCollectionStore';
-import { copyToClipboard } from '../utils/clipboard';
+import { getAllContentCollectionStatus } from '../src/api/zhihu/collection';
+import type { CollectionStarIcon } from '../src/components/CollectionStarIcon';
+import { ShareMenu } from '../src/components/ShareMenu';
+import { useContentActions } from '../src/hooks/useContentActions';
+import { useCollectionStore } from '../src/store/useCollectionStore';
+import { copyToClipboard } from '../src/utils/clipboard';
 import type {
   ContentShareData,
   ContentShareType,
-} from '../utils/contentActions';
+} from '../src/utils/contentActions';
 
 let mockAuthenticated = true;
 let mockCollectionPending = false;
@@ -34,20 +34,20 @@ jest.mock('expo-router', () => ({
   router: { push: (...args: unknown[]) => mockPush(...args) },
 }));
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   hasAuthenticationCookie: (cookies: string | null) =>
     cookies === 'synthetic-authenticated',
 }));
-jest.mock('../api/zhihu/collection', () => ({
+jest.mock('../src/api/zhihu/collection', () => ({
   getAllContentCollectionStatus: jest.fn(),
 }));
-jest.mock('../hooks/useCollectionAction', () => ({
+jest.mock('../src/hooks/useCollectionAction', () => ({
   useCollectionAction: () => ({
     toggleCollect: mockToggleCollect,
     isPending: mockCollectionPending,
   }),
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockAuthSessionVersion,
   useAuthStore: (select: (state: { cookies: string }) => unknown) =>
     select({
@@ -56,7 +56,7 @@ jest.mock('../store/useAuthStore', () => ({
         : 'synthetic-tracking-cookie',
     }),
 }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {
@@ -65,10 +65,10 @@ jest.mock('../components/Themed', () => {
     useThemeColor: () => '#1364cc',
   };
 });
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../constants/Colors', () => ({
+jest.mock('../src/constants/Colors', () => ({
   __esModule: true,
   default: {
     light: {
@@ -79,22 +79,22 @@ jest.mock('../constants/Colors', () => ({
     },
   },
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton:
     jest.requireActual<typeof import('react-native')>('react-native').Pressable,
 }));
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('../components/CollectionStarIcon', () => ({
+jest.mock('../src/components/CollectionStarIcon', () => ({
   CollectionStarIcon: (props: ComponentProps<typeof CollectionStarIcon>) =>
     mockCollectionStar(props),
 }));
-jest.mock('../utils/haptics', () => ({
+jest.mock('../src/utils/haptics', () => ({
   ImpactFeedbackStyle: { Medium: 'medium' },
   impactAsync: jest.fn(async () => undefined),
 }));
-jest.mock('../utils/clipboard', () => ({ copyToClipboard: jest.fn() }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
-jest.mock('../components/overlays/BottomSheet', () => {
+jest.mock('../src/utils/clipboard', () => ({ copyToClipboard: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/components/overlays/BottomSheet', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');

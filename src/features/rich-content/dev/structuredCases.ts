@@ -21,14 +21,12 @@ export interface StructuredContentCase {
   resources: Record<string, ZhihuImageResource>;
 }
 
-const icon = Image.resolveAssetSource(
-  require('../../../assets/images/icon.png'),
-);
+const icon = Image.resolveAssetSource(require('@/assets/images/icon.png'));
 const sunset = Image.resolveAssetSource(
-  require('../../../assets/images/app-icons/sunset.png'),
+  require('@/assets/images/app-icons/sunset.png'),
 );
 const aurora = Image.resolveAssetSource(
-  require('../../../assets/images/app-icons/aurora.png'),
+  require('@/assets/images/app-icons/aurora.png'),
 );
 const resources: Record<string, ZhihuImageResource> = {};
 for (const [name, asset] of [

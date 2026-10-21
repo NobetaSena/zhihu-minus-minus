@@ -6,7 +6,7 @@ import {
   QueryObserver,
 } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { createAppQueryClient } from '../utils/queryClient';
+import { createAppQueryClient } from '../src/utils/queryClient';
 
 describe('automatic read recovery', () => {
   let client: QueryClient;

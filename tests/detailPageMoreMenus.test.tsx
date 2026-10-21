@@ -1,20 +1,20 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import type React from 'react';
 import { Alert } from 'react-native';
-import type { AnswerDetail } from '../api/zhihu/answer';
-import ArticleDetail from '../app/article/[id]';
-import PinDetailScreen from '../app/pin/[id]';
-import QuestionDetail from '../app/question/[id]/index';
-import type { CollectionButton } from '../components/CollectionButton';
-import type { ActionSheetOption } from '../components/overlays/ActionSheet';
-import type { ZhihuContentProps } from '../features/rich-content';
-import { seedAnswerPreviewEntry } from '../utils/answerPreviewEntry';
-import { seedAnswerDetailFromList } from '../utils/contentCache';
+import type { AnswerDetail } from '../src/api/zhihu/answer';
+import ArticleDetail from '../src/app/article/[id]';
+import PinDetailScreen from '../src/app/pin/[id]';
+import QuestionDetail from '../src/app/question/[id]/index';
+import type { CollectionButton } from '../src/components/CollectionButton';
+import type { ActionSheetOption } from '../src/components/overlays/ActionSheet';
+import type { ZhihuContentProps } from '../src/features/rich-content';
+import { seedAnswerPreviewEntry } from '../src/utils/answerPreviewEntry';
+import { seedAnswerDetailFromList } from '../src/utils/contentCache';
 
-jest.mock('../utils/answerPreviewEntry', () => ({
+jest.mock('../src/utils/answerPreviewEntry', () => ({
   seedAnswerPreviewEntry: jest.fn(),
 }));
-jest.mock('../utils/contentCache', () => ({
+jest.mock('../src/utils/contentCache', () => ({
   seedAnswerDetailFromList: jest.fn(),
 }));
 
@@ -30,7 +30,7 @@ interface DoubleTapActionOptions {
 const mockDoubleTapVote = jest.fn((_options: DoubleTapActionOptions) => ({
   gesture: { synthetic: true },
 }));
-jest.mock('../hooks/useDoubleTapAction', () => ({
+jest.mock('../src/hooks/useDoubleTapAction', () => ({
   useDoubleTapAction: (options: DoubleTapActionOptions) =>
     mockDoubleTapVote(options),
 }));
@@ -220,7 +220,7 @@ jest.mock('expo-linear-gradient', () => ({
   LinearGradient: jest.requireActual('react-native').View,
 }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {
@@ -235,13 +235,13 @@ jest.mock('../components/Themed', () => {
     ThemedIcon: () => null,
   };
 });
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/ContentRelationshipNotice', () => {
+jest.mock('../src/components/ContentRelationshipNotice', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -256,7 +256,7 @@ jest.mock('../components/ContentRelationshipNotice', () => {
     },
   };
 });
-jest.mock('../components/DetailNavigationHeader', () => {
+jest.mock('../src/components/DetailNavigationHeader', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -278,7 +278,7 @@ jest.mock('../components/DetailNavigationHeader', () => {
         : null,
   };
 });
-jest.mock('../components/ShareMenu', () => {
+jest.mock('../src/components/ShareMenu', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -306,10 +306,14 @@ jest.mock('../components/ShareMenu', () => {
     },
   };
 });
-jest.mock('../components/StableAvatar', () => ({ StableAvatar: () => null }));
-jest.mock('../components/FollowButton', () => ({ FollowButton: () => null }));
-jest.mock('../components/LikeButton', () => ({ LikeButton: () => null }));
-jest.mock('../components/CollectionButton', () => {
+jest.mock('../src/components/StableAvatar', () => ({
+  StableAvatar: () => null,
+}));
+jest.mock('../src/components/FollowButton', () => ({
+  FollowButton: () => null,
+}));
+jest.mock('../src/components/LikeButton', () => ({ LikeButton: () => null }));
+jest.mock('../src/components/CollectionButton', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -327,17 +331,17 @@ jest.mock('../components/CollectionButton', () => {
     },
   };
 });
-jest.mock('../components/DownvoteButton', () => ({
+jest.mock('../src/components/DownvoteButton', () => ({
   DownvoteButton: (props: { voted?: number }) => mockDownvoteButton(props),
 }));
-jest.mock('../components/ReadingProgressNotice', () => ({
+jest.mock('../src/components/ReadingProgressNotice', () => ({
   ReadingProgressNotice: () => null,
 }));
-jest.mock('../components/VoterListModal', () => ({
+jest.mock('../src/components/VoterListModal', () => ({
   VoterListModal: () => null,
 }));
-jest.mock('../components/PinPollCard', () => ({ PinPollCard: () => null }));
-jest.mock('../features/rich-content', () => ({
+jest.mock('../src/components/PinPollCard', () => ({ PinPollCard: () => null }));
+jest.mock('../src/features/rich-content', () => ({
   RICH_CONTENT_STALE_TIME: 60_000,
   ZhihuContent: (props: ZhihuContentProps) => {
     mockRichContent(props);
@@ -351,35 +355,35 @@ jest.mock('../features/rich-content', () => ({
     );
   },
 }));
-jest.mock('../hooks/useReadingProgress', () => ({
+jest.mock('../src/hooks/useReadingProgress', () => ({
   useReadingProgress: () => ({ restoredOffset: null }),
 }));
-jest.mock('../hooks/useOptimisticToggle', () => ({
+jest.mock('../src/hooks/useOptimisticToggle', () => ({
   useOptimisticToggle: (options: { queryKey?: readonly unknown[] }) => {
     mockOptimisticQueryKeys.push(options.queryKey);
     return { mutate: jest.fn(), isPending: false };
   },
 }));
-jest.mock('../hooks/useQuestionRead', () => ({
+jest.mock('../src/hooks/useQuestionRead', () => ({
   useQuestionRead: (id: string, sessionVersion: number, ready: boolean) =>
     mockQuestionRead(id, sessionVersion, ready),
 }));
-jest.mock('../hooks/useScrollAnimation', () => ({
+jest.mock('../src/hooks/useScrollAnimation', () => ({
   useScrollHeaderAnim: () => ({ handleScroll: jest.fn() }),
 }));
-jest.mock('../hooks/useScrollAwareTextSelection', () => ({
+jest.mock('../src/hooks/useScrollAwareTextSelection', () => ({
   useScrollAwareTextSelection: () => ({
     isTextSelectable: true,
     touchCaptureHandlers: {},
   }),
 }));
-jest.mock('../hooks/useGestureScrollView', () => ({
+jest.mock('../src/hooks/useGestureScrollView', () => ({
   useGestureScrollView: () => ({
     scrollGestureRef: {},
     renderScrollComponent: jest.fn(),
   }),
 }));
-jest.mock('../hooks/useViewableItems', () => ({
+jest.mock('../src/hooks/useViewableItems', () => ({
   useViewableItems: () => ({
     activeItem: mockAnswer,
     viewableIdsRef: { current: [] },
@@ -387,12 +391,12 @@ jest.mock('../hooks/useViewableItems', () => ({
     onViewableItemsChanged: jest.fn(),
   }),
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: (selector: (state: { cookies: null }) => unknown) =>
     selector({ cookies: null }),
 }));
-jest.mock('../store/useCollectionStore', () => ({
+jest.mock('../src/store/useCollectionStore', () => ({
   useCollectionStore: (
     selector: (state: {
       collectedStatusMap: Record<string, boolean>;
@@ -400,7 +404,7 @@ jest.mock('../store/useCollectionStore', () => ({
     }) => unknown,
   ) => selector({ collectedStatusMap: {}, setCollectedStatus: jest.fn() }),
 }));
-jest.mock('../store/useSettingsStore', () => {
+jest.mock('../src/store/useSettingsStore', () => {
   const state = {
     enableBrowseHistory: false,
     fontSizeScale: 1,
@@ -417,34 +421,36 @@ jest.mock('../store/useSettingsStore', () => {
     ),
   };
 });
-jest.mock('../api/client', () => ({ hasAuthenticationCookie: () => false }));
-jest.mock('../api/zhihu', () => ({
-  ...jest.requireActual('../api/zhihu/contentCollection'),
+jest.mock('../src/api/client', () => ({
+  hasAuthenticationCookie: () => false,
+}));
+jest.mock('../src/api/zhihu', () => ({
+  ...jest.requireActual('../src/api/zhihu/contentCollection'),
   getArticle: jest.fn(),
   getDailyDetail: jest.fn(),
 }));
-jest.mock('../api/zhihu/answer', () => ({ deleteAnswer: jest.fn() }));
-jest.mock('../api/zhihu/collection', () => ({
+jest.mock('../src/api/zhihu/answer', () => ({ deleteAnswer: jest.fn() }));
+jest.mock('../src/api/zhihu/collection', () => ({
   getAllContentCollectionStatus: jest.fn(),
 }));
-jest.mock('../api/zhihu/column', () => ({
+jest.mock('../src/api/zhihu/column', () => ({
   followColumn: jest.fn(),
   getArticleColumnCard: jest.fn(),
   unfollowColumn: jest.fn(),
 }));
-jest.mock('../api/zhihu/history', () => ({ recordReadHistory: jest.fn() }));
-jest.mock('../api/zhihu/member', () => ({
+jest.mock('../src/api/zhihu/history', () => ({ recordReadHistory: jest.fn() }));
+jest.mock('../src/api/zhihu/member', () => ({
   followMember: jest.fn(),
   unfollowMember: jest.fn(),
 }));
-jest.mock('../api/zhihu/pin', () => ({ getPin: jest.fn() }));
-jest.mock('../api/zhihu/question', () => ({
+jest.mock('../src/api/zhihu/pin', () => ({ getPin: jest.fn() }));
+jest.mock('../src/api/zhihu/question', () => ({
   followQuestion: jest.fn(),
   unfollowQuestion: jest.fn(),
   getQuestion: jest.fn(),
   getQuestionAnswers: jest.fn(),
 }));
-jest.mock('../api/zhihu/voters', () => ({
+jest.mock('../src/api/zhihu/voters', () => ({
   getContentVoteCount: (_type: string, content?: { reaction_count?: number }) =>
     content?.reaction_count ?? 0,
   getContentVoteState: () => 0,

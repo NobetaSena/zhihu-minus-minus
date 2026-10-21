@@ -1,8 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
-import { fetchUpdateText } from '../api/githubReleases';
 import { inspectApk } from '../modules/zhihu-persistence';
+import { fetchUpdateText } from '../src/api/githubReleases';
 import {
   type ApkUpdate,
   cleanupUpdatePartials,
@@ -12,7 +12,7 @@ import {
   installVerifiedApk,
   UPDATE_CANCEL_TIMEOUT_MS,
   UPDATE_DOWNLOAD_TIMEOUT_MS,
-} from '../utils/updateDownload';
+} from '../src/utils/updateDownload';
 
 jest.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///test/cache/',
@@ -32,7 +32,7 @@ jest.mock('expo-sharing', () => ({
   shareAsync: jest.fn(async () => undefined),
 }));
 jest.mock('../modules/zhihu-persistence', () => ({ inspectApk: jest.fn() }));
-jest.mock('../api/githubReleases', () => ({ fetchUpdateText: jest.fn() }));
+jest.mock('../src/api/githubReleases', () => ({ fetchUpdateText: jest.fn() }));
 
 const name = 'zhihu-minus-minus-v0.8.0-arm64-v8a.apk';
 const sha = 'a'.repeat(64);

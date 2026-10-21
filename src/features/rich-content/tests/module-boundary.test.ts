@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const REPO_ROOT = path.resolve(__dirname, '../../../');
+const SOURCE_ROOT = path.resolve(__dirname, '../../../');
 const COMPATIBILITY_FILES = new Set([
-  path.join(REPO_ROOT, 'components/ZhihuContent.tsx'),
-  path.join(REPO_ROOT, 'components/ZhihuDOMContent.tsx'),
+  path.join(SOURCE_ROOT, 'components/ZhihuContent.tsx'),
+  path.join(SOURCE_ROOT, 'components/ZhihuDOMContent.tsx'),
 ]);
 const LEGACY_IMPORT_PATTERN =
   /from\s+['"](?:@\/components\/ZhihuContent|\.\/ZhihuContent)['"]/;
@@ -26,7 +26,7 @@ test('application code imports rich content through the feature entry point', as
   const sourceFiles = (
     await Promise.all(
       ['app', 'components'].map((directory) =>
-        listSourceFiles(path.join(REPO_ROOT, directory)),
+        listSourceFiles(path.join(SOURCE_ROOT, directory)),
       ),
     )
   )
@@ -37,7 +37,7 @@ test('application code imports rich content through the feature entry point', as
   for (const filePath of sourceFiles) {
     const source = await readFile(filePath, 'utf8');
     if (LEGACY_IMPORT_PATTERN.test(source)) {
-      violations.push(path.relative(REPO_ROOT, filePath));
+      violations.push(path.relative(SOURCE_ROOT, filePath));
     }
   }
 

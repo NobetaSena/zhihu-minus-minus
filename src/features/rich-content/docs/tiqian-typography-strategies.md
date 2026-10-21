@@ -172,7 +172,7 @@ RNRH可以试 `textAlign: 'justify'`，但不保证两端系统使用相同规�
 
 比较不只看截图：记录禁则违规、溢出/裁切、最大可见间距、行高与总高度、复制文本一致性、知识点/链接命中，以及冷渲染、宽度变化重排和内存成本。排版改善不能靠破坏复制、选择或大字号可读性换取。保留原文与 source/display 区分，也是 Tiqian 可借鉴的基础设计。[ADR 0003][T-DISPLAY]、[ADR 0044][T-OFFSET]
 
-实现阶段应登记 fixture，运行 `npm run analyze:rich-content`、`npm test -- features/rich-content/tests --runInBand` 和 `npm run check`；涉及原生扩展再做 prebuild、双端构建及 Release 真机对照。本次文档调研未运行上游构建，也未执行上述真机效果验收。
+实现阶段应登记 fixture，运行 `npm run analyze:rich-content`、`npm test -- src/features/rich-content/tests --runInBand` 和 `npm run check`；涉及原生扩展再做 prebuild、双端构建及 Release 真机对照。本次文档调研未运行上游构建，也未执行上述真机效果验收。
 
 [T-ARCH]: https://github.com/tiqian-cjk/tiqian/blob/7aa7c3d8ada486aecbdfceb0ed461fe775a213d9/docs/architecture.md
 [T-TEXT]: https://github.com/tiqian-cjk/tiqian/blob/7aa7c3d8ada486aecbdfceb0ed461fe775a213d9/engine/src/commonMain/kotlin/org/tiqian/core/TextModel.kt

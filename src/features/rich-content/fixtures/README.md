@@ -20,7 +20,7 @@ npm run analyze:rich-content:inbox
 2. 用 inbox 分析命令检查段落、图片、公式、视频、@ 提及和 # 话题等结构。
 3. 确认样本有长期价值后，将它移动到 `cases/`，并在 `manifest.json` 中添加案例；同一 JSON 内有多个对象时用 `contentPath` 指向其中一个对象的 `content`。
 4. JSON 案例填写 `contentPath`（点号路径，例如 `content` 或 `target.content`），并可用 `expectedMetadata` 断言正文之外的稳定字段；只为已经人工确认的结构添加 `expected` 精确计数。
-5. 运行 `npm run analyze:rich-content` 和 `npm test -- features/rich-content/tests --runInBand`。
+5. 运行 `npm run analyze:rich-content` 和 `npm test -- src/features/rich-content/tests --runInBand`。
 
 样本应尽量保留知乎返回的真实标签和属性，以便覆盖懒加载图片、公式、视频、链接卡片和异常嵌套。允许替换与结构无关的正文文本，但不要手工“修好”原始 HTML。
 

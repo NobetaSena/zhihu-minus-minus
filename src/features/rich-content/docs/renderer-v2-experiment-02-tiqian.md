@@ -540,7 +540,7 @@ onLinkPress(url)
 
 # Phase 3A：HTML → ZhihuDocument → Adapter
 
-沿用现有 `features/rich-content/document.ts` 作为中立语义层；这一阶段的 parser/normalization 和 Tiqian adapter 尚未实现。下列 `RendererDocument` 名称仅表示早期示意的后端输入，实际传输结构按选定 API 和 source map 约束确认。
+沿用现有 `src/features/rich-content/document.ts` 作为中立语义层；这一阶段的 parser/normalization 和 Tiqian adapter 尚未实现。下列 `RendererDocument` 名称仅表示早期示意的后端输入，实际传输结构按选定 API 和 source map 约束确认。
 
 初期只覆盖知乎正文中最常见部分：
 
@@ -1222,7 +1222,7 @@ modules/tiqian-renderer/
 应用侧：
 
 ```text
-features/rich-content/
+src/features/rich-content/
 ├─ document.ts              # 已有中立模型，不再创建重复 AST
 ├─ normalization/           # 中立转换已有初步实现；继续扩充知乎覆盖
 ├─ adapters/                # Tiqian adapter 待设计/实现
@@ -1232,7 +1232,7 @@ features/rich-content/
 职责：
 
 ```text
-features/rich-content
+src/features/rich-content
 → 理解知乎
 
 modules/tiqian-renderer

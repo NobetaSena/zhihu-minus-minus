@@ -90,7 +90,7 @@ export default function AboutScreen() {
       >
         <RNView style={styles.hero}>
           <Image
-            source={require('../assets/images/icon.png')}
+            source={require('@/assets/images/icon.png')}
             style={styles.logo}
             accessibilityLabel="知乎-- 应用图标"
           />

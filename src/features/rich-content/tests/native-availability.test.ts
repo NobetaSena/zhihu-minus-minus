@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { RichTextNativeViewProps } from '../../../modules/zhihu-rich-text';
+import type { RichTextNativeViewProps } from '../../../../modules/zhihu-rich-text';
 
 let mockPlatform = 'ios';
 const mockNativeComponent = jest.fn(() => null);
@@ -27,9 +27,9 @@ jest.mock('react-native-css-interop', () => ({
 }));
 
 function loadNativeBridge() {
-  let bridge: typeof import('../../../modules/zhihu-rich-text') | undefined;
+  let bridge: typeof import('../../../../modules/zhihu-rich-text') | undefined;
   jest.isolateModules(() => {
-    bridge = require('../../../modules/zhihu-rich-text');
+    bridge = require('../../../../modules/zhihu-rich-text');
   });
   if (!bridge) throw new Error('Expected the native bridge');
   return bridge;
@@ -115,7 +115,7 @@ describe('native rich text availability', () => {
       readFileSync(
         path.join(
           __dirname,
-          '../../../modules/zhihu-rich-text/expo-module.config.json',
+          '../../../../modules/zhihu-rich-text/expo-module.config.json',
         ),
         'utf8',
       ),

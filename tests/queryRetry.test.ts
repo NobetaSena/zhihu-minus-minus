@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { AxiosError, AxiosHeaders, CanceledError } from 'axios';
-import { shouldRetryQuery } from '../utils/query';
+import { shouldRetryQuery } from '../src/utils/query';
 
 function httpError(status: number, data: unknown = {}): AxiosError {
   return new AxiosError(

@@ -1,18 +1,18 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { FeedRegexSettings } from '../components/FeedRegexSettings';
-import { FEED_REGEX_LIMITS } from '../utils/feedRegex';
+import { FeedRegexSettings } from '../src/components/FeedRegexSettings';
+import { FEED_REGEX_LIMITS } from '../src/utils/feedRegex';
 
 jest.mock(
   '@expo/vector-icons/Ionicons',
   () => jest.requireActual('react-native').View,
 );
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest.requireActual('zustand').create(() => ({
     primaryColor: null,
     readingBackground: 'default',

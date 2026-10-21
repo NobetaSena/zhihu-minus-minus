@@ -1,12 +1,12 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import type { ComponentProps } from 'react';
-import { voteContent } from '../api/zhihu';
-import type { ZhihuPreviewAnswerMetadata } from '../api/zhihu/nextRender';
-import { voteContent as downvoteContent } from '../api/zhihu/voters';
-import { AnswerPreviewFloatingBar } from '../components/AnswerPreviewFloatingBar';
-import type { CollectionButton } from '../components/CollectionButton';
-import { getContentActionBarBottom } from '../components/ContentActionBar';
-import { FeedCardActionRow } from '../components/FeedCardActionRow';
+import { voteContent } from '../src/api/zhihu';
+import type { ZhihuPreviewAnswerMetadata } from '../src/api/zhihu/nextRender';
+import { voteContent as downvoteContent } from '../src/api/zhihu/voters';
+import { AnswerPreviewFloatingBar } from '../src/components/AnswerPreviewFloatingBar';
+import type { CollectionButton } from '../src/components/CollectionButton';
+import { getContentActionBarBottom } from '../src/components/ContentActionBar';
+import { FeedCardActionRow } from '../src/components/FeedCardActionRow';
 
 const mockCollectionButton = jest.fn(
   (_props: ComponentProps<typeof CollectionButton>) => {},
@@ -24,7 +24,7 @@ jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   default: () => mockWindowDimensions(),
 }));
 
-jest.mock('../components/CollectionButton', () => {
+jest.mock('../src/components/CollectionButton', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -40,11 +40,11 @@ jest.mock('../components/CollectionButton', () => {
   };
 });
 
-jest.mock('../api/zhihu', () => ({
+jest.mock('../src/api/zhihu', () => ({
   voteContent: jest.fn(),
   getVoteSuccessMessage: () => '合成结果',
 }));
-jest.mock('../api/zhihu/voters', () => ({
+jest.mock('../src/api/zhihu/voters', () => ({
   voteContent: jest.fn(),
   getVoteSuccessMessage: () => '合成结果',
 }));
@@ -82,7 +82,7 @@ jest.mock('@expo/vector-icons/Ionicons', () => {
       style: { fontSize: size },
     });
 });
-jest.mock('../components/VoteTriangle', () => {
+jest.mock('../src/components/VoteTriangle', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -94,7 +94,7 @@ jest.mock('../components/VoteTriangle', () => {
       }),
   };
 });
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {
@@ -110,17 +110,17 @@ jest.mock('../components/Themed', () => {
     }),
   };
 });
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton:
     jest.requireActual<typeof import('react-native')>('react-native').Pressable,
 }));
-jest.mock('../utils/contentCache', () => ({
+jest.mock('../src/utils/contentCache', () => ({
   updateContentInteractionCaches: jest.fn(),
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();

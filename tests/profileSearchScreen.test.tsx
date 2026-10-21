@@ -5,15 +5,15 @@ import {
   type FeedItem,
   getMemberWithFallback,
   searchContent,
-} from '../api/zhihu';
-import type { ZhihuMember } from '../api/zhihu/member';
-import UserSearchScreen from '../app/user/[id]/search';
+} from '../src/api/zhihu';
+import type { ZhihuMember } from '../src/api/zhihu/member';
+import UserSearchScreen from '../src/app/user/[id]/search';
 import {
   getProfileFeedBody,
   toProfileSearchFeedItem,
-} from '../components/profile/profileSearchResults';
-import type { ZhihuSearchResponse } from '../types/zhihu';
-import type { AnswerReadingContext } from '../utils/answerReadingContext';
+} from '../src/components/profile/profileSearchResults';
+import type { ZhihuSearchResponse } from '../src/types/zhihu';
+import type { AnswerReadingContext } from '../src/utils/answerReadingContext';
 
 const member: ZhihuMember = {
   id: 'synthetic-member-hash',
@@ -38,24 +38,24 @@ jest.mock('expo-router', () => ({
     canGoBack: () => mockCanGoBack,
   }),
 }));
-jest.mock('../api/zhihu', () => ({
+jest.mock('../src/api/zhihu', () => ({
   getMemberWithFallback: jest.fn(),
   searchContent: jest.fn(),
   getContentVoteCount: () => 0,
   getContentVoteState: () => 0,
   getContentCollectionMetadata: jest.requireActual<
-    typeof import('../api/zhihu/contentCollection')
-  >('../api/zhihu/contentCollection').getContentCollectionMetadata,
+    typeof import('../src/api/zhihu/contentCollection')
+  >('../src/api/zhihu/contentCollection').getContentCollectionMetadata,
 }));
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 24, left: 0, right: 0 }),
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: (selector: (state: { fontSizeScale: number }) => unknown) =>
     selector({ fontSizeScale: 1 }),
 }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native = jest.requireActual('react-native');
   return {
     Text: native.Text,
@@ -71,10 +71,10 @@ jest.mock('../components/Themed', () => {
     }),
   };
 });
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/FeedCard', () => ({
+jest.mock('../src/components/FeedCard', () => ({
   FeedCard: ({
     item,
     answerContext,

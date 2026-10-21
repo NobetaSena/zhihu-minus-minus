@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/react-native';
-import { rememberDiagnosticContext } from '../utils/diagnosticContext';
-import { recordDiagnosticEvent } from '../utils/diagnosticLogs';
-import { sanitizeSentryEvent } from '../utils/telemetrySanitizer';
+import { rememberDiagnosticContext } from '../src/utils/diagnosticContext';
+import { recordDiagnosticEvent } from '../src/utils/diagnosticLogs';
+import { sanitizeSentryEvent } from '../src/utils/telemetrySanitizer';
 
 jest.mock('@sentry/react-native', () => {
   const sdk = jest.requireActual('@sentry/react-native');
@@ -18,7 +18,7 @@ jest.mock('expo-constants', () => ({
   },
 }));
 jest.mock('expo-device', () => ({ osVersion: '18.0' }));
-jest.mock('../utils/diagnosticLogs', () => ({
+jest.mock('../src/utils/diagnosticLogs', () => ({
   recordDiagnosticError: jest.fn(),
   recordDiagnosticEvent: jest.fn(),
 }));
@@ -143,7 +143,7 @@ test('the actual SDK honors consent and retains sanitized diagnostics through ca
       }),
     });
   });
-  const telemetry: typeof import('../utils/telemetry') = require('../utils/telemetry');
+  const telemetry: typeof import('../src/utils/telemetry') = require('../src/utils/telemetry');
   jest.mocked(recordDiagnosticEvent).mockClear();
   try {
     // Identical before/after sanitization deliberately exercises the SDK's

@@ -7,10 +7,10 @@ import {
   type LayoutChangeEvent,
   type MeasureOnSuccessCallback,
 } from 'react-native';
-import { useReadingContentMeasurement } from '../hooks/useReadingContentMeasurement';
-import { useReadingProgress } from '../hooks/useReadingProgress';
-import { readingProgressStorage } from '../storage/readingProgressStorage';
-import { useProgressStore } from '../store/useProgressStore';
+import { useReadingContentMeasurement } from '../src/hooks/useReadingContentMeasurement';
+import { useReadingProgress } from '../src/hooks/useReadingProgress';
+import { readingProgressStorage } from '../src/storage/readingProgressStorage';
+import { useProgressStore } from '../src/store/useProgressStore';
 
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async () => null),

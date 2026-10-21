@@ -3,18 +3,18 @@ import { Text } from 'react-native';
 import {
   Text as ThemedText,
   useRuntimeThemeColors,
-} from '../components/Themed';
-import Colors from '../constants/Colors';
-import { colors } from '../constants/designTokens';
+} from '../src/components/Themed';
+import Colors from '../src/constants/Colors';
+import { colors } from '../src/constants/designTokens';
 import {
   type ReadingBackground,
   type RuntimeThemeColors,
   resolveThemeColors,
   type ThemePreferences,
-} from '../constants/theme';
-import { useSettingsStore } from '../store/useSettingsStore';
-import { contrastRatio, rgbChannels } from '../utils/colorContrast';
-import { themeVariables } from '../utils/themeVariables';
+} from '../src/constants/theme';
+import { useSettingsStore } from '../src/store/useSettingsStore';
+import { contrastRatio, rgbChannels } from '../src/utils/colorContrast';
+import { themeVariables } from '../src/utils/themeVariables';
 
 let mockColorScheme: 'light' | 'dark' = 'light';
 
@@ -22,7 +22,7 @@ jest.mock(
   '@expo/vector-icons/Ionicons',
   () => jest.requireActual('react-native').View,
 );
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest.requireActual('zustand').create(() => ({
     primaryColor: null,
     readingBackground: 'default',
@@ -32,7 +32,7 @@ jest.mock('../store/useSettingsStore', () => ({
     lineHeightScale: 1.5,
   })),
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => mockColorScheme,
 }));
 

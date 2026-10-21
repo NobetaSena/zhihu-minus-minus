@@ -4,12 +4,12 @@ import { createElement, type PropsWithChildren } from 'react';
 import {
   type UseOptimisticToggleOptions,
   useOptimisticToggle,
-} from '../hooks/useOptimisticToggle';
-import { getAuthSessionVersion } from '../store/useAuthStore';
-import { showToast } from '../utils/toast';
+} from '../src/hooks/useOptimisticToggle';
+import { getAuthSessionVersion } from '../src/store/useAuthStore';
+import { showToast } from '../src/utils/toast';
 
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: jest.fn(() => 0),
 }));
 

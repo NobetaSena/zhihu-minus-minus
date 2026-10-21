@@ -4,7 +4,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { strFromU8, unzipSync } from 'fflate';
 import { Platform } from 'react-native';
-import { ContentExportError } from '../features/content-export/errors';
+import { ContentExportError } from '../src/features/content-export/errors';
 import {
   assertOfflinePrintHtml,
   createExportDirectory,
@@ -16,14 +16,14 @@ import {
   writeImageExport,
   writePdfExport,
   writeTextExport,
-} from '../features/content-export/files';
-import { base64ToBytes } from '../features/content-export/ioShared';
-import { stitchPngImages } from '../features/content-export/pngStitch';
-import { serializeExportHtml } from '../features/content-export/serializers';
+} from '../src/features/content-export/files';
+import { base64ToBytes } from '../src/features/content-export/ioShared';
+import { stitchPngImages } from '../src/features/content-export/pngStitch';
+import { serializeExportHtml } from '../src/features/content-export/serializers';
 import type {
   ExportResult,
   ExportTaskContext,
-} from '../features/content-export/types';
+} from '../src/features/content-export/types';
 
 jest.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///test/cache/',
@@ -61,11 +61,11 @@ jest.mock('expo-media-library', () => ({
   requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
   saveToLibraryAsync: jest.fn(async () => undefined),
 }));
-jest.mock('../features/rich-content', () => ({
-  ...jest.requireActual('../features/rich-content/presentation'),
-  ...jest.requireActual('../features/rich-content/exportResources'),
+jest.mock('../src/features/rich-content', () => ({
+  ...jest.requireActual('../src/features/rich-content/presentation'),
+  ...jest.requireActual('../src/features/rich-content/exportResources'),
 }));
-jest.mock('../features/content-export/pngStitch', () => ({
+jest.mock('../src/features/content-export/pngStitch', () => ({
   stitchPngImages: jest.fn(),
 }));
 

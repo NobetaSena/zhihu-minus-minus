@@ -22,7 +22,7 @@ HTML + segment_infos / 想法 content 分段数组
   + React Native 独立媒体 block
 ```
 
-公开能力从 `@/features/rich-content` 导入。原生实现位于 [`modules/zhihu-rich-text`](../../../modules/zhihu-rich-text/README.md)。业务默认读取 `richContentRenderer`，也可显式传 `renderer="native-v2"` 覆盖；当前新安装默认采用 tiqian-super-mini（`native-v2`）。未包含新模块或Android/iOS以外的平台使用完整 WebView fallback，保留保存的偏好；原型页标明可用性。RNRH 已删除，开发对照只保留 tiqian-super-mini / WebView。
+公开能力从 `@/features/rich-content` 导入。原生实现位于 [`modules/zhihu-rich-text`](../../../../modules/zhihu-rich-text/README.md)。业务默认读取 `richContentRenderer`，也可显式传 `renderer="native-v2"` 覆盖；当前新安装默认采用 tiqian-super-mini（`native-v2`）。未包含新模块或Android/iOS以外的平台使用完整 WebView fallback，保留保存的偏好；原型页标明可用性。RNRH 已删除，开发对照只保留 tiqian-super-mini / WebView。
 
 推荐通过 `ZhihuContent` 使用该能力，默认采用正文设置，其交互外壳已经提供完整 WebView fallback；需要固定后端时显式传 `renderer="native-v2"`。直接挂载 `ZhihuNativeContent` 必须传入 `renderFallback: () => React.ReactNode`；功能原型宿主同样提供 WebView adapter，复用图片预览和链接分流。模块不反向导入外壳，避免fallback循环依赖。V2源选区和知识点事件仅在native可用时运行。
 
@@ -108,7 +108,7 @@ WebView对照使用同一套字号/行高，并可实验 `line-break: strict`、
 ## 原型实现时的验证记录（Enriched删除和真实正文入口之前）
 
 - Android prebuild完成，Expo autolinking识别本地模块；arm64 Debug `assembleDebug`通过。
-- `npm run typecheck`、改动TS/JSON的Biome检查通过；`npm test -- features/rich-content/tests --runInBand`通过11个suite/207项测试，`npm run analyze:rich-content`校验8个稳定案例。中立模型/编译器新增19项短内容语义测试，覆盖URL过滤、格式保留、公式分类、脚注、知识点及选择源映射。
+- `npm run typecheck`、改动TS/JSON的Biome检查通过；`npm test -- src/features/rich-content/tests --runInBand`通过11个suite/207项测试，`npm run analyze:rich-content`校验8个稳定案例。中立模型/编译器新增19项短内容语义测试，覆盖URL过滤、格式保留、公式分类、脚注、知识点及选择源映射。
 - 原型实现阶段的 `npm run check`通过19个suite/259项测试/8个fixture；Biome仍有仓库原有2项optional-chain warning与schema版本info。当时未修改Enriched staged patch；随后按用户决定正式删除，删除后的验证单独记录。生成android目录未登记到版本控制。
 - vivo V2509A / Android API36，字体缩放1.0：新模块APK更新安装成功，应用数据保留；原型页可直接打开。
 - 真机长按与系统全选成功：标题、两段正文、引用、列表共享选区，JS面板收到UTF-16 `[0, 198)`和对应源节点。单词选择也映回 `selection-a:[7, 9)`。自由拖柄的精确落点还需后续更细的手势验收。
@@ -195,7 +195,7 @@ Pager的React身份改为问题与排序，不再随列表初次到达变化；�
 
 CI的 `NodeRequire.context` 错误来自干净checkout没有本地忽略的 `expo-env.d.ts`，因而缺少Metro的类型扩展。fixture loader现在显式引用 `expo/types/metro-require`，保持字面量 `require.context`、开发构建门禁和动态案例发现不变。使用TypeScript完整Program排除 `expo-env.d.ts` 与 `.expo` 后复现原TS2339，修复后246个源文件入口、0项诊断；不依赖生成文件补齐CI类型。
 
-本轮最终 `npm run check` 退出码0：33个suite / 468项测试、284个文件的只读Biome（保留2项既有warning）、8个fixture通过；另跑 `npm test -- features/rich-content/tests --runInBand`，19个suite / 329项通过。Pager共13项回归包括手势先开始再到达列表、idle早于selected、多次列表更新、索引重排、当前页暂缺、无确认回调和辅助导航。这轮只修改共享JS与界面文案，不变更原生模块、依赖或持久schema，无需为此重新prebuild。
+本轮最终 `npm run check` 退出码0：33个suite / 468项测试、284个文件的只读Biome（保留2项既有warning）、8个fixture通过；另跑 `npm test -- src/features/rich-content/tests --runInBand`，19个suite / 329项通过。Pager共13项回归包括手势先开始再到达列表、idle早于selected、多次列表更新、索引重排、当前页暂缺、无确认回调和辅助导航。这轮只修改共享JS与界面文案，不变更原生模块、依赖或持久schema，无需为此重新prebuild。
 
 专用iOS模拟器重新加载最新JS后，原型标题、后端按钮与提示显示 `tiqian-super-mini`，真实原生正文和可见层已挂载，首载占位正常退出。合成A→B替换的远程调试评估失败，未将其记为平台切换验收；重新加载清理临时调试override，不改真实缓存或业务数据。用户随后真机试用反馈二次加载闪白已明显减轻；仍不宣称所有页面完全无闪白，双端全部翻页/刷新组合与未知媒体尺寸的后续布局继续需要验证。
 
@@ -227,4 +227,4 @@ Android 引用线原先直接使用 `LeadingMarginSpan` 的整行 `top..bottom`�
 
 新增合成 `quote-paragraph-spacing-001`，先经 inbox 分析再移入 cases/manifest，覆盖单段引用后正文、多段引用、长句、末尾空白与显式 br。JS 契约测试确认引用范围包含合成段间换行，br 留在同一段并保持源选择偏移；normalization 会清除普通段尾 ASCII 空格，因此 native 末尾空白用例由 JVM 测试直接构造。新增 8 项引用几何回归覆盖上述范围差异、连续引用、flow 末段、高附件与过大段距。这些测试验证范围与裁剪计算，不替代实际 Android Layout 和 Canvas 的视觉验收。
 
-本轮 `CI=1 npm run prebuild -- --platform android --no-install`、`./gradlew :zhihu-rich-text:compileDebugKotlin :zhihu-rich-text:testDebugUnitTest --offline` 均通过，最终原生测试共 20 项；`npm test -- features/rich-content/tests --runInBand` 的 25 个 suite / 412 项通过。`npm run check` 通过类型检查、501 个文件的只读 Biome、127 个 suite / 1402 项测试与 17 个 fixture 分析；Biome 保留 1 项既有 info。本轮未安装或运行真机/模拟器，未验证 iOS 或 Release；该改动需重新编译原生包后查看，Fast Refresh 不会更新 Kotlin 实现。
+本轮 `CI=1 npm run prebuild -- --platform android --no-install`、`./gradlew :zhihu-rich-text:compileDebugKotlin :zhihu-rich-text:testDebugUnitTest --offline` 均通过，最终原生测试共 20 项；`npm test -- src/features/rich-content/tests --runInBand` 的 25 个 suite / 412 项通过。`npm run check` 通过类型检查、501 个文件的只读 Biome、127 个 suite / 1402 项测试与 17 个 fixture 分析；Biome 保留 1 项既有 info。本轮未安装或运行真机/模拟器，未验证 iOS 或 Release；该改动需重新编译原生包后查看，Fast Refresh 不会更新 Kotlin 实现。

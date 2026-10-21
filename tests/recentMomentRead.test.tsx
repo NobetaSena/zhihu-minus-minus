@@ -5,13 +5,13 @@ import {
   markRecentMomentsRead,
   type RecentMomentItem,
   type RecentMomentsResponse,
-} from '../api/zhihu';
-import { useMarkRecentMomentRead } from '../hooks/useMarkRecentMomentRead';
+} from '../src/api/zhihu';
+import { useMarkRecentMomentRead } from '../src/hooks/useMarkRecentMomentRead';
 
-jest.mock('../api/zhihu', () => ({ markRecentMomentsRead: jest.fn() }));
+jest.mock('../src/api/zhihu', () => ({ markRecentMomentsRead: jest.fn() }));
 
 let mockSessionVersion = 1;
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
 }));
 

@@ -2,10 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import type { ComponentProps } from 'react';
 import type { PressableProps } from 'react-native';
-import { getAllContentCollectionStatus } from '../api/zhihu/collection';
-import { CollectionButton } from '../components/CollectionButton';
-import { useCollectionStore } from '../store/useCollectionStore';
-import { showToast } from '../utils/toast';
+import { getAllContentCollectionStatus } from '../src/api/zhihu/collection';
+import { CollectionButton } from '../src/components/CollectionButton';
+import { useCollectionStore } from '../src/store/useCollectionStore';
+import { showToast } from '../src/utils/toast';
 
 let mockAuthenticated = true;
 let mockPending = false;
@@ -13,20 +13,20 @@ let mockSessionVersion = 0;
 const mockToggleCollect = jest.fn();
 let mockOnPress: PressableProps['onPress'];
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   hasAuthenticationCookie: (cookies: string) =>
     cookies === 'synthetic-authenticated',
 }));
-jest.mock('../api/zhihu/collection', () => ({
+jest.mock('../src/api/zhihu/collection', () => ({
   getAllContentCollectionStatus: jest.fn(),
 }));
-jest.mock('../hooks/useCollectionAction', () => ({
+jest.mock('../src/hooks/useCollectionAction', () => ({
   useCollectionAction: () => ({
     toggleCollect: mockToggleCollect,
     isPending: mockPending,
   }),
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: (selector: (state: { cookies: string }) => unknown) =>
     selector({
@@ -35,11 +35,11 @@ jest.mock('../store/useAuthStore', () => ({
         : 'synthetic-tracking',
     }),
 }));
-jest.mock('../components/Themed', () => ({
+jest.mock('../src/components/Themed', () => ({
   Text: jest.requireActual<typeof import('react-native')>('react-native').Text,
   useThemeColor: () => '#1364cc',
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: (props: PressableProps) => {
     mockOnPress = props.onPress;
     return jest
@@ -51,11 +51,11 @@ jest.mock('../components/BouncyButton', () => ({
       );
   },
 }));
-jest.mock('../components/CollectionStarIcon', () => ({
+jest.mock('../src/components/CollectionStarIcon', () => ({
   CollectionStarIcon: () => null,
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
-jest.mock('../utils/zhihuError', () => ({
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/zhihuError', () => ({
   getZhihuErrorMessage: () => '合成读取失败',
 }));
 

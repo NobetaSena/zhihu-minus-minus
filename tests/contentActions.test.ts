@@ -3,10 +3,10 @@ import {
   buildContentShareText,
   resolveContentShareUrl,
   shareContent,
-} from '../utils/contentActions';
-import { showToast } from '../utils/toast';
+} from '../src/utils/contentActions';
+import { showToast } from '../src/utils/toast';
 
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 
 const initialPlatform = Platform.OS;
 const share = jest.spyOn(Share, 'share');

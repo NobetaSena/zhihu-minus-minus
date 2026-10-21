@@ -1,8 +1,11 @@
 import { AxiosHeaders, type AxiosResponse } from 'axios';
-import apiClient from '../api/client';
-import { reactAnswerSegment, unreactAnswerSegment } from '../api/zhihu/answer';
+import apiClient from '../src/api/client';
+import {
+  reactAnswerSegment,
+  unreactAnswerSegment,
+} from '../src/api/zhihu/answer';
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { post: jest.fn(), delete: jest.fn() },
 }));

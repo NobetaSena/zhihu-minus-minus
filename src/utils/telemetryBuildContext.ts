@@ -11,7 +11,6 @@ const SOURCE_ROOTS = new Set([
   'features',
   'storage',
   'store',
-  'modules',
   'types',
   'constants',
 ]);
@@ -55,9 +54,14 @@ function sourceFile(value: unknown): value is string {
   )
     return false;
   const segments = value.split('/');
+  // Older installed builds may still expose the pre-src manifest paths.
+  const rootIndex = segments[0] === 'src' ? 1 : 0;
+  const knownRoot =
+    SOURCE_ROOTS.has(segments[rootIndex]) ||
+    (rootIndex === 0 && segments[0] === 'modules');
   return (
-    segments.length >= 2 &&
-    SOURCE_ROOTS.has(segments[0]) &&
+    segments.length >= rootIndex + 2 &&
+    knownRoot &&
     segments.every(
       (segment) =>
         !segment.startsWith('.') &&

@@ -1,24 +1,24 @@
-import type { FeedItem } from '../api/zhihu/feed';
-import type { ZhihuReadingPreviewItem } from '../api/zhihu/nextRender';
-import { normalizeZhihuAnswerPreviewPage } from '../api/zhihu/nextRender';
+import type { FeedItem } from '../src/api/zhihu/feed';
+import type { ZhihuReadingPreviewItem } from '../src/api/zhihu/nextRender';
+import { normalizeZhihuAnswerPreviewPage } from '../src/api/zhihu/nextRender';
 import {
   formatAnswerPublishInfo,
   getAnswerPublishInfo,
   getNextRenderPublishInfo,
   shouldShowPreviewQuestion,
-} from '../utils/answerPreviewDisplay';
-import { createAnswerPreviewEntry } from '../utils/answerPreviewEntry';
-import { parseRecommendData } from '../utils/recommendFeed';
+} from '../src/utils/answerPreviewDisplay';
+import { createAnswerPreviewEntry } from '../src/utils/answerPreviewEntry';
+import { parseRecommendData } from '../src/utils/recommendFeed';
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
-jest.mock('../features/rich-content', () => ({
-  ...jest.requireActual('../features/rich-content/structuredContent'),
-  ...jest.requireActual('../features/rich-content/queryPolicy'),
+jest.mock('../src/features/rich-content', () => ({
+  ...jest.requireActual('../src/features/rich-content/structuredContent'),
+  ...jest.requireActual('../src/features/rich-content/queryPolicy'),
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => 1,
 }));
 

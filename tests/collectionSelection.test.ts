@@ -5,28 +5,28 @@ import {
   addToCollection,
   getAllContentCollectionStatus,
   removeFromCollection,
-} from '../api/zhihu/collection';
+} from '../src/api/zhihu/collection';
 import {
   collectionSelectorStatusKey,
   useCollectionSelectionToggle,
-} from '../hooks/useCollectionSelectionToggle';
-import { useCollectionStore } from '../store/useCollectionStore';
+} from '../src/hooks/useCollectionSelectionToggle';
+import { useCollectionStore } from '../src/store/useCollectionStore';
 
 type FolderMutationResponse = Awaited<ReturnType<typeof addToCollection>>;
 
-jest.mock('../api/zhihu/collection', () => ({
+jest.mock('../src/api/zhihu/collection', () => ({
   addToCollection: jest.fn(),
   addArticleToCollection: jest.fn(),
   removeFromCollection: jest.fn(),
   removeArticleFromCollection: jest.fn(),
   getAllContentCollectionStatus: jest.fn(),
 }));
-jest.mock('../utils/contentCache', () => ({
+jest.mock('../src/utils/contentCache', () => ({
   updateContentInteractionCaches: jest.fn(),
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 let mockSessionVersion = 0;
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
 }));
 

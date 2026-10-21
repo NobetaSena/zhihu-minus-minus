@@ -1,40 +1,43 @@
-import { getAnswer } from '../api/zhihu/answer';
-import { getArticle } from '../api/zhihu/article';
-import { getDailyDetail } from '../api/zhihu/daily';
-import { getNextContentRender, getNextRender } from '../api/zhihu/nextRender';
-import { getPin } from '../api/zhihu/pin';
-import { getQuestion } from '../api/zhihu/question';
-import { ContentExportError } from '../features/content-export/errors';
-import { resolveExportSource } from '../features/content-export/resolveSource';
+import { getAnswer } from '../src/api/zhihu/answer';
+import { getArticle } from '../src/api/zhihu/article';
+import { getDailyDetail } from '../src/api/zhihu/daily';
+import {
+  getNextContentRender,
+  getNextRender,
+} from '../src/api/zhihu/nextRender';
+import { getPin } from '../src/api/zhihu/pin';
+import { getQuestion } from '../src/api/zhihu/question';
+import { ContentExportError } from '../src/features/content-export/errors';
+import { resolveExportSource } from '../src/features/content-export/resolveSource';
 import type {
   ExportTarget,
   ExportTaskContext,
-} from '../features/content-export/types';
-import { walkZhihuDocument } from '../features/rich-content/documentTraversal';
-import type { ZhihuStructuredContent } from '../types/zhihu';
+} from '../src/features/content-export/types';
+import { walkZhihuDocument } from '../src/features/rich-content/documentTraversal';
+import type { ZhihuStructuredContent } from '../src/types/zhihu';
 
-jest.mock('../api/zhihu/answer', () => ({ getAnswer: jest.fn() }));
-jest.mock('../api/zhihu/article', () => ({ getArticle: jest.fn() }));
-jest.mock('../api/zhihu/daily', () => ({ getDailyDetail: jest.fn() }));
-jest.mock('../api/zhihu/pin', () => ({ getPin: jest.fn() }));
-jest.mock('../api/zhihu/question', () => ({ getQuestion: jest.fn() }));
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/zhihu/answer', () => ({ getAnswer: jest.fn() }));
+jest.mock('../src/api/zhihu/article', () => ({ getArticle: jest.fn() }));
+jest.mock('../src/api/zhihu/daily', () => ({ getDailyDetail: jest.fn() }));
+jest.mock('../src/api/zhihu/pin', () => ({ getPin: jest.fn() }));
+jest.mock('../src/api/zhihu/question', () => ({ getQuestion: jest.fn() }));
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
-jest.mock('../api/zhihu/nextRender', () => ({
-  ...jest.requireActual('../api/zhihu/nextRender'),
+jest.mock('../src/api/zhihu/nextRender', () => ({
+  ...jest.requireActual('../src/api/zhihu/nextRender'),
   getNextRender: jest.fn(),
   getNextContentRender: jest.fn(),
 }));
-jest.mock('../features/rich-content', () => ({
+jest.mock('../src/features/rich-content', () => ({
   ...jest.requireActual(
-    '../features/rich-content/normalization/normalizeZhihuDocument',
+    '../src/features/rich-content/normalization/normalizeZhihuDocument',
   ),
-  ...jest.requireActual('../features/rich-content/structuredContent'),
+  ...jest.requireActual('../src/features/rich-content/structuredContent'),
 }));
 let mockSessionVersion = 5;
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
 }));
 

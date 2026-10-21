@@ -59,7 +59,7 @@ Android“保存到文件”通过 Storage Access Framework 选择目录。iOS �
 npm ci
 npm test -- tests/contentExport --runInBand
 npm run analyze:rich-content
-npm test -- features/rich-content/tests --runInBand
+npm test -- src/features/rich-content/tests --runInBand
 npm run check
 ```
 

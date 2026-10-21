@@ -9,20 +9,20 @@ import { Pressable, Text, View } from 'react-native';
 import {
   getGithubReleaseHistory,
   getLatestGithubRelease,
-} from '../api/githubReleases';
+} from '../src/api/githubReleases';
 import {
   getReleaseHistory,
   getUpdateInfo,
   UpdateChecker,
   useCheckUpdate,
-} from '../components/UpdateChecker';
-import { showToast } from '../utils/toast';
+} from '../src/components/UpdateChecker';
+import { showToast } from '../src/utils/toast';
 import {
   cleanupUpdatePartials,
   downloadVerifiedApk,
   installVerifiedApk,
-} from '../utils/updateDownload';
-import { UpdateFailure } from '../utils/updateSecurity';
+} from '../src/utils/updateDownload';
+import { UpdateFailure } from '../src/utils/updateSecurity';
 
 let mockDialogActions: { label: string; onPress: () => void }[] = [];
 
@@ -36,18 +36,18 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn(),
 }));
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn() }));
-jest.mock('../api/githubReleases', () => ({
+jest.mock('../src/api/githubReleases', () => ({
   getLatestGithubRelease: jest.fn(),
   getGithubReleaseHistory: jest.fn(),
 }));
-jest.mock('../utils/updateDownload', () => ({
+jest.mock('../src/utils/updateDownload', () => ({
   cleanupUpdatePartials: jest.fn(async () => undefined),
   downloadVerifiedApk: jest.fn(),
   installVerifiedApk: jest.fn(async () => undefined),
   discardVerifiedApk: jest.fn(async () => undefined),
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
-jest.mock('../components/Themed', () => ({
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/components/Themed', () => ({
   Text: require('react-native').Text,
   useRuntimeThemeColors: () => ({
     primary: '#007aff',
@@ -61,11 +61,13 @@ jest.mock('../components/Themed', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 24, left: 0, right: 0 }),
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: require('react-native').Pressable,
 }));
-jest.mock('../components/MarkdownText', () => ({ MarkdownText: () => null }));
-jest.mock('../components/overlays/AppDialog', () => {
+jest.mock('../src/components/MarkdownText', () => ({
+  MarkdownText: () => null,
+}));
+jest.mock('../src/components/overlays/AppDialog', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     AppDialog: ({

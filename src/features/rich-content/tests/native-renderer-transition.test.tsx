@@ -3,7 +3,7 @@ import { type LayoutChangeEvent, Text } from 'react-native';
 import type {
   RichTextHeightEventData,
   RichTextNativeViewProps,
-} from '../../../modules/zhihu-rich-text';
+} from '../../../../modules/zhihu-rich-text';
 import { ZhihuNativeContent } from '../components/ZhihuNativeContent';
 import type { RichTextFlow } from '../richText';
 
@@ -14,7 +14,7 @@ const mockNativeMounts = new Map<string, number>();
 const mockNativeWidths: number[] = [];
 const mockSvgProps: { uri: string; color?: string; fill?: string }[] = [];
 
-jest.mock('../../../modules/zhihu-rich-text', () => {
+jest.mock('../../../../modules/zhihu-rich-text', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');

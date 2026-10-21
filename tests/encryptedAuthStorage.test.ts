@@ -3,8 +3,8 @@ import { AESSealedData, aesDecryptAsync } from 'expo-crypto';
 import {
   createAuthSealedDataFromBase64,
   decryptAuthState,
-} from '../storage/authEncryption';
-import { createEncryptedAuthStorage } from '../storage/encryptedAuthStorage';
+} from '../src/storage/authEncryption';
+import { createEncryptedAuthStorage } from '../src/storage/encryptedAuthStorage';
 
 jest.mock('expo-crypto', () => ({
   AESEncryptionKey: { import: jest.fn(async () => ({})) },

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import type { FeedItem } from '../api/zhihu';
+import type { FeedItem } from '../src/api/zhihu';
 import {
   applyFeedFilter,
   computeFilterStats,
@@ -8,13 +8,13 @@ import {
   type FeedFilterRules,
   isCollapsedGroup,
   supportsLocalFeedFilter,
-} from '../utils/feedFilter';
+} from '../src/utils/feedFilter';
 import {
   FEED_REGEX_LIMITS,
   matchesFeedRegex,
   normalizeFeedRegexPatterns,
   parseFeedRegexInput,
-} from '../utils/feedRegex';
+} from '../src/utils/feedRegex';
 
 const SHORT_BODY_PATTERN = '^.{0,50}$';
 
@@ -580,7 +580,7 @@ test('finishes pathological and diverse Unicode matches in an isolated process w
     const path = require('node:path');
     const Module = require('node:module');
     const babel = require('@babel/core');
-    const helperPath = path.resolve('utils/feedRegex.ts');
+    const helperPath = path.resolve('src/utils/feedRegex.ts');
     const compiled = babel.transformFileSync(helperPath, {
       configFile: path.resolve('babel.config.js'),
       envName: 'test',

@@ -6,7 +6,7 @@ import {
   QueryClient,
   QueryObserver,
 } from '@tanstack/react-query';
-import { restartInterruptedQueries } from '../utils/queryRecovery';
+import { restartInterruptedQueries } from '../src/utils/queryRecovery';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

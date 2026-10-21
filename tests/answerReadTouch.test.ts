@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
-import { touchAnswerRead } from '../api/zhihu/lastRead';
-import { useAnswerReadTouch } from '../hooks/useAnswerReadTouch';
+import { touchAnswerRead } from '../src/api/zhihu/lastRead';
+import { useAnswerReadTouch } from '../src/hooks/useAnswerReadTouch';
 
-jest.mock('../api/zhihu/lastRead', () => ({ touchAnswerRead: jest.fn() }));
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/zhihu/lastRead', () => ({ touchAnswerRead: jest.fn() }));
+jest.mock('../src/api/client', () => ({
   hasAuthenticationCookie: (cookie: string | null) => Boolean(cookie),
 }));
 let mockFocused = true;
@@ -13,7 +13,7 @@ let mockCookies: string | null = 'synthetic-authentication';
 jest.mock('@react-navigation/native', () => ({
   useIsFocused: () => mockFocused,
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: (selector: (state: { cookies: string | null }) => unknown) =>
     selector({ cookies: mockCookies }),
