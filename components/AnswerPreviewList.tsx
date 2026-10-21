@@ -51,6 +51,10 @@ import { getAuthSessionVersion } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import type { ZhihuStructuredContent as StructuredContent } from '@/types/zhihu';
 import {
+  formatAnswerPublishInfo,
+  shouldShowPreviewQuestion,
+} from '@/utils/answerPreviewDisplay';
+import {
   type AnswerReadingContext,
   getAnswerReadingRouteParams,
 } from '@/utils/answerReadingContext';
@@ -241,6 +245,15 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
           onRefresh={onRefresh}
         />
       )}
+      {item.publishInfo ? (
+        <View className="mt-3 bg-transparent">
+          {formatAnswerPublishInfo(item.publishInfo).map((line) => (
+            <Text key={line} type="secondary" className="text-xs leading-5">
+              {line}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <NativeView
         ref={footerRef}
         collapsable={false}
@@ -596,9 +609,11 @@ export function AnswerPreviewList({
                 }
                 onMore={() => setMenuState({ scope, item })}
                 onRefresh={() => refreshBody(item.id)}
-                showQuestion={
-                  !contextQuestionId || item.question.id !== contextQuestionId
-                }
+                showQuestion={shouldShowPreviewQuestion(
+                  query.items,
+                  index,
+                  contextQuestionId,
+                )}
                 onQuestionTitleLayout={
                   !contextQuestionId && index === 0
                     ? handleTitleLayout

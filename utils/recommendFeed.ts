@@ -77,6 +77,8 @@ export function parseRecommendData(item: RawFeedItem): FeedItem | null {
         : target.content) ||
       '',
     content: target.content || '',
+    created_time: target.created_time,
+    updated_time: target.updated_time,
     ...(appType === 'answers' &&
       Array.isArray(target.endorsements) && {
         endorsements: target.endorsements,

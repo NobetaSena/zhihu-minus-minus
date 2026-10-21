@@ -98,6 +98,8 @@ function areFeedCardPropsEqual(
     previousItem.actionText === nextItem.actionText &&
     previousItem.excerpt === nextItem.excerpt &&
     areFeedContentEqual(previousItem.content, nextItem.content) &&
+    previousItem.created_time === nextItem.created_time &&
+    previousItem.updated_time === nextItem.updated_time &&
     previousItem.image === nextItem.image &&
     previousItem.voteCount === nextItem.voteCount &&
     previousItem.commentCount === nextItem.commentCount &&

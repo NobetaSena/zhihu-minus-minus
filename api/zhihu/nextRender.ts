@@ -11,6 +11,7 @@
 import type { ZhihuStructuredContent } from '@/types/zhihu';
 
 export {
+  type AnswerPublishInfo,
   buildZhihuNextRenderUrl,
   getAnswerPreviewContinuation,
   getNextContentRender,
