@@ -599,6 +599,9 @@ export function AnswerPreviewList({
         <FlashList<PreviewItem>
           key={scope}
           ref={listRef}
+          // Cards change height as answers and images measure, and every
+          // correction redraws the indicator; the home feed hides it too.
+          showsVerticalScrollIndicator={false}
           data={query.items}
           onViewableItemsChanged={handleViewableItemsChanged}
           viewabilityConfig={floatingBar.viewabilityConfig}
