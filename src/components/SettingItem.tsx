@@ -101,7 +101,8 @@ export function SettingOptions<T extends string>({
   fill = false,
 }: {
   options: ReadonlyArray<{ value: T; label: string }>;
-  value: T;
+  /** Undefined leaves every option unselected. */
+  value: T | undefined;
   onChange: (value: T) => void;
   accessibilityLabel: string;
   /** 撑满整行、选项等宽；配合 `SettingItem stacked` 使用。 */
