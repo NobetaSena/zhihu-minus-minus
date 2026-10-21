@@ -61,6 +61,8 @@ export interface ProfileTabListProps {
   keyExtractor: (item: unknown) => string;
   listHeader?: ReactNode;
   emptyState?: ReactNode;
+  /** Reports when the user drags or flings this list vertically. */
+  onScrollActivityChange?: (active: boolean) => void;
 }
 
 interface PendingScroll {
@@ -87,6 +89,7 @@ export const ProfileTabList = forwardRef<
     keyExtractor,
     listHeader,
     emptyState,
+    onScrollActivityChange,
   },
   ref,
 ) {
@@ -121,6 +124,11 @@ export const ProfileTabList = forwardRef<
     pendingRef.current = null;
   }, []);
 
+  const reportScrollActivity = useCallback(
+    (active: boolean) => onScrollActivityChange?.(active),
+    [onScrollActivityChange],
+  );
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       const offset = Math.max(0, event.contentOffset.y);
@@ -136,6 +144,16 @@ export const ProfileTabList = forwardRef<
     onBeginDrag: () => {
       requestedScroll.value = null;
       runOnJS(cancelPendingScroll)();
+      runOnJS(reportScrollActivity)(true);
+    },
+    onEndDrag: () => {
+      runOnJS(reportScrollActivity)(false);
+    },
+    onMomentumBegin: () => {
+      runOnJS(reportScrollActivity)(true);
+    },
+    onMomentumEnd: () => {
+      runOnJS(reportScrollActivity)(false);
     },
   });
 
