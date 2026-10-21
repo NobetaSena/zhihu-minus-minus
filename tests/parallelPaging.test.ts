@@ -111,3 +111,30 @@ test('falls back to one page when the cursor no longer follows the pattern', asy
   expect(page.data).toHaveLength(6);
   expect(page.paging.next).toBe(recommendUrl(3, 15));
 });
+
+test('an empty predicted recommendation page cannot end the feed', async () => {
+  const source = recommendSource();
+  const fetchPage = jest.fn(async (url: string): Promise<Page> => {
+    const page = await source(url);
+    return url === recommendUrl(4, 17)
+      ? { data: [], paging: { ...page.paging, is_end: true } }
+      : page;
+  });
+  const page = await fetchRecommendPages(fetchPage, recommendUrl(2, 5));
+  expect(page.data).toHaveLength(12);
+  expect(page.paging).toEqual({ is_end: false, next: recommendUrl(4, 17) });
+});
+
+test('an empty extra offset page is requested again on its own', async () => {
+  const source = offsetSource(200);
+  const fetchPage = jest.fn(
+    async (offset: number): Promise<Page> =>
+      offset === 40
+        ? { data: [], paging: { is_end: true, next: '?offset=60' } }
+        : source(offset),
+  );
+  const page = await fetchOffsetPages(fetchPage, 0, 20);
+  expect(page.data).toHaveLength(40);
+  expect(page.paging.is_end).toBe(false);
+  expect(page.paging.next).toContain('offset=40');
+});

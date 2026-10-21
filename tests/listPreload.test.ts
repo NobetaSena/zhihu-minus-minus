@@ -1,5 +1,10 @@
-import { renderHook } from '@testing-library/react-native';
-import { PRELOAD_END_THRESHOLD, useListPreload } from '../hooks/useListPreload';
+import { act, renderHook } from '@testing-library/react-native';
+import {
+  MAX_RESTING_FOLLOW_UPS,
+  PRELOAD_END_THRESHOLD,
+  useListPreload,
+  useLoadMoreNearEnd,
+} from '../hooks/useListPreload';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 jest.mock('expo-secure-store', () => ({
@@ -19,5 +24,66 @@ test('requests pages screens ahead when preloading is on', async () => {
   const { result } = await renderHook(() => useListPreload(0.5));
   expect(result.current).toEqual({
     onEndReachedThreshold: PRELOAD_END_THRESHOLD,
+  });
+});
+
+function fakeList(geometry: { offset: number; content: number }) {
+  return {
+    getAbsoluteLastScrollOffset: () => geometry.offset,
+    getWindowSize: () => ({ width: 400, height: 1000 }),
+    getChildContainerDimensions: () => ({
+      width: 400,
+      height: geometry.content,
+    }),
+    getFirstItemOffset: () => 0,
+  };
+}
+
+describe('useLoadMoreNearEnd', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  async function settle(
+    geometry: { offset: number; content: number },
+    loadMore: jest.Mock,
+  ) {
+    const listRef = { current: fakeList(geometry) };
+    const hook = await renderHook(
+      ({ loading }: { loading: boolean }) =>
+        useLoadMoreNearEnd({ listRef, threshold: 2, loading, loadMore }),
+      { initialProps: { loading: true } },
+    );
+    const finishLoad = async () => {
+      await hook.rerender({ loading: true });
+      await hook.rerender({ loading: false });
+      await act(async () => jest.runOnlyPendingTimers());
+    };
+    return finishLoad;
+  }
+
+  test('asks again when a load settles inside the end zone', async () => {
+    const loadMore = jest.fn();
+    const finishLoad = await settle({ offset: 4000, content: 6000 }, loadMore);
+    await finishLoad();
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  test('stays quiet when a load leaves the list far from its end', async () => {
+    const loadMore = jest.fn();
+    const finishLoad = await settle({ offset: 0, content: 6000 }, loadMore);
+    await finishLoad();
+    expect(loadMore).not.toHaveBeenCalled();
+  });
+
+  test('stops after a few follow-ups while the list rests at one offset', async () => {
+    const loadMore = jest.fn();
+    const geometry = { offset: 5000, content: 6000 };
+    const finishLoad = await settle(geometry, loadMore);
+    for (let i = 0; i < MAX_RESTING_FOLLOW_UPS + 2; i += 1) await finishLoad();
+    expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS);
+
+    geometry.offset = 5100;
+    await finishLoad();
+    expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS + 1);
   });
 });

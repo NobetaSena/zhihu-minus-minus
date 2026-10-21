@@ -20,7 +20,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { Text, useThemeColor, View } from '@/components/Themed';
-import { useListPreload } from '@/hooks/useListPreload';
+import { useListPreload, useLoadMoreNearEnd } from '@/hooks/useListPreload';
 import { useRefreshAction } from '@/hooks/useRefreshAction';
 import {
   getProfileMinContentHeight,
@@ -291,6 +291,13 @@ export const ProfileTabList = forwardRef<
         paginationPending.current = false;
       });
   };
+
+  useLoadMoreNearEnd({
+    listRef,
+    threshold: listPreload.onEndReachedThreshold,
+    loading: query.isFetching,
+    loadMore: loadNextPage,
+  });
 
   const handleRefresh = () => {
     if (!active || refreshPending.current) return;

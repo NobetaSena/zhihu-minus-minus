@@ -39,9 +39,11 @@ export function joinPages<T, P extends Page<T>>(pages: P[]): P {
 
 /**
  * Offset-paged lists (`/members/{id}/answers` and the like) name every page by
- * its offset, so the next pages can be requested together. Pages after the end,
- * after an empty page or after a failed request are dropped; the first page's
- * failure is the request's failure.
+ * its offset, so the next pages can be requested together. Pages after the end
+ * or after a failed request are dropped, and so is an empty extra page: its
+ * `is_end` would otherwise end the list early, and the page after the last
+ * kept one is requested on its own next time. The first page's failure is the
+ * request's failure.
  */
 export async function fetchOffsetPages<T, P extends Page<T>>(
   fetchPage: (offset: number) => Promise<P>,
@@ -60,8 +62,8 @@ export async function fetchOffsetPages<T, P extends Page<T>>(
     const previous = pages[pages.length - 1];
     if (
       previous.paging?.is_end ||
-      previous.data.length === 0 ||
-      result.status !== 'fulfilled'
+      result.status !== 'fulfilled' ||
+      result.value.data.length === 0
     )
       break;
     pages.push(result.value);
@@ -130,8 +132,9 @@ function sameRecommendCursor(a: string | null | undefined, b: string) {
 /**
  * Request a recommendation page together with predicted following pages. A
  * predicted page is kept only while each kept page's own `next` names exactly
- * the page requested after it, so a changed cursor scheme degrades to one page
- * at a time instead of skipping or repeating content.
+ * the page requested after it and it has items, so a changed cursor scheme
+ * degrades to one page at a time instead of skipping or repeating content, and
+ * an empty predicted page cannot end the feed.
  */
 export async function fetchRecommendPages<P extends Page<unknown>>(
   fetchPage: (url: string) => Promise<P>,
@@ -149,8 +152,8 @@ export async function fetchRecommendPages<P extends Page<unknown>>(
     const previous = pages[pages.length - 1];
     if (
       previous.paging?.is_end ||
-      previous.data.length === 0 ||
       result.status !== 'fulfilled' ||
+      result.value.data.length === 0 ||
       !sameRecommendCursor(previous.paging?.next, predicted[index])
     )
       break;

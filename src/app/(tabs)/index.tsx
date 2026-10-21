@@ -72,7 +72,7 @@ import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
 import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
-import { useListPreload } from '@/hooks/useListPreload';
+import { useListPreload, useLoadMoreNearEnd } from '@/hooks/useListPreload';
 import { useScopedAsyncValue } from '@/hooks/useScopedAsyncValue';
 import {
   type FeedCacheContext,
@@ -1394,6 +1394,25 @@ const FeedList = React.forwardRef<
       return () => cancelAnimationFrame(frame);
     }, [isActive, localDedupEnabled, recentExposureKeys]);
 
+    const loadNextPage = () => {
+      if (
+        isActive &&
+        hasNextPage &&
+        !isFetching &&
+        !refreshInFlightRef.current &&
+        !isFetchNextPageError &&
+        (!(filterEnabled || localDedupEnabled) ||
+          flattenedData.length >= MIN_RENDERABLE_ITEMS)
+      )
+        void fetchNextPage();
+    };
+    useLoadMoreNearEnd({
+      listRef: flashListRef,
+      threshold: listPreload.onEndReachedThreshold,
+      loading: isFetching,
+      loadMore: loadNextPage,
+    });
+
     React.useImperativeHandle(ref, () => ({
       scrollToOffset: (args) => flashListRef.current?.scrollToOffset(args),
       refresh: handleRefresh,
@@ -1422,18 +1441,7 @@ const FeedList = React.forwardRef<
             const key = getInMemoryFeedKey(item);
             return `feed-${key || index}`;
           }}
-          onEndReached={() => {
-            if (
-              isActive &&
-              hasNextPage &&
-              !isFetching &&
-              !refreshInFlightRef.current &&
-              !isFetchNextPageError &&
-              (!(filterEnabled || localDedupEnabled) ||
-                flattenedData.length >= MIN_RENDERABLE_ITEMS)
-            )
-              void fetchNextPage();
-          }}
+          onEndReached={loadNextPage}
           {...listPreload}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
