@@ -363,6 +363,22 @@ test('feed previews use the shared action builder with the current content ident
   expect(mockCopy).toHaveBeenCalledTimes(1);
 });
 
+test.each([
+  'created_time',
+  'updated_time',
+] as const)('feed navigation seeds the refreshed %s when other card fields are unchanged', async (field) => {
+  const item = { ...baseItem, created_time: 100, updated_time: 200 };
+  const host = await render(<FeedCard item={item} />);
+  const refreshed = { ...item, [field]: 300 };
+  await host.rerender(<FeedCard item={refreshed} />);
+  await fireEvent.press(host.getByText('合成原卡片'));
+
+  expect(seedAnswerPreviewEntry).toHaveBeenLastCalledWith(
+    expect.any(Object),
+    refreshed,
+  );
+});
+
 test('recycled card navigation updates answer context with the same item reference and leaves article routes alone', async () => {
   const host = await render(<FeedCard item={baseItem} />);
   await fireEvent.press(host.getByText('合成原卡片'));

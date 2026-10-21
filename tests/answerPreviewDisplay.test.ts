@@ -1,3 +1,4 @@
+import type { FeedItem } from '../api/zhihu/feed';
 import type { ZhihuReadingPreviewItem } from '../api/zhihu/nextRender';
 import { normalizeZhihuAnswerPreviewPage } from '../api/zhihu/nextRender';
 import {
@@ -7,6 +8,7 @@ import {
   shouldShowPreviewQuestion,
 } from '../utils/answerPreviewDisplay';
 import { createAnswerPreviewEntry } from '../utils/answerPreviewEntry';
+import { parseRecommendData } from '../utils/recommendFeed';
 
 jest.mock('../api/client', () => ({
   __esModule: true,
@@ -142,6 +144,46 @@ test('preview entries from answer details carry publish info', () => {
   expect(
     createAnswerPreviewEntry({ id: 'a2', content: '<p>合成正文</p>' }),
   ).not.toHaveProperty('publishInfo');
+});
+
+test.each([
+  false,
+  true,
+])('recommendation and local feed entries retain answer dates (restored cache: %s)', (restoredCache) => {
+  const created = new Date(2026, 9, 18, 12).getTime() / 1000;
+  const updated = new Date(2026, 9, 19, 9).getTime() / 1000;
+  const item = parseRecommendData({
+    created_time: created - 86400,
+    updated_time: updated + 86400,
+    target: {
+      id: 'a1',
+      type: 'answer',
+      content: '<p>合成正文</p>',
+      created_time: created,
+      updated_time: updated,
+    },
+  });
+  if (!item) throw new Error('Expected an answer feed item');
+  const source: FeedItem = restoredCache
+    ? JSON.parse(JSON.stringify(item))
+    : item;
+
+  expect(createAnswerPreviewEntry(source)?.publishInfo).toEqual({
+    published: '发布于 2026-10-18',
+    edited: '编辑于 2026-10-19',
+  });
+});
+
+test('feed entries without answer dates remain usable without publish info', () => {
+  const item = parseRecommendData({
+    target: { id: 'a1', type: 'answer', content: '<p>合成正文</p>' },
+  });
+  if (!item) throw new Error('Expected an answer feed item');
+  const restored: FeedItem = JSON.parse(JSON.stringify(item));
+  const entry = createAnswerPreviewEntry(restored);
+
+  expect(entry).toMatchObject({ id: 'a1', content: '<p>合成正文</p>' });
+  expect(entry).not.toHaveProperty('publishInfo');
 });
 
 test('next-render answers read publish info from content_end_info', () => {

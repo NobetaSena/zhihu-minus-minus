@@ -312,6 +312,9 @@ export interface FeedItem {
   author: FeedAuthor;
   excerpt: ReactNode;
   content?: string | FeedContentSegment[];
+  /** Answer dates retained for preview entries, including persisted feed cards. */
+  created_time?: number;
+  updated_time?: number;
   /** Answer labels received with the card, independent of inline body availability. */
   endorsements?: readonly unknown[];
   image: string | null;
