@@ -5,7 +5,13 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -38,6 +44,8 @@ import {
   getMemberRelations,
   getMemberWithFallback,
   MEMBER_ANSWERS_INCLUDE,
+  MEMBER_ARTICLES_INCLUDE,
+  MEMBER_PINS_INCLUDE,
   unfollowMember,
   type ZhihuMember,
 } from '@/api/zhihu';
@@ -63,13 +71,14 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { useMergedUserCreations } from '@/hooks/useMergedUserCreations';
 import { useUserAnswersVotedByMe } from '@/hooks/useUserAnswersVotedByMe';
 import { useUserColumns } from '@/hooks/useUserColumns';
-import { useUserCreations } from '@/hooks/useUserCreations';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import type { ZhihuAuthor, ZhihuColumnSummary } from '@/types/zhihu';
 import { getProfileAnswerReadingContext } from '@/utils/answerReadingContext';
+import type { MergedCreation } from '@/utils/mergedCreations';
 import {
   getProfileCoverState,
   getProfileHeaderOffset,
@@ -79,7 +88,6 @@ import { refreshInfiniteQuery } from '@/utils/query';
 import { parseZhihuUrl } from '@/utils/url';
 import {
   getNextPageOffset,
-  getRecentActivityTargetId,
   isOwnMemberProfile,
   normalizeUserFeedType,
   type UserFeedType,
@@ -429,23 +437,9 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     enabled: !!user && (visitedTabs.activities || activeTab === 'activities'),
   });
 
-  const creationsQuery = useUserCreations(
+  const creationsQuery = useMergedUserCreations(
     user,
     Boolean(visitedTabs.creations || activeTab === 'creations'),
-  );
-  const creationTargets = useMemo(
-    () =>
-      new Map(
-        creationsQuery.activities.flatMap((activity) => {
-          const target = activity.target;
-          const targetId = target && getRecentActivityTargetId(target);
-          const type = normalizeUserFeedType(target?.type);
-          return target && targetId !== undefined && type
-            ? [[`${type}:${targetId}`, target] as const]
-            : [];
-        }),
-      ),
-    [creationsQuery.activities],
   );
 
   const answersVotedByMeQuery = useUserAnswersVotedByMe(
@@ -500,12 +494,10 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     queryKey: ['user-articles', id],
     queryFn: ({ pageParam = 0 }) => {
       const targetId = (user?.url_token || id) as string;
-      const include =
-        'data[*].comment_count,content,voteup_count,favlists_count,created,updated,title,excerpt,reaction,relationship.voting,is_favorited;data[*].author';
       return getMemberRelations(targetId, 'articles', {
         limit: 20,
         offset: pageParam,
-        include,
+        include: MEMBER_ARTICLES_INCLUDE,
       });
     },
     initialPageParam: 0,
@@ -526,12 +518,10 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     queryKey: ['user-pins', id],
     queryFn: ({ pageParam = 0 }) => {
       const targetId = (user?.url_token || id) as string;
-      const include =
-        'data[*].content,reaction_count,comment_count,created,reaction,relationship.voting;data[*].author';
       return getMemberRelations(targetId, 'pins', {
         limit: 20,
         offset: pageParam,
-        include,
+        include: MEMBER_PINS_INCLUDE,
       });
     },
     initialPageParam: 0,
@@ -562,7 +552,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
       case 'creations':
         return {
           queryKey: creationsQuery.queryKey,
-          data: creationsQuery.feedItems,
+          data: creationsQuery.items,
           isLoading: creationsQuery.isLoading,
           isError: creationsQuery.isError,
           isFetchingNextPage: creationsQuery.isFetchingNextPage,
@@ -878,22 +868,17 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     );
   };
 
-  const renderItemContent = (item: unknown, tabKey: ProfileTabKey) => {
+  const renderItemContent = (
+    item: unknown,
+    tabKey: ProfileTabKey,
+    // 创作 merges answers by publish time, whatever the 回答 tab's sort.
+    answerSort: 'created' | 'voteups' = sortBy,
+  ): ReactNode => {
     if (tabKey === 'columns')
       return <ProfileColumnCard column={item as ZhihuColumnSummary} />;
     if (tabKey === 'creations') {
-      const feedItem = item as FeedItem;
-      const target = creationTargets.get(`${feedItem.type}:${feedItem.id}`);
-      return (
-        <FeedCard
-          item={{ ...feedItem, ...getProfileFeedBody(target) }}
-          answerContext={getProfileAnswerReadingContext(
-            target?.author ?? {},
-            user ?? {},
-            id,
-          )}
-        />
-      );
+      const creation = item as MergedCreation;
+      return renderItemContent(creation.item, creation.kind, 'created');
     }
     const displayItem = getProfileContentItem(item, tabKey);
     if (!displayItem) return null;
@@ -985,6 +970,11 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
           : (getContentVoteState(mappedType, displayItem) ?? 0),
       type: mappedType,
       videoSource: getZhihuVideoSource(rawType),
+      // Every card on a member's page is theirs unless it names someone else.
+      hideAuthor:
+        tabKey !== 'votes' &&
+        tabKey !== 'activities' &&
+        (!displayItem.author?.id || displayItem.author.id === user?.id),
     };
 
     return (
@@ -996,12 +986,12 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
           tabKey === 'answers' &&
           !displayItem.author?.id &&
           !displayItem.author?.url_token
-            ? { scene: 'profile_answer', memberId: id, memberSort: sortBy }
+            ? { scene: 'profile_answer', memberId: id, memberSort: answerSort }
             : getProfileAnswerReadingContext(
                 displayItem.author ?? {},
                 user ?? {},
                 id,
-                tabKey === 'answers' ? sortBy : 'created',
+                tabKey === 'answers' ? answerSort : 'created',
               )
         }
       />
@@ -1101,8 +1091,8 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
                       onScrollActivityChange={handleListScrollActivity}
                       keyExtractor={(item) => {
                         if (tab.key === 'creations') {
-                          const content = item as FeedItem;
-                          return `user-creation-${content.type}-${content.id}`;
+                          const creation = item as MergedCreation;
+                          return `user-creation-${creation.kind}-${getProfileListItemKey(creation.item)}`;
                         }
                         return `user-item-${tab.key}-${getProfileListItemKey(item)}`;
                       }}
