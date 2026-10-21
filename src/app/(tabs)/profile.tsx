@@ -432,6 +432,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           icon="notifications-outline"
           title="消息通知"
           subtitle="查看赞同、关注与系统消息"
+          color={accentColor}
           onPress={() => router.push('/notifications')}
           right={
             unreadCount > 0 ? (
@@ -459,6 +460,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           icon="people-outline"
           title="切换账号"
           subtitle="管理登录账号与游客模式"
+          color={accentColor}
           onPress={() => setAccountModalVisible(true)}
           right={
             <View className="flex-row items-center bg-transparent">
@@ -495,15 +497,20 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
 
       {/* 退出登录按钮 */}
       {me && (
-        <BouncyButton
-          className="mt-[30px] py-[15px] items-center"
-          onPress={handleLogout}
-          disabled={sessionChanging}
-        >
-          <Text className="text-[#ff4d4f] text-base font-semibold">
-            退出账号
-          </Text>
-        </BouncyButton>
+        <View type="surface" className="mt-5 mx-3 rounded-2xl overflow-hidden">
+          <BouncyButton
+            className="py-3.5 items-center"
+            onPress={handleLogout}
+            disabled={sessionChanging}
+          >
+            <Text
+              className="text-base font-medium"
+              style={{ color: Colors[colorScheme].danger }}
+            >
+              退出账号
+            </Text>
+          </BouncyButton>
+        </View>
       )}
 
       <View className="h-[100px] bg-transparent" />

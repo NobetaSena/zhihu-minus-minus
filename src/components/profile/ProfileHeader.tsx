@@ -8,6 +8,7 @@ import { ProfileCover } from '@/components/profile/ProfileCover';
 import { StableAvatar } from '@/components/StableAvatar';
 import { useRuntimeThemeColors } from '@/components/Themed';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { formatCount } from '@/utils/formatCount';
 import { PROFILE_COVER_SCROLL_DISTANCE } from '@/utils/profileScroll';
 
 interface ProfileHeaderProps {
@@ -20,17 +21,6 @@ interface ProfileHeaderProps {
   onFollowers: () => void;
   onFollowing: () => void;
   onMutual: () => void;
-}
-
-function formatCount(value: number | undefined): string {
-  const count = Number.isFinite(value) ? Math.max(0, value ?? 0) : 0;
-  if (count >= 100_000_000) {
-    return `${(count / 100_000_000).toFixed(1).replace(/\.0$/, '')}亿`;
-  }
-  if (count >= 10_000) {
-    return `${(count / 10_000).toFixed(1).replace(/\.0$/, '')}万`;
-  }
-  return String(Math.floor(count));
 }
 
 /** The caller measures this whole header, including any expanded biography. */

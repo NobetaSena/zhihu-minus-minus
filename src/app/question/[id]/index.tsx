@@ -62,6 +62,7 @@ import { useCollectionStore } from '@/store/useCollectionStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { seedAnswerPreviewEntry } from '@/utils/answerPreviewEntry';
 import { seedAnswerDetailFromList } from '@/utils/contentCache';
+import { formatCount } from '@/utils/formatCount';
 import { seedGuestAnswerFromList } from '@/utils/guestAnswer';
 import { refreshInfiniteQuery } from '@/utils/query';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -600,8 +601,8 @@ export default function QuestionDetail() {
                 className="mt-4"
                 style={{ fontSize: 12, lineHeight: 18 }}
               >
-                {question?.follower_count || 0} 关注 ·{' '}
-                {question?.visit_count || 0} 浏览
+                {formatCount(question?.follower_count)} 关注 ·{' '}
+                {formatCount(question?.visit_count)} 浏览
               </Text>
               <View className="flex-row flex-wrap items-center mt-3.5 gap-2">
                 <FollowButton

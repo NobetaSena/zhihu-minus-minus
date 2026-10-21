@@ -101,6 +101,7 @@ function areFeedCardPropsEqual(
     previousItem.titleString === nextItem.titleString &&
     previousItem.questionId === nextItem.questionId &&
     previousItem.actionText === nextItem.actionText &&
+    previousItem.hideAuthor === nextItem.hideAuthor &&
     previousItem.excerpt === nextItem.excerpt &&
     areFeedContentEqual(previousItem.content, nextItem.content) &&
     previousItem.created_time === nextItem.created_time &&
@@ -420,28 +421,30 @@ const FeedCardComponent = ({
         )}
 
         {/* 热区1：点击作者头像/姓名 -> 用户页 */}
-        <BouncyButton
-          disabled={!authorId}
-          onPress={() =>
-            router.push({
-              pathname: '/user/[id]',
-              params: {
-                id: authorId,
-                avatar: item.author.avatar,
-              },
-            })
-          }
-          className="flex-row items-center mb-2"
-        >
-          <Animated.Image
-            source={authorAvatarSource}
-            className="w-[22px] h-[22px] rounded-full"
-            sharedTransitionTag={`avatar-${item.author.url_token || item.author.id}`}
-          />
-          <Text type="secondary" className="ml-2 text-[13px]">
-            {item.author.name}
-          </Text>
-        </BouncyButton>
+        {item.hideAuthor ? null : (
+          <BouncyButton
+            disabled={!authorId}
+            onPress={() =>
+              router.push({
+                pathname: '/user/[id]',
+                params: {
+                  id: authorId,
+                  avatar: item.author.avatar,
+                },
+              })
+            }
+            className="flex-row items-center mb-2"
+          >
+            <Animated.Image
+              source={authorAvatarSource}
+              className="w-[22px] h-[22px] rounded-full"
+              sharedTransitionTag={`avatar-${item.author.url_token || item.author.id}`}
+            />
+            <Text type="secondary" className="ml-2 text-[13px]">
+              {item.author.name}
+            </Text>
+          </BouncyButton>
+        )}
 
         {/* 话题标签 */}
         {item.topics && item.topics.length > 0 && (

@@ -79,7 +79,7 @@ import {
 } from '@/storage/feedExposureRepository';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { formatRelativeTime } from '@/utils/date';
+import { formatFeedActionText } from '@/utils/feedActionText';
 import { supportsLocalFeedDedup } from '@/utils/feedDedup';
 import {
   applyFeedFilter,
@@ -1548,11 +1548,16 @@ function parseFollowingData(item: RawFeedItem): FeedItem | null {
       target.question?.id?.toString() ||
       (type === 'question' ? target.id?.toString() : ''),
     // 时间戳
-    actionText: item.action_text
-      ? `${item.action_text}${
-          item.updated_time ? `·${formatRelativeTime(item.updated_time)}` : ''
-        }`
-      : undefined,
+    actionText: formatFeedActionText(
+      item.action_text,
+      item.actors?.[0]?.name,
+      item.updated_time,
+    ),
+    // The action line already names the author of their own activity.
+    hideAuthor:
+      !!item.action_text &&
+      !!target.author?.id &&
+      item.actors?.[0]?.id === target.author.id,
     author: {
       id: target.author?.id || '',
       url_token: target.author?.url_token || '',

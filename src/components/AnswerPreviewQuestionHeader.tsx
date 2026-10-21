@@ -14,6 +14,7 @@ import {
 import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
+import { formatCount } from '@/utils/formatCount';
 import { BouncyButton } from './BouncyButton';
 import { ContentActionButton } from './ContentActionButton';
 import { FollowButton } from './FollowButton';
@@ -159,8 +160,8 @@ export function AnswerPreviewQuestionHeader({
           ) : null}
           <Text type="secondary" className="mt-3" style={{ fontSize: 12 }}>
             {question?.answer_count ?? 0} 个回答 ·{' '}
-            {question?.follower_count ?? 0} 关注 · {question?.visit_count ?? 0}{' '}
-            浏览
+            {formatCount(question?.follower_count)} 关注 ·{' '}
+            {formatCount(question?.visit_count)} 浏览
           </Text>
           <View className="flex-row flex-wrap items-center gap-2 mt-3 bg-transparent">
             <FollowButton
