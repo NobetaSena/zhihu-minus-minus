@@ -4,13 +4,13 @@
 
 原实现对每对相邻 span 端点扫描全部度量 span。内部 `flowLayout.ts` 改为端点事件扫描和活跃索引树，按原输入顺序枚举活跃样式，保留重叠、重复样式和相邻等价区间合并；paint、action 与 sourceMap 不进入几何身份。
 
-`dense-metric-spans-001` 是合成的 16 段正文，编译成一个 flow、8,224 个度量 span。运行 `node features/rich-content/tools/benchmark-flow-layout.mjs`，先逐段断言输出一致，再各测七轮中位数。2026-10-01 本地 Node 25.8.0 结果：旧算法 88.66 ms，新算法 6.40 ms，约 13.85 倍。回归另以固定随机种子覆盖 200 组交叠、重复、空区间和相邻样式。该数值仅衡量桌面 JS 身份计算，不代表原生布局或 Release 首载性能；大量深度交叠本身仍需要枚举活跃样式。
+`dense-metric-spans-001` 是合成的 16 段正文，编译成一个 flow、8,224 个度量 span。运行 `node src/features/rich-content/tools/benchmark-flow-layout.mjs`，先逐段断言输出一致，再各测七轮中位数。2026-10-01 本地 Node 25.8.0 结果：旧算法 88.66 ms，新算法 6.40 ms，约 13.85 倍。回归另以固定随机种子覆盖 200 组交叠、重复、空区间和相邻样式。该数值仅衡量桌面 JS 身份计算，不代表原生布局或 Release 首载性能；大量深度交叠本身仍需要枚举活跃样式。
 
 ## KaTeX 离线资源
 
 WebView 原先从 CDN 读取 KaTeX 0.16.9，而应用依赖已锁定 0.16.47。现在从已安装依赖生成同版脚本、auto-render、CSS 和 20 份 WOFF2 字体，字体全部使用 data URL，公式无需请求 CDN。旧 DOM 公式组件继续使用该依赖的 renderToString，共用离线 CSS，不引入新的业务公共入口。
 
-生成 JSON 总大小为 664,889 字节（约 649 KiB，含 MIT license），CSS/runtime 拆分避免旧 DOM bundle 携带不使用的浏览器 runtime。此数值是生成文件原始大小，最终平台 bundle/IPA 压缩增量须从构建产物测量。`postinstall` 自动生成；`npm run generate:rich-content:katex` 显式更新；`node features/rich-content/tools/bundle-katex.mjs --check` 校验可重现性。离线回归直接在无网络 VM 执行本地 runtime 排版分式和根式，并检查所有 font face 的 data URL、安装版本一致性及 WebView 无外链脚本。
+生成 JSON 总大小为 664,889 字节（约 649 KiB，含 MIT license），CSS/runtime 拆分避免旧 DOM bundle 携带不使用的浏览器 runtime。此数值是生成文件原始大小，最终平台 bundle/IPA 压缩增量须从构建产物测量。`postinstall` 自动生成；`npm run generate:rich-content:katex` 显式更新；`node src/features/rich-content/tools/bundle-katex.mjs --check` 校验可重现性。离线回归直接在无网络 VM 执行本地 runtime 排版分式和根式，并检查所有 font face 的 data URL、安装版本一致性及 WebView 无外链脚本。
 
 `offline-formula-001` 可从开发案例页切换 WebView 查看行内/块级公式。正文 HTML 仍经清洗，KaTeX trust 保持默认 false；不承诺任意 TeX 命令或外部图片离线可用。
 
@@ -30,7 +30,7 @@ Android JSON range 从 optInt 改为严格数值整数，拒绝字符串、boole
 - JS 在原生正文宽度未知时先保留外壳及占位，同时准备 document/IR；实际宽度到达后再挂载正文。固定宽度预览传入准确的 `initialContentWidth`，其他宿主使用实际布局；后续候选复用外壳宽度，窗口宽度改变后失效。纯 block 和空文档在内容层挂载、实际宽度匹配后才能就绪，避免将空壳测量误认成正文完成。
 - 知识点规范化对每段一次建立节点长度和偏移索引，再用递增游标切片。完整节点复用、局部切片 ID、嵌套格式及零长度附件/换行边界与旧算法一致；全文一致性、重叠和 UTF-16 范围校验保留。`segment-slicing-boundaries-001` 由合成 inbox 样本登记，差分覆盖 200 组嵌套分区，并以文本读取次数验证不再逐 mark 扫描全文。
 
-运行 `node features/rich-content/tools/benchmark-normalization.mjs` 可复现：单段重复 `<b>甲乙</b>`，每两个字符的首字各有一个非重叠知识点；同一完整规范化流程仅切换新旧切片函数，先断言 document 与 diagnostics 完全一致，再取七轮中位数。2026-10-08 本地 Node 22 结果如下：
+运行 `node src/features/rich-content/tools/benchmark-normalization.mjs` 可复现：单段重复 `<b>甲乙</b>`，每两个字符的首字各有一个非重叠知识点；同一完整规范化流程仅切换新旧切片函数，先断言 document 与 diagnostics 完全一致，再取七轮中位数。2026-10-08 本地 Node 22 结果如下：
 
 | 格式节点 / marks | 旧算法 | 游标算法 |
 | ---: | ---: | ---: |

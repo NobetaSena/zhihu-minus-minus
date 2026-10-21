@@ -3,16 +3,16 @@ import * as Clipboard from 'expo-clipboard';
 import { Try } from 'expo-router/build/views/Try';
 import { StrictMode } from 'react';
 import { Text } from 'react-native';
-import { AppErrorBoundary } from '../components/AppErrorBoundary';
-import { formatDiagnosticLogsForExport } from '../utils/diagnosticLogs';
-import { captureTelemetryException } from '../utils/telemetry';
+import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
+import { formatDiagnosticLogsForExport } from '../src/utils/diagnosticLogs';
+import { captureTelemetryException } from '../src/utils/telemetry';
 
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 jest.mock('expo-router/build/views/Splash', () => ({ hideAsync: jest.fn() }));
-jest.mock('../utils/telemetry', () => ({
+jest.mock('../src/utils/telemetry', () => ({
   captureTelemetryException: jest.fn(),
 }));
-jest.mock('../utils/diagnosticLogs', () => ({
+jest.mock('../src/utils/diagnosticLogs', () => ({
   formatDiagnosticLogsForExport: jest.fn(),
 }));
 

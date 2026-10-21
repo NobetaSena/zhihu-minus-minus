@@ -15,12 +15,12 @@ import {
 import {
   GUEST_BOOTSTRAP_READY_MESSAGE,
   GuestBootstrap,
-} from '../components/GuestBootstrap';
+} from '../src/components/GuestBootstrap';
 import {
   GUEST_BOOTSTRAP_TIMEOUT_MS,
   useGuestBootstrap,
-} from '../hooks/useGuestBootstrap';
-import { resolveLocalAccountKey } from '../utils/localAccount';
+} from '../src/hooks/useGuestBootstrap';
+import { resolveLocalAccountKey } from '../src/utils/localAccount';
 
 let mockQueryClient: QueryClient;
 let mockSessionVersion = 1;
@@ -36,11 +36,11 @@ jest.mock('@preeternal/react-native-cookie-manager', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: { getState: () => ({ cookies: mockAuthCookie }) },
 }));
-jest.mock('../components/Themed', () => ({
+jest.mock('../src/components/Themed', () => ({
   View: jest.requireActual<typeof import('react-native')>('react-native').View,
 }));
 jest.mock('react-native-webview', () => ({

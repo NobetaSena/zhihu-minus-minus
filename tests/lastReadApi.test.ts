@@ -1,12 +1,12 @@
 import axios, { CanceledError } from 'axios';
-import apiClient from '../api/client';
+import apiClient from '../src/api/client';
 import {
   readContents,
   touchAnswerRead,
   touchAnswersRead,
-} from '../api/zhihu/lastRead';
+} from '../src/api/zhihu/lastRead';
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { post: jest.fn() },
   hasAuthenticationCookie: (cookie: string | null | undefined) =>
@@ -15,7 +15,7 @@ jest.mock('../api/client', () => ({
 
 let mockSessionVersion = 3;
 let mockCookies = 'z_c0=synthetic-session';
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: { getState: () => ({ cookies: mockCookies }) },
 }));

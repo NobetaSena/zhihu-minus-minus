@@ -1,10 +1,13 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import AppearanceSettings from '../app/settings/appearance';
-import { colors } from '../constants/designTokens';
-import { READING_BACKGROUND_OPTIONS } from '../constants/theme';
-import { type AppSettings, useSettingsStore } from '../store/useSettingsStore';
-import { useThemeStore } from '../store/useThemeStore';
+import AppearanceSettings from '../src/app/settings/appearance';
+import { colors } from '../src/constants/designTokens';
+import { READING_BACKGROUND_OPTIONS } from '../src/constants/theme';
+import {
+  type AppSettings,
+  useSettingsStore,
+} from '../src/store/useSettingsStore';
+import { useThemeStore } from '../src/store/useThemeStore';
 
 let mockColorScheme: 'light' | 'dark' = 'light';
 type GestureEvent = { x: number; y?: number };
@@ -103,23 +106,23 @@ jest.mock('react-native-reanimated', () => ({
   useAnimatedStyle: (factory: () => unknown) => factory(),
   withTiming: (value: unknown) => value,
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/settings/NavigationInteractionSettings', () => ({
+jest.mock('../src/components/settings/NavigationInteractionSettings', () => ({
   NavigationInteractionSettings: () => null,
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => mockColorScheme,
 }));
-jest.mock('../utils/haptics', () => ({ selectionAsync: jest.fn() }));
-jest.mock('../store/useThemeStore', () => ({
+jest.mock('../src/utils/haptics', () => ({ selectionAsync: jest.fn() }));
+jest.mock('../src/store/useThemeStore', () => ({
   useThemeStore: jest.requireActual('zustand').create(() => ({
     themeMode: 'system',
     setThemeMode: jest.fn(),
   })),
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest
     .requireActual('zustand')
     .create((set: (settings: Partial<AppSettings>) => void) => ({

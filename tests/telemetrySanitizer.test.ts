@@ -2,7 +2,7 @@ import type { Event } from '@sentry/react-native';
 import {
   sanitizeSentryEvent,
   type TelemetryBuildContext,
-} from '../utils/telemetrySanitizer';
+} from '../src/utils/telemetrySanitizer';
 
 const build: TelemetryBuildContext = {
   appVersion: '0.9.2',

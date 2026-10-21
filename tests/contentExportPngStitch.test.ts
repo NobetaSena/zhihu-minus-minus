@@ -3,8 +3,8 @@ import {
   PngStitchError,
   type StitchedPngImage,
   stitchPngImages,
-} from '../features/content-export/pngStitch';
-import type { ExportTaskContext } from '../features/content-export/types';
+} from '../src/features/content-export/pngStitch';
+import type { ExportTaskContext } from '../src/features/content-export/types';
 
 const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 function u32(value: number): Uint8Array {

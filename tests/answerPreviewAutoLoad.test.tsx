@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native';
 import type { View } from 'react-native';
-import { useAnswerPreviewAutoLoad } from '../hooks/useAnswerPreviewAutoLoad';
+import { useAnswerPreviewAutoLoad } from '../src/hooks/useAnswerPreviewAutoLoad';
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   __esModule: true,

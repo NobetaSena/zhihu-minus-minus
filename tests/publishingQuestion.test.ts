@@ -1,4 +1,4 @@
-import { getPublishingQuestionId } from '../utils/publishingQuestion';
+import { getPublishingQuestionId } from '../src/utils/publishingQuestion';
 
 test.each([
   'https://www.zhihu.com/question/123?source=invite#answer',

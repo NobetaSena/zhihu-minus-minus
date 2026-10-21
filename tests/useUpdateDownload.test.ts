@@ -1,15 +1,15 @@
 import { act, renderHook } from '@testing-library/react-native';
-import { useUpdateDownload } from '../hooks/useUpdateDownload';
+import { useUpdateDownload } from '../src/hooks/useUpdateDownload';
 import {
   type ApkUpdate,
   cleanupUpdatePartials,
   discardVerifiedApk,
   downloadVerifiedApk,
   installVerifiedApk,
-} from '../utils/updateDownload';
-import { UpdateFailure } from '../utils/updateSecurity';
+} from '../src/utils/updateDownload';
+import { UpdateFailure } from '../src/utils/updateSecurity';
 
-jest.mock('../utils/updateDownload', () => ({
+jest.mock('../src/utils/updateDownload', () => ({
   cleanupUpdatePartials: jest.fn(),
   discardVerifiedApk: jest.fn(),
   downloadVerifiedApk: jest.fn(),

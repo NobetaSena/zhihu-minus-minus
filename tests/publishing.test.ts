@@ -3,7 +3,7 @@ import {
   deserializePublishingHtml,
   serializePinText,
   serializePublishingMarkdown,
-} from '../features/publishing/serializer';
+} from '../src/features/publishing/serializer';
 
 test('serializes the supported publishing Markdown blocks', () => {
   assert.equal(

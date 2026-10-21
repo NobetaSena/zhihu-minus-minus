@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { getTelemetryBuildContext } from '../utils/telemetryBuildContext';
+import { getTelemetryBuildContext } from '../src/utils/telemetryBuildContext';
 
 jest.mock('expo-constants', () => ({
   __esModule: true,
@@ -22,7 +22,10 @@ test('returns shared version, build, system and source identifiers', () => {
     diagnostics: {
       commit: 'A'.repeat(40),
       sourceFingerprint: 'B'.repeat(24),
-      sourceFiles: ['components/RecentMoments.tsx', 'app/(tabs)/index.tsx'],
+      sourceFiles: [
+        'src/components/RecentMoments.tsx',
+        'src/app/(tabs)/index.tsx',
+      ],
     },
   };
   expect(getTelemetryBuildContext()).toEqual({
@@ -33,7 +36,10 @@ test('returns shared version, build, system and source identifiers', () => {
     environment: 'development',
     commit: 'a'.repeat(40),
     sourceFingerprint: 'b'.repeat(24),
-    sourceFiles: ['components/RecentMoments.tsx', 'app/(tabs)/index.tsx'],
+    sourceFiles: [
+      'src/components/RecentMoments.tsx',
+      'src/app/(tabs)/index.tsx',
+    ],
   });
 });
 
@@ -58,6 +64,27 @@ test('uses the native iOS build number exposed by Expo Constants in a dev client
   }
 });
 
+test('accepts native modules and source paths from older build manifests', () => {
+  if (!Constants.expoConfig) throw new Error('Missing test config');
+  Constants.expoConfig.extra = {
+    diagnostics: {
+      sourceFiles: [
+        'modules/native/Example.swift',
+        'components/RecentMoments.tsx',
+        'app/(tabs)/index.tsx',
+        'components/../private.ts',
+        'utils/secrets.ts',
+        'features/rich-content/fixtures/private.ts',
+      ],
+    },
+  };
+  expect(getTelemetryBuildContext().sourceFiles).toEqual([
+    'modules/native/Example.swift',
+    'components/RecentMoments.tsx',
+    'app/(tabs)/index.tsx',
+  ]);
+});
+
 test('rejects unsafe manifest values and limits filenames to relative source paths', () => {
   if (!Constants.expoConfig) throw new Error('Missing test config');
   Constants.expoConfig.extra = {
@@ -65,18 +92,22 @@ test('rejects unsafe manifest values and limits filenames to relative source pat
       commit: 'synthetic-private-data',
       sourceFingerprint: 'https://example.invalid/private',
       sourceFiles: [
-        'components/RecentMoments.tsx',
-        'components/RecentMoments.tsx',
+        'src/components/RecentMoments.tsx',
+        'src/components/RecentMoments.tsx',
         '/private/user/app.tsx',
-        'components/../private.ts',
-        'components/RecentMoments.tsx?cookie=private',
+        'src/private.ts',
+        'src/unknown/private.ts',
+        'src/modules/private.ts',
+        'src/components/../../private.ts',
+        'src/components/../private.ts',
+        'src/components/RecentMoments.tsx?cookie=private',
         'app\\private.ts',
-        'features/rich-content/fixtures/private.ts',
-        'utils/env.ts',
-        'utils/secrets.ts',
-        'utils/config/private.ts',
-        'components/__tests__/private.tsx',
-        'components/RecentMoments.test.tsx',
+        'src/features/rich-content/fixtures/private.ts',
+        'src/utils/env.ts',
+        'src/utils/secrets.ts',
+        'src/utils/config/private.ts',
+        'src/components/__tests__/private.tsx',
+        'src/components/RecentMoments.test.tsx',
         42,
         null,
       ],
@@ -85,7 +116,7 @@ test('rejects unsafe manifest values and limits filenames to relative source pat
   expect(getTelemetryBuildContext()).toMatchObject({
     commit: undefined,
     sourceFingerprint: undefined,
-    sourceFiles: ['components/RecentMoments.tsx'],
+    sourceFiles: ['src/components/RecentMoments.tsx'],
   });
 });
 

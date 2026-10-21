@@ -30,7 +30,7 @@
 - `components/ZhihuStructuredContent.tsx`：结构化正文渲染器，生产预览按实测高度展开收起，开发对照保留分段裁切。
 - `index.ts`：供应用层使用的稳定公共入口。
 
-仓库根目录的 `components/ZhihuContent.tsx` 和 `components/ZhihuDOMContent.tsx` 仅保留兼容转发，不再包含实现。新代码统一使用：
+共享组件目录中的 `src/components/ZhihuContent.tsx` 和 `src/components/ZhihuDOMContent.tsx` 仅保留兼容转发，不再包含实现。新代码统一使用：
 
 ```ts
 import { ZhihuContent } from '@/features/rich-content';
@@ -38,9 +38,9 @@ import { ZhihuContent } from '@/features/rich-content';
 
 ## 类型与数据边界
 
-`ZhihuContent` 接收 HTML 字符串、想法分段数组或已规范化的 `document`，共用正文后端、排版和互动。`ZhihuContentProps`、`LinkCardProps`、`RichContentObjectType` 从公共入口导出；`contentArray` 复用 `types/zhihu.ts` 的 `ZhihuContentSegment`，知识点元数据复用 `ZhihuSegmentInfo`、`ZhihuSegmentMark` 和 `ZhihuSegmentReaction`。单数 `RichContentObjectType` 表示正文对象，复数 `RichContentEntityType` 表示查询接口类型。
+`ZhihuContent` 接收 HTML 字符串、想法分段数组或已规范化的 `document`，共用正文后端、排版和互动。`ZhihuContentProps`、`LinkCardProps`、`RichContentObjectType` 从公共入口导出；`contentArray` 复用 `src/types/zhihu.ts` 的 `ZhihuContentSegment`，知识点元数据复用 `ZhihuSegmentInfo`、`ZhihuSegmentMark` 和 `ZhihuSegmentReaction`。单数 `RichContentObjectType` 表示正文对象，复数 `RichContentEntityType` 表示查询接口类型。
 
-`structured_content` 使用 `types/zhihu.ts` 中的 `ZhihuStructuredContent` 类型，组件 `ZhihuStructuredContent` 直接消费 JSON 分段，覆盖 paragraph、heading、无序/有序 list_node、image、hr、card，以及 bold、link、entity_word、formula、seg_like。生产预览通过 `renderer="shared"` 把 `ZhihuDocument` 交给统一 `ZhihuContent`；开发对照保留 blocks/native-v2 两种研究模式。格式按范围端点拆分，互动标记保留完整范围；非 BMP 实样已验证 UTF-16 偏移，切开代理对的标记不启用。只有唯一真实 paragraph.pid 与准确 seg_like 范围可生成段落业务信息，不补造标题或列表段落 ID。
+`structured_content` 使用 `src/types/zhihu.ts` 中的 `ZhihuStructuredContent` 类型，组件 `ZhihuStructuredContent` 直接消费 JSON 分段，覆盖 paragraph、heading、无序/有序 list_node、image、hr、card，以及 bold、link、entity_word、formula、seg_like。生产预览通过 `renderer="shared"` 把 `ZhihuDocument` 交给统一 `ZhihuContent`；开发对照保留 blocks/native-v2 两种研究模式。格式按范围端点拆分，互动标记保留完整范围；非 BMP 实样已验证 UTF-16 偏移，切开代理对的标记不启用。只有唯一真实 paragraph.pid 与准确 seg_like 范围可生成段落业务信息，不补造标题或列表段落 ID。
 
 开发构建从“我的 → 富文本测试案例 → structured_content 渲染对照”进入独立测试页。五个主要案例来自用户附件的真实回答，保留全部 48 个分段、99 个 marks 和分页标志，覆盖列表公式、标题与重叠词条、密集公式与分隔、图片布局、段落与链接。身份文字按原长度替换，ID、业务链接和不透明上下文脱敏；正文图和公式图保留原公开 HTTPS 地址，运行时加载，仓库不新增下载图片。可以切换渲染器、展开收起分段、查看脱敏 JSON；额外合成案例演示本地续页追加。样本放在 `fixtures/inbox/structured-content/`，由 `dev/structuredCases.ts` 显式登记，案例切换不写持久设置、不调用正文或互动接口。
 
@@ -107,7 +107,7 @@ Enriched组件、专属dialect normalizer、相关测试、依赖和native patch
 
 HTML `video` / `source`、`video-box` 和想法 `video` 分段保留安全封面，中央显示“播放视频”，点击进入应用内原生播放器。封面优先读取 `poster`、视频卡片子图的懒加载地址或想法 `thumbnail`；没有封面时保留文字播放入口。`data-lens-id` 与想法 `video_id` / `video_bo_id` 保存为 `lensId`，优先于可能不同的 `zvideo` 页面 ID；知乎 `/video/<id>` 同样是 Lens ID，`/zvideo/<id>` 则先读取视频详情中的播放身份。播放器按 Lens API 返回的 playlist 选择实际资源。
 
-原生和 WebView 正文共用 `utils/zhihuVideoRoute.ts`。直接媒体资源仅接受 HTTP(S) MP4、HLS 等地址；缺少有效身份或资源时显示“视频不可用”。WebView 清洗把原始视频标签改成带封面的应用链接，不加载视频网页或 iframe。视频封面不进入图片预览、正文画廊或图片长按菜单。合成回归 `video-playback-001` 由 inbox 结构检查后登记，所有 ID 和资源地址均为合成数据，不包含签名资源。
+原生和 WebView 正文共用 `src/utils/zhihuVideoRoute.ts`。直接媒体资源仅接受 HTTP(S) MP4、HLS 等地址；缺少有效身份或资源时显示“视频不可用”。WebView 清洗把原始视频标签改成带封面的应用链接，不加载视频网页或 iframe。视频封面不进入图片预览、正文画廊或图片长按菜单。合成回归 `video-playback-001` 由 inbox 结构检查后登记，所有 ID 和资源地址均为合成数据，不包含签名资源。
 
 ## 真实正文的启用入口
 
@@ -117,7 +117,7 @@ HTML `video` / `source`、`video-box` 和想法 `video` 分段保留安全封面
 
 信息流外层的 `FeedExcerpt` 按用户决定单独保留原有React Native `Text`摘要，不进入tiqian-super-mini。长按预览在获取数据和正文首测期间可保留现有摘要placeholder，完成后显示所选正文后端；这不是独立的native摘要渲染入口。
 
-`ZhihuContent` 的 `onLayoutReady` 用于正文首次布局就绪通知。Native后端在实际容器宽度和所有顶层flow的当前布局高度均确认后通知；回答详情据此确认正文尺寸。内容阅读进度记录与恢复目前由 `constants/readingProgress.ts` 统一关闭，历史数据保留。单纯知识点/反应元数据更新可沿用几何一致的已验证高度，避免正文再次退回占位。保留的阅读恢复逻辑要求正文就绪并获得有效的最终尺寸，不能把数据已返回或短placeholder高度当作最终正文，持久数据格式不变。
+`ZhihuContent` 的 `onLayoutReady` 用于正文首次布局就绪通知。Native后端在实际容器宽度和所有顶层flow的当前布局高度均确认后通知；回答详情据此确认正文尺寸。内容阅读进度记录与恢复目前由 `src/constants/readingProgress.ts` 统一关闭，历史数据保留。单纯知识点/反应元数据更新可沿用几何一致的已验证高度，避免正文再次退回占位。保留的阅读恢复逻辑要求正文就绪并获得有效的最终尺寸，不能把数据已返回或短placeholder高度当作最终正文，持久数据格式不变。
 
 `renderPlaceholder(phase)` 区分当前原生布局等待：`container-layout` 表示尚未确认实际容器宽度，`text-layout` 表示宽度已确认、等待文字布局高度，`content-layout` 表示没有顶层文字流、等待正文内容层布局。原有不接收参数的占位回调仍可使用。回答详情分别显示“正在确认正文宽度…”“正在排版文字…”“正在布局正文内容…”；只有缺少回答数据并等待查询时显示“正在获取回答…”，已有数据的后台刷新不进入该提示。短文本同样需要首测；已有宽度 hint 时文字测量可与宽度确认并行，因此这些类别表示当前未满足的显示条件，不是严格串行的耗时阶段。同步解析/编译没有独立占位阶段，内容布局也不代表等待图片下载。
 
@@ -135,7 +135,7 @@ tiqian-super-mini选区已接回回答的既有业务菜单，但仅开放可逐
 
 正文双击与选字共用 `suppressDoubleTapSelection` 策略，由宿主 `useDoubleTapAction.isDoubleTapEnabled` 决定：启用快捷动作或等待首次设置时，双击留给宿主，长按仍进入系统选区；关闭、日报、未聚焦回答以及没有双击宿主的预览和脚注弹窗保持系统行为。Android 文字流用系统 `GestureDetector` 区分短按与长按，短按不进入 `TextView` 的双击选词逻辑；长按确认后交回原生选择与拖柄，不依赖特定 Android 版本的 Editor 内部状态。iOS 通过公开 `UITextInteraction` 手势失败关系让系统选词等待双击识别，不改变系统长按时限。
 
-Android 手势库 2.30.1 在第二次抬起识别双击时会吞掉原生 `UP`，仅取消 RN 的 JS 触摸，导致文字流的长按计时未结束。项目通过 [RNGH 补丁](../../patches/react-native-gesture-handler+2.30.1.patch) 在首次接管恰好发生于 `UP/CANCEL` 时，沿原生触摸目标链补发一次 `CANCEL`。已在 `MOVE` 阶段交给手势库的触摸不额外取消，避免中断 `NativeViewGestureHandler` 驱动的滚动或惯性滚动；不调整系统长按时限。
+Android 手势库 2.30.1 在第二次抬起识别双击时会吞掉原生 `UP`，仅取消 RN 的 JS 触摸，导致文字流的长按计时未结束。项目通过 [RNGH 补丁](../../../patches/react-native-gesture-handler+2.30.1.patch) 在首次接管恰好发生于 `UP/CANCEL` 时，沿原生触摸目标链补发一次 `CANCEL`。已在 `MOVE` 阶段交给手势库的触摸不额外取消，避免中断 `NativeViewGestureHandler` 驱动的滚动或惯性滚动；不调整系统长按时限。
 
 WebView 同步这项策略并取消 DOM 多击默认选字，但 WKWebView 还有由 UIKit 直接处理的选词路径，当前 DOM 防护不能保证覆盖它。代码块、未知块和公式文字兜底仍使用普通 RN `Text`，也不经过原生文字流仲裁。Android 默认原生正文已真机验证连续双击不误选、长按与惯性滚动正常；上述 WebView/RN Text 路径、iOS 实际手势关系，以及复制、读屏等交互仍须分别验收，不能把编译通过视为完整交互验证。
 
@@ -148,9 +148,9 @@ WebView 同步这项策略并取消 DOM 多击默认选字，但 WKWebView 还�
 ```bash
 npm run analyze:rich-content
 npm run analyze:rich-content:inbox
-npm test -- features/rich-content/tests --runInBand
-node features/rich-content/tools/benchmark-normalization.mjs
-node features/rich-content/tools/benchmark-flow-layout.mjs
+npm test -- src/features/rich-content/tests --runInBand
+node src/features/rich-content/tools/benchmark-normalization.mjs
+node src/features/rich-content/tools/benchmark-flow-layout.mjs
 ```
 
 第一个分析命令校验 manifest 中的稳定案例；带 `inbox` 的命令递归扫描新投递文件，只输出结构统计，不要求先维护 manifest。对于完整知乎 API JSON，案例通过 `contentPath` 选择正文，同时可以用 `expectedMetadata` 覆盖作者、问题、徽章、反应、权限、截断状态、@ 提及和 # 话题等正文之外或 HTML 属性之外的行为输入。
@@ -161,7 +161,7 @@ node features/rich-content/tools/benchmark-flow-layout.mjs
 
 开发构建可从“我的 → 富文本测试案例（开发）”打开案例列表，再进入“tiqian-super-mini 原型”。原型使用六组合成内容，提供tiqian-super-mini、WebView 两后端对照、字号/行高/排版和装饰调节、源选区面板与本地知识点菜单，不提交业务操作。稳定fixture页读取 `fixtures/manifest.json`，也可切换这两个后端；这些切换仅影响当前案例，不写入生产正文偏好。正文交互默认关闭，临时打开后需注意样本可能保留真实对象ID。
 
-开发deeplink可用 `zhihu--:///dev/rich-content/prototype?caseId=attachments` 选择合成案例；caseId只接受页面六个已知标识，忽略无效值，不接受URL中的任意HTML。iOS CLI模拟器命令见 [开发指南](../../docs/DEVELOPMENT.md)。
+开发deeplink可用 `zhihu--:///dev/rich-content/prototype?caseId=attachments` 选择合成案例；caseId只接受页面六个已知标识，忽略无效值，不接受URL中的任意HTML。iOS CLI模拟器命令见 [开发指南](../../../docs/DEVELOPMENT.md)。
 
 两个后端统一经过 `ZhihuContent` 的交互外壳，复用站内/站外链接分流、内容宽度、图片预览及共享排版指标。Android/iOS V2模块直接消费IR，初步支持选择事件、自定义装饰和行内附件；完整附件几何和无障碍映射仍需后续验收。tiqian-super-mini需要重新生成并编译development build，不能运行于Expo Go；模块缺失时可继续用 WebView 查看内容。
 
@@ -189,7 +189,7 @@ RNRH 已删除；WebView 保留为可选后端和 fallback。桌面微基准、�
 
 `flowLayout.ts` 以端点扫描计算有效度量样式，保持 span 原顺序、重复样式及相邻等价区间的身份；不因 paint/action 更新重复测量。密集合成样本、可复现桌面测量、资源包成本及双端附件生命周期边界见 [专项记录](./docs/optimizations-2026-10-01.md)。
 
-`npm run generate:rich-content:katex` 从安装的 KaTeX 生成 `assets/katex-style.json` 与 `assets/katex-runtime.json`，`postinstall` 自动执行；`node features/rich-content/tools/bundle-katex.mjs --check` 可检查资源是否与当前锁定包一致。资源包含 MIT license，CSS 与 runtime 分包以避免旧 DOM 公式组件重复携带不使用的 auto-render 脚本。更换 KaTeX 时必须同步锁文件与生成资源。
+`npm run generate:rich-content:katex` 从安装的 KaTeX 生成 `assets/katex-style.json` 与 `assets/katex-runtime.json`，`postinstall` 自动执行；`node src/features/rich-content/tools/bundle-katex.mjs --check` 可检查资源是否与当前锁定包一致。资源包含 MIT license，CSS 与 runtime 分包以避免旧 DOM 公式组件重复携带不使用的 auto-render 脚本。更换 KaTeX 时必须同步锁文件与生成资源。
 
 ## 2026-10-05 静态审查
 

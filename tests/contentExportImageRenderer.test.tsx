@@ -2,8 +2,8 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Dimensions, Platform } from 'react-native';
 import { captureRef, releaseCapture } from 'react-native-view-shot';
 import type { WebViewMessageEvent, WebViewProps } from 'react-native-webview';
-import { useImageExport } from '../features/content-export/ImageExportRenderer';
-import type { ExportTaskContext } from '../features/content-export/types';
+import { useImageExport } from '../src/features/content-export/ImageExportRenderer';
+import type { ExportTaskContext } from '../src/features/content-export/types';
 
 let mockWebViewProps: WebViewProps | undefined;
 const mockInjectJavaScript = jest.fn();
@@ -25,11 +25,11 @@ jest.mock('react-native-view-shot', () => ({
   captureRef: jest.fn(),
   releaseCapture: jest.fn(),
 }));
-jest.mock('../components/Themed', () => ({
+jest.mock('../src/components/Themed', () => ({
   Text: jest.requireActual<typeof import('react-native')>('react-native').Text,
   useRuntimeThemeColors: () => ({ background: '#ffffff' }),
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton:
     jest.requireActual<typeof import('react-native')>('react-native').Pressable,
 }));

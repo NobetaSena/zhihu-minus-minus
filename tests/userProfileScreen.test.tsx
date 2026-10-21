@@ -7,16 +7,16 @@ import {
   getMemberRelations,
   getMemberWithFallback,
   searchContent,
-} from '../api/zhihu';
+} from '../src/api/zhihu';
 import {
   getMemberAnswersVotedByMe,
   getMemberColumnContributions,
   getRecentMemberActivities,
   type ZhihuMember,
-} from '../api/zhihu/member';
-import UserDetailScreen from '../app/user/[id]/index';
-import type { ProfileTabListProps } from '../components/profile/ProfileTabList';
-import type { AnswerReadingContext } from '../utils/answerReadingContext';
+} from '../src/api/zhihu/member';
+import UserDetailScreen from '../src/app/user/[id]/index';
+import type { ProfileTabListProps } from '../src/components/profile/ProfileTabList';
+import type { AnswerReadingContext } from '../src/utils/answerReadingContext';
 
 interface MockPagerProps extends PropsWithChildren {
   initialPage: number;
@@ -55,7 +55,7 @@ jest.mock('expo-router', () => ({
     canGoBack: () => true,
   }),
 }));
-jest.mock('../api/zhihu', () => ({
+jest.mock('../src/api/zhihu', () => ({
   getMe: jest.fn(),
   getMemberWithFallback: jest.fn(),
   getMemberActivities: jest.fn(),
@@ -65,30 +65,30 @@ jest.mock('../api/zhihu', () => ({
   unfollowMember: jest.fn(),
   getContentVoteCount: () => 0,
   getContentCollectionMetadata: jest.requireActual<
-    typeof import('../api/zhihu/contentCollection')
-  >('../api/zhihu/contentCollection').getContentCollectionMetadata,
+    typeof import('../src/api/zhihu/contentCollection')
+  >('../src/api/zhihu/contentCollection').getContentCollectionMetadata,
   getContentVoteState: (
     _type: string,
     item: { relationship?: { voting?: number } },
   ) => item.relationship?.voting ?? 0,
   MEMBER_ANSWERS_INCLUDE: 'synthetic-answer-fields',
 }));
-jest.mock('../api/zhihu/member', () => ({
+jest.mock('../src/api/zhihu/member', () => ({
   getMemberAnswersVotedByMe: jest.fn(),
   getMemberColumnContributions: jest.fn(),
   getRecentMemberActivities: jest.fn(),
 }));
-jest.mock('../api/zhihu/history', () => ({ addReadHistory: jest.fn() }));
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/zhihu/history', () => ({ addReadHistory: jest.fn() }));
+jest.mock('../src/api/client', () => ({
   hasAuthenticationCookie: (cookie: string | null | undefined) =>
     typeof cookie === 'string' && /(?:^|;\s*)z_c0=[^;\s]+/.test(cookie),
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   useAuthStore: (selector?: (state: typeof mockAuthState) => unknown) =>
     selector ? selector(mockAuthState) : mockAuthState,
   getAuthSessionVersion: () => mockSessionVersion,
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest.requireActual('zustand').create(() => ({
     primaryColor: null,
     readingBackground: 'default',
@@ -103,10 +103,10 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 44, bottom: 24, left: 0, right: 0 }),
 }));
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native = jest.requireActual('react-native');
   return {
     Text: native.Text,
@@ -114,14 +114,16 @@ jest.mock('../components/Themed', () => {
     useThemeColor: () => '#1364cc',
   };
 });
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/StableAvatar', () => ({ StableAvatar: () => null }));
-jest.mock('../components/profile/ProfileCover', () => ({
+jest.mock('../src/components/StableAvatar', () => ({
+  StableAvatar: () => null,
+}));
+jest.mock('../src/components/profile/ProfileCover', () => ({
   ProfileToolbarBackground: () => null,
 }));
-jest.mock('../components/profile/ProfileHeader', () => ({
+jest.mock('../src/components/profile/ProfileHeader', () => ({
   ProfileHeader: ({ isMe }: { isMe: boolean }) =>
     jest
       .requireActual('react')
@@ -131,7 +133,7 @@ jest.mock('../components/profile/ProfileHeader', () => ({
         isMe ? '自己的主页' : '其他人的主页',
       ),
 }));
-jest.mock('../components/FeedCard', () => ({
+jest.mock('../src/components/FeedCard', () => ({
   FeedCard: ({
     item,
     answerContext,
@@ -182,7 +184,7 @@ jest.mock('react-native-pager-view', () => {
     }),
   };
 });
-jest.mock('../components/profile/ProfileTabList', () => {
+jest.mock('../src/components/profile/ProfileTabList', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   return {
     ProfileTabList: react.forwardRef((props: ProfileTabListProps, ref) => {

@@ -1,15 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
-import { getAnswerCommentsV5, getChildCommentsV5 } from '../api/zhihu';
-import type { CommentItem, ZhihuCommentResponse } from '../api/zhihu/comment';
+import { getAnswerCommentsV5, getChildCommentsV5 } from '../src/api/zhihu';
+import type {
+  CommentItem,
+  ZhihuCommentResponse,
+} from '../src/api/zhihu/comment';
 import {
   useCommentListQuery,
   useCommentRepliesQuery,
-} from '../hooks/useCommentQueries';
-import { parseParentComment } from '../utils/commentRoute';
+} from '../src/hooks/useCommentQueries';
+import { parseParentComment } from '../src/utils/commentRoute';
 
-jest.mock('../api/zhihu', () => ({
+jest.mock('../src/api/zhihu', () => ({
   getAnswerCommentsV5: jest.fn(),
   getArticleCommentsV5: jest.fn(),
   getQuestionCommentsV5: jest.fn(),

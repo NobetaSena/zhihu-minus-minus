@@ -1,10 +1,13 @@
 import * as Clipboard from 'expo-clipboard';
 import { Alert, Share } from 'react-native';
-import { consumeAppClipboardText, copyToClipboard } from '../utils/clipboard';
-import { showToast } from '../utils/toast';
+import {
+  consumeAppClipboardText,
+  copyToClipboard,
+} from '../src/utils/clipboard';
+import { showToast } from '../src/utils/toast';
 
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 
 const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 const share = jest.spyOn(Share, 'share');

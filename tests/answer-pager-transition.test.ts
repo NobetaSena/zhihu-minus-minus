@@ -1,8 +1,8 @@
 import { act, render } from '@testing-library/react-native';
 import React from 'react';
-import AnswerDetailScreen from '../app/answer/[id]';
-import type { AnswerReadSession } from '../hooks/useAnswerDetailRead';
-import { calculateDetailHeaderAppearance } from '../utils/detailHeaderAppearance';
+import AnswerDetailScreen from '../src/app/answer/[id]';
+import type { AnswerReadSession } from '../src/hooks/useAnswerDetailRead';
+import { calculateDetailHeaderAppearance } from '../src/utils/detailHeaderAppearance';
 
 interface PagerProps {
   children?: React.ReactNode;
@@ -124,8 +124,10 @@ jest.mock('@tanstack/react-query', () => ({
   }),
   useQueryClient: () => mockQueryClient,
 }));
-jest.mock('../hooks/useActiveScreen', () => ({ useActiveScreen: () => true }));
-jest.mock('../hooks/useAnswerPagerSource', () => ({
+jest.mock('../src/hooks/useActiveScreen', () => ({
+  useActiveScreen: () => true,
+}));
+jest.mock('../src/hooks/useAnswerPagerSource', () => ({
   useAnswerPagerSource: (options: {
     initialId: string;
     questionId?: string | number;
@@ -173,7 +175,7 @@ jest.mock('react-native-pager-view', () => {
     }),
   };
 });
-jest.mock('../components/AnswerDetailView', () => {
+jest.mock('../src/components/AnswerDetailView', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -190,7 +192,7 @@ jest.mock('../components/AnswerDetailView', () => {
     },
   };
 });
-jest.mock('../components/AnswerPreviewList', () => ({
+jest.mock('../src/components/AnswerPreviewList', () => ({
   AnswerPreviewList: (props: {
     answerId: string;
     questionId?: string;
@@ -206,25 +208,25 @@ jest.mock('../components/AnswerPreviewList', () => ({
       );
   },
 }));
-jest.mock('../components/DetailNavigationHeader', () => ({
+jest.mock('../src/components/DetailNavigationHeader', () => ({
   DetailNavigationHeader: (props: HeaderProps) => {
     mockHeaderProps = props;
     return null;
   },
 }));
-jest.mock('../components/ShareMenu', () => ({
+jest.mock('../src/components/ShareMenu', () => ({
   ShareMenu: (props: HeaderMenuProps) => {
     mockHeaderMenuProps = props;
     return null;
   },
 }));
-jest.mock('../api/client', () => ({ __esModule: true, default: {} }));
-jest.mock('../api/zhihu', () => ({ getAnswer: jest.fn() }));
-jest.mock('../api/zhihu/history', () => ({ recordReadHistory: jest.fn() }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/api/client', () => ({ __esModule: true, default: {} }));
+jest.mock('../src/api/zhihu', () => ({ getAnswer: jest.fn() }));
+jest.mock('../src/api/zhihu/history', () => ({ recordReadHistory: jest.fn() }));
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
   return {
@@ -233,11 +235,11 @@ jest.mock('../components/Themed', () => {
     useThemeColor: () => '#1364cc',
   };
 });
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton:
     jest.requireActual<typeof import('react-native')>('react-native').Pressable,
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: Object.assign(
     (
       selector: (state: {
@@ -259,11 +261,11 @@ jest.mock('../store/useSettingsStore', () => ({
     },
   ),
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
   useAuthStore: (selector: () => unknown) => selector(),
 }));
-jest.mock('../features/rich-content', () => ({
+jest.mock('../src/features/rich-content', () => ({
   getNeighborAnswerIds: () => [],
   RICH_CONTENT_STALE_TIME: 300_000,
 }));

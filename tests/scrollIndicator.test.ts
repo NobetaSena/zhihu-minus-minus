@@ -1,4 +1,4 @@
-import { calculateScrollIndicatorGeometry } from '../utils/scrollIndicator';
+import { calculateScrollIndicatorGeometry } from '../src/utils/scrollIndicator';
 
 describe('reading scroll indicator geometry', () => {
   it.each([

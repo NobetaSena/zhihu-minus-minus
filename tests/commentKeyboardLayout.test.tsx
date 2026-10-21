@@ -7,7 +7,7 @@ import {
   type View,
 } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
-import { useCommentKeyboardLayout } from '../hooks/useCommentKeyboardLayout';
+import { useCommentKeyboardLayout } from '../src/hooks/useCommentKeyboardLayout';
 
 jest.mock('react-native-reanimated', () => {
   const react = jest.requireActual<typeof import('react')>('react');

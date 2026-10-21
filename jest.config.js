@@ -17,12 +17,12 @@ module.exports = {
       { configFile: require.resolve('./babel.config.js') },
     ],
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/tests/jest.setup.js'],
   testMatch: [
     '<rootDir>/tests/**/*.test.ts',
     '<rootDir>/tests/**/*.test.tsx',
     '<rootDir>/tests/**/*.test.js',
-    '<rootDir>/features/rich-content/tests/**/*.test.ts',
-    '<rootDir>/features/rich-content/tests/**/*.test.tsx',
+    '<rootDir>/src/features/rich-content/tests/**/*.test.ts',
+    '<rootDir>/src/features/rich-content/tests/**/*.test.tsx',
   ],
 };

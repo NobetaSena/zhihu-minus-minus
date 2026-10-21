@@ -4,24 +4,24 @@ import axios, {
   CanceledError,
   type InternalAxiosRequestConfig,
 } from 'axios';
+import { readAtomically } from '../modules/zhihu-persistence';
 import apiClient, {
   hasAuthenticationCookie,
   mergeCookieHeader,
-} from '../api/client';
+} from '../src/api/client';
 import {
   readContents,
   touchAnswerRead,
   touchAnswersRead,
-} from '../api/zhihu/lastRead';
-import type { ZhihuMeInfo } from '../api/zhihu/me';
-import { readAtomically } from '../modules/zhihu-persistence';
+} from '../src/api/zhihu/lastRead';
+import type { ZhihuMeInfo } from '../src/api/zhihu/me';
 import {
   getAuthSessionVersion,
   saveAuthState,
   useAuthStore,
-} from '../store/useAuthStore';
-import { useCollectionStore } from '../store/useCollectionStore';
-import { useVerificationStore } from '../store/useVerificationStore';
+} from '../src/store/useAuthStore';
+import { useCollectionStore } from '../src/store/useCollectionStore';
+import { useVerificationStore } from '../src/store/useVerificationStore';
 
 jest.mock('@preeternal/react-native-cookie-manager', () => ({
   __esModule: true,
@@ -42,7 +42,7 @@ jest.mock('expo-file-system/legacy', () => ({
 // Persistence cryptography/native filesystem have dedicated tests; these
 // session tests use an in-memory bridge rather than an unavailable device.
 const mockAuthFiles = new Map<string, string>();
-jest.mock('../storage/authEncryption', () => ({
+jest.mock('../src/storage/authEncryption', () => ({
   encryptAuthState: async (value: string) =>
     Buffer.from(value).toString('base64'),
   decryptAuthState: async (value: string) =>
@@ -61,10 +61,10 @@ jest.mock('../modules/zhihu-persistence', () => ({
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async () => null),
 }));
-jest.mock('../storage/localAccountData', () => ({
+jest.mock('../src/storage/localAccountData', () => ({
   clearLocalAccountData: jest.fn(async () => undefined),
 }));
-jest.mock('../api/zse96/index', () => ({
+jest.mock('../src/api/zse96/index', () => ({
   ZSE_VERSION: 'test',
   signRequest96: jest.fn(async () => 'test-signature'),
   hmacSha1Hex: jest.fn(() => 'test-hmac'),
@@ -292,11 +292,11 @@ test('startup blocks new login until the existing accounts have been restored', 
       releaseRead = resolve;
     });
   });
-  const modules: { auth?: typeof import('../store/useAuthStore') } = {};
+  const modules: { auth?: typeof import('../src/store/useAuthStore') } = {};
   jest.isolateModules(() => {
-    modules.auth = jest.requireActual<typeof import('../store/useAuthStore')>(
-      '../store/useAuthStore',
-    );
+    modules.auth = jest.requireActual<
+      typeof import('../src/store/useAuthStore')
+    >('../src/store/useAuthStore');
   });
   // The native bridge mock is shared across module instances.
   await reading;

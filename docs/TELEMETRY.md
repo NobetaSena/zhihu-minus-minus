@@ -29,7 +29,7 @@ Firebase 已公告自 2026 年 10 月起停止向 CocoaPods 发布新版本，�
 - Sentry 不再接受事件，并清理当前用户上下文；
 - 已经发送到服务商的数据不会因为关闭开关而自动删除。
 
-业务页面不应直接导入 Firebase 或 Sentry。根布局保留 SDK 的 `Sentry.wrap` 包装，但它不是 React 错误边界；根路由导出的 `AppErrorBoundary` 才负责捕获渲染异常、展示重试和复制日志入口，并通过 `utils/telemetry.ts` 上报。需要新增事件时，调用适配层方法，并只传递脱敏的事件名、类型和数值。
+业务页面不应直接导入 Firebase 或 Sentry。根布局保留 SDK 的 `Sentry.wrap` 包装，但它不是 React 错误边界；根路由导出的 `AppErrorBoundary` 才负责捕获渲染异常、展示重试和复制日志入口，并通过 `src/utils/telemetry.ts` 上报。需要新增事件时，调用适配层方法，并只传递脱敏的事件名、类型和数值。
 
 ## 自动 JS 异常的边界
 
@@ -45,7 +45,7 @@ Firebase 默认自动收集及自动页面上报关闭，collection 只在偏好
 
 ## 本机报错日志
 
-“设置 → 报错日志”提供预览、刷新、复制和清空，错误边界也提供复制入口。`utils/diagnosticLogs.ts` 在本机同步保留最近 30 条记录，每条最多 12 个代码位置；两份交替快照各不超过 64 KiB，以保留上次完整写入的记录。文件使用独立的 version 1 格式，读回与复制时再次白名单脱敏。存储不可用时退化为本次运行的内存记录，并在界面提示。
+“设置 → 报错日志”提供预览、刷新、复制和清空，错误边界也提供复制入口。`src/utils/diagnosticLogs.ts` 在本机同步保留最近 30 条记录，每条最多 12 个代码位置；两份交替快照各不超过 64 KiB，以保留上次完整写入的记录。文件使用独立的 version 1 格式，读回与复制时再次白名单脱敏。存储不可用时退化为本次运行的内存记录，并在界面提示。
 
 日志包含时间、来源和上述安全错误摘要、稳定错误码、固定业务上下文、版本构建标识与代码位置。只保留诊断 manifest 白名单中的仓库相对源码路径和已知 bundle 名；文件位置中的主机、绝对目录、query 和 fragment 不保留，未知代码文件降级为 `source.js`。不保存任意原始异常消息、动态属性名、函数名、任意 URL/路径、账号、Cookie、请求/响应对象或正文。记录与“分享数据”开关独立，不会自动上传日志文件；只有用户主动复制后才进入剪贴板。全局 JS 异常在调用既有 Sentry/平台处理器前同步落盘，SDK 的其他自动异常在 `beforeSend` 内记录，手动上报和渲染边界避免重复记录。清空同时删除两份快照，删除失败会提示，不能宣称历史记录已清除。
 
@@ -80,6 +80,6 @@ base64 < GoogleService-Info.plist | tr -d '\n'
 
 仅移除 Firebase Analytics 时，删除适配层中的 Firebase 分支、`package.json` 的两个 `@react-native-firebase/*` 依赖、Firebase config plugins、`firebase.json` 和 `app.config.ts` 的 Firebase 配置；同步删去工作流中的 Firebase 文件还原、校验与环境变量，以及 `.easignore` 的配置文件例外。保留 Sentry 分支和隐私开关。
 
-完全移除 telemetry 时，还需删除 `@sentry/react-native` 依赖及 config plugin、根布局的 Sentry 导入和 `Sentry.wrap`、telemetry 初始化与业务调用、`utils/telemetry.ts`、`store/useTelemetryStore.ts` 及设置页开关。同步清理构建工作流和本地脚本中的 Sentry 上传配置、`.env.example` 与 `app.config.ts` 的 DSN 配置，以及对应 CI Secrets。根布局改为导出未包装的布局组件；业务页面不直接依赖厂商 SDK。
+完全移除 telemetry 时，还需删除 `@sentry/react-native` 依赖及 config plugin、根布局的 Sentry 导入和 `Sentry.wrap`、telemetry 初始化与业务调用、`src/utils/telemetry.ts`、`src/store/useTelemetryStore.ts` 及设置页开关。同步清理构建工作流和本地脚本中的 Sentry 上传配置、`.env.example` 与 `app.config.ts` 的 DSN 配置，以及对应 CI Secrets。根布局改为导出未包装的布局组件；业务页面不直接依赖厂商 SDK。
 
 任一原生 SDK 移除后都要同步锁文件、重新 prebuild、安装 Pods 并重新编译两端，不能只依靠 Fast Refresh 验证。

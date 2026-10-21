@@ -1,7 +1,7 @@
 import {
   getDirectZhihuVideoUrl,
   getZhihuVideoRoute,
-} from '../utils/zhihuVideoRoute';
+} from '../src/utils/zhihuVideoRoute';
 
 test('Lens identity takes priority over a different zvideo page and expiring media resource', () => {
   expect(

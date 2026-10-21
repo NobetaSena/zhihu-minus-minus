@@ -2,29 +2,29 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
   type PreparedExportAssets,
   prepareExportAssets,
-} from '../features/content-export/assets';
+} from '../src/features/content-export/assets';
 import {
   cleanupExpiredExports,
   createExportDirectory,
   discardExportDirectory,
   writeTextExport,
-} from '../features/content-export/files';
-import { resolveExportSource } from '../features/content-export/resolveSource';
+} from '../src/features/content-export/files';
+import { resolveExportSource } from '../src/features/content-export/resolveSource';
 import {
   serializeExportHtml,
   serializeExportMarkdown,
-} from '../features/content-export/serializers';
+} from '../src/features/content-export/serializers';
 import type {
   ExportResult,
   ExportSource,
   ExportTarget,
-} from '../features/content-export/types';
-import { useContentExport } from '../features/content-export/useContentExport';
+} from '../src/features/content-export/types';
+import { useContentExport } from '../src/features/content-export/useContentExport';
 
-jest.mock('../features/content-export/assets', () => ({
+jest.mock('../src/features/content-export/assets', () => ({
   prepareExportAssets: jest.fn(),
 }));
-jest.mock('../features/content-export/files', () => ({
+jest.mock('../src/features/content-export/files', () => ({
   cleanupExpiredExports: jest.fn(),
   createExportDirectory: jest.fn(),
   discardExportDirectory: jest.fn(),
@@ -32,18 +32,18 @@ jest.mock('../features/content-export/files', () => ({
   writePdfExport: jest.fn(),
   writeImageExport: jest.fn(),
 }));
-jest.mock('../features/content-export/resolveSource', () => ({
+jest.mock('../src/features/content-export/resolveSource', () => ({
   resolveExportSource: jest.fn(),
 }));
-jest.mock('../features/content-export/serializers', () => ({
+jest.mock('../src/features/content-export/serializers', () => ({
   serializeExportHtml: jest.fn(),
   serializeExportMarkdown: jest.fn(),
 }));
-jest.mock('../features/content-export/ImageExportRenderer', () => ({
+jest.mock('../src/features/content-export/ImageExportRenderer', () => ({
   releaseImageCaptures: jest.fn(),
 }));
 let mockSessionVersion = 8;
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockSessionVersion,
 }));
 

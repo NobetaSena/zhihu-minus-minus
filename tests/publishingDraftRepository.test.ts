@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { emptyPublishingDraft } from '../features/publishing/types';
-import { publishingDraftRepository } from '../storage/publishingDraftRepository';
+import { emptyPublishingDraft } from '../src/features/publishing/types';
+import { publishingDraftRepository } from '../src/storage/publishingDraftRepository';
 
 const mockRows = new Map<string, string>();
 const mockDatabase = {
@@ -18,7 +18,7 @@ const mockDatabase = {
     else mockRows.delete(`${params[0]}|${params[1]}`);
   }),
 };
-jest.mock('../storage/localDatabase', () => ({
+jest.mock('../src/storage/localDatabase', () => ({
   localDatabase: {
     run: (operation: (database: typeof mockDatabase) => Promise<unknown>) =>
       operation(mockDatabase),

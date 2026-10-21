@@ -9,11 +9,11 @@ import {
   markRecentMomentsRead,
   type RecentMomentItem,
   type RecentMomentsResponse,
-} from '../api/zhihu';
-import { RecentMoments } from '../components/RecentMoments';
-import { StableAvatar } from '../components/StableAvatar';
-import { useNestedHorizontalGesture } from '../hooks/useNestedHorizontalGesture';
-import { getDiagnosticContext } from '../utils/diagnosticContext';
+} from '../src/api/zhihu';
+import { RecentMoments } from '../src/components/RecentMoments';
+import { StableAvatar } from '../src/components/StableAvatar';
+import { useNestedHorizontalGesture } from '../src/hooks/useNestedHorizontalGesture';
+import { getDiagnosticContext } from '../src/utils/diagnosticContext';
 
 const mockPush = jest.fn();
 
@@ -21,7 +21,7 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 jest.mock('expo-router/build/views/Splash', () => ({ hideAsync: jest.fn() }));
-jest.mock('../api/zhihu', () => ({
+jest.mock('../src/api/zhihu', () => ({
   fetchRecentMoments: jest.fn(),
   markRecentMomentsRead: jest.fn(),
 }));
@@ -29,16 +29,16 @@ jest.mock('react-native-gesture-handler', () => ({
   ...jest.requireActual('react-native-gesture-handler'),
   GestureDetector: ({ children }: { children: ReactNode }) => children,
 }));
-jest.mock('../hooks/useNestedHorizontalGesture', () => ({
+jest.mock('../src/hooks/useNestedHorizontalGesture', () => ({
   useNestedHorizontalGesture: jest.fn(
-    jest.requireActual('../hooks/useNestedHorizontalGesture')
+    jest.requireActual('../src/hooks/useNestedHorizontalGesture')
       .useNestedHorizontalGesture,
   ),
 }));
-jest.mock('../components/StableAvatar', () => ({
+jest.mock('../src/components/StableAvatar', () => ({
   StableAvatar: jest.fn(() => null),
 }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native = jest.requireActual('react-native');
   return { Text: native.Text, View: native.View, useThemeColor: () => '#00f' };
 });

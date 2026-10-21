@@ -2,7 +2,7 @@ import {
   classifyDiagnosticMessage,
   sanitizeCodeFilename,
   sanitizeDiagnosticContext,
-} from '../utils/errorDiagnostics';
+} from '../src/utils/errorDiagnostics';
 
 describe('safe diagnostic messages', () => {
   test.each([

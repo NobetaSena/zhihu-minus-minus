@@ -1,15 +1,15 @@
 import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
-import apiClient from '../api/client';
-import { uploadImage } from '../api/zhihu/image';
-import { getZhihuErrorMessage } from '../utils/zhihuError';
+import apiClient from '../src/api/client';
+import { uploadImage } from '../src/api/zhihu/image';
+import { getZhihuErrorMessage } from '../src/utils/zhihuError';
 
 const mockTask = {
   uploadAsync: jest.fn(),
   cancelAsync: jest.fn(async () => {}),
 };
 const mockCreateTask = jest.fn((..._args: unknown[]) => mockTask);
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { post: jest.fn(), put: jest.fn(), get: jest.fn() },
 }));

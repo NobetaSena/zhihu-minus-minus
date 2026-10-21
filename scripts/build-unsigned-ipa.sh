@@ -3,8 +3,8 @@
 # 遇到任何错误立即退出
 set -euo pipefail
 
-# 获取脚本所在目录作为项目根目录
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 获取脚本目录的父目录作为项目根目录
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "🚀 [1/3] 开始生成 iOS 原生工程 (Expo Prebuild)..."

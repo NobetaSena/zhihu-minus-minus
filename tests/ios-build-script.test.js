@@ -14,9 +14,10 @@ describe('unsigned iOS build script', () => {
     fs.mkdirSync(path.join(directory, 'ios', 'ReviewFixture.xcworkspace'), {
       recursive: true,
     });
+    fs.mkdirSync(path.join(directory, 'scripts'));
     fs.copyFileSync(
-      path.join(__dirname, '..', 'build-unsigned-ipa.sh'),
-      path.join(directory, 'build-unsigned-ipa.sh'),
+      path.join(__dirname, '..', 'scripts', 'build-unsigned-ipa.sh'),
+      path.join(directory, 'scripts', 'build-unsigned-ipa.sh'),
     );
     fs.writeFileSync(
       path.join(directory, 'package.json'),
@@ -44,16 +45,20 @@ fi`,
   });
 
   function run(extraEnv = {}) {
-    return spawnSync('bash', ['build-unsigned-ipa.sh'], {
-      cwd: directory,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        PATH: `${binDirectory}${path.delimiter}${process.env.PATH}`,
-        IPA_TEST_TRACE: path.join(directory, 'trace.txt'),
-        ...extraEnv,
+    return spawnSync(
+      'bash',
+      [path.join(directory, 'scripts', 'build-unsigned-ipa.sh')],
+      {
+        cwd: binDirectory,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${binDirectory}${path.delimiter}${process.env.PATH}`,
+          IPA_TEST_TRACE: path.join(directory, 'trace.txt'),
+          ...extraEnv,
+        },
       },
-    });
+    );
   }
 
   test('refreshes existing native code and preserves other artifacts and local Xcode settings', () => {

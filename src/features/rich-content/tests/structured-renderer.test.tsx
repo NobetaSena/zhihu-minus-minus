@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { parseDocument } from 'htmlparser2';
 import { StyleSheet, Text } from 'react-native';
-import type { RichTextNativeViewProps } from '../../../modules/zhihu-rich-text';
+import type { RichTextNativeViewProps } from '../../../../modules/zhihu-rich-text';
 import type { ZhihuStructuredContent } from '../../../types/zhihu';
 import { compileZhihuDocument, mapRichTextSelection } from '../compileRichText';
 import type { ZhihuNativeContentProps } from '../components/ZhihuNativeContent';
@@ -45,7 +45,7 @@ jest.mock('htmlparser2', () => ({
     throw new Error('JSON renderer must not parse markup');
   }),
 }));
-jest.mock('../../../modules/zhihu-rich-text', () => {
+jest.mock('../../../../modules/zhihu-rich-text', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');

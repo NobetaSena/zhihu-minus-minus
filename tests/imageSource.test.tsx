@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react-native';
-import { StableAvatar } from '../components/StableAvatar';
-import { getCachedImageSource } from '../utils/imageSource';
+import { StableAvatar } from '../src/components/StableAvatar';
+import { getCachedImageSource } from '../src/utils/imageSource';
 
 test.each([
   'https://example.test/avatar.jpg',

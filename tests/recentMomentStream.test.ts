@@ -1,5 +1,5 @@
-import type { RecentMomentItem } from '../api/zhihu/moments';
-import { createRecentMomentStream } from '../utils/recentMomentStream';
+import type { RecentMomentItem } from '../src/api/zhihu/moments';
+import { createRecentMomentStream } from '../src/utils/recentMomentStream';
 
 function moment(id: string, urlToken = id): RecentMomentItem {
   return {

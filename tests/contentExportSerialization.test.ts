@@ -7,16 +7,16 @@ import type {
 import {
   getSafeExportImageUrl,
   getSafeExportUrl,
-} from '../features/content-export/safeUrl';
+} from '../src/features/content-export/safeUrl';
 import {
   serializeExportHtml,
   serializeExportMarkdown,
-} from '../features/content-export/serializers';
-import type { ExportSource } from '../features/content-export/types';
+} from '../src/features/content-export/serializers';
+import type { ExportSource } from '../src/features/content-export/types';
 
-jest.mock('../features/rich-content', () => ({
-  ...jest.requireActual('../features/rich-content/presentation'),
-  ...jest.requireActual('../features/rich-content/exportResources'),
+jest.mock('../src/features/rich-content', () => ({
+  ...jest.requireActual('../src/features/rich-content/presentation'),
+  ...jest.requireActual('../src/features/rich-content/exportResources'),
 }));
 
 const options = { includeImages: true, allowRemoteImages: false };

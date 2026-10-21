@@ -1,20 +1,20 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { voteContent } from '../api/zhihu';
-import { voteContent as voteContentDirect } from '../api/zhihu/voters';
-import { DownvoteButton } from '../components/DownvoteButton';
-import { LikeButton } from '../components/LikeButton';
-import { AppDialog } from '../components/overlays/AppDialog';
-import { resolveThemeColors } from '../constants/theme';
-import { useSettingsStore } from '../store/useSettingsStore';
-import { contrastRatio } from '../utils/colorContrast';
+import { voteContent } from '../src/api/zhihu';
+import { voteContent as voteContentDirect } from '../src/api/zhihu/voters';
+import { DownvoteButton } from '../src/components/DownvoteButton';
+import { LikeButton } from '../src/components/LikeButton';
+import { AppDialog } from '../src/components/overlays/AppDialog';
+import { resolveThemeColors } from '../src/constants/theme';
+import { useSettingsStore } from '../src/store/useSettingsStore';
+import { contrastRatio } from '../src/utils/colorContrast';
 
 let mockColorScheme: 'light' | 'dark' = 'light';
 
-jest.mock('../api/zhihu', () => ({
+jest.mock('../src/api/zhihu', () => ({
   voteContent: jest.fn(),
   getVoteSuccessMessage: () => '合成结果',
 }));
-jest.mock('../api/zhihu/voters', () => ({
+jest.mock('../src/api/zhihu/voters', () => ({
   voteContent: jest.fn(),
   getVoteSuccessMessage: () => '合成结果',
 }));
@@ -31,7 +31,7 @@ jest.mock('react-native-reanimated', () => ({
   withSpring: (value: number) => value,
   withTiming: (value: number) => value,
 }));
-jest.mock('../components/VoteTriangle', () => ({
+jest.mock('../src/components/VoteTriangle', () => ({
   VoteTriangle: ({ color }: { color: string }) => {
     const NativeText = jest.requireActual('react-native').Text;
     return (
@@ -41,7 +41,7 @@ jest.mock('../components/VoteTriangle', () => ({
     );
   },
 }));
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: (props: import('react-native').PressableProps) =>
     jest
       .requireActual('react')
@@ -52,10 +52,10 @@ jest.mock('../components/BouncyButton', () => ({
         },
       }),
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => mockColorScheme,
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest.requireActual('zustand').create(() => ({
     primaryColor: null,
     readingBackground: 'warm',
@@ -65,10 +65,10 @@ jest.mock('../store/useSettingsStore', () => ({
     lineHeightScale: 1.5,
   })),
 }));
-jest.mock('../utils/contentCache', () => ({
+jest.mock('../src/utils/contentCache', () => ({
   updateContentInteractionCaches: jest.fn(),
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 48, bottom: 16, left: 0, right: 0 }),
 }));

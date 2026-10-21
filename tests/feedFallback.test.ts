@@ -4,17 +4,17 @@ import {
   type AxiosResponse,
   CanceledError,
 } from 'axios';
-import apiClient from '../api/client';
-import { FEED_URLS, getFeed } from '../api/zhihu/feed';
+import apiClient from '../src/api/client';
+import { FEED_URLS, getFeed } from '../src/api/zhihu/feed';
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   useAuthStore: { getState: () => ({ cookies: null }) },
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: {
     getState: () => ({ updateSettings: jest.fn() }),
   },

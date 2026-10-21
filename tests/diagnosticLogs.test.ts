@@ -56,10 +56,10 @@ jest.mock('expo-file-system', () => ({
   },
 }));
 
-function loadLogs(): typeof import('../utils/diagnosticLogs') {
-  let result: typeof import('../utils/diagnosticLogs') | undefined;
+function loadLogs(): typeof import('../src/utils/diagnosticLogs') {
+  let result: typeof import('../src/utils/diagnosticLogs') | undefined;
   jest.isolateModules(() => {
-    result = require('../utils/diagnosticLogs');
+    result = require('../src/utils/diagnosticLogs');
   });
   if (!result) throw new Error('Missing log module');
   return result;
@@ -150,10 +150,10 @@ test('sanitizes automatic SDK events without retaining request data or messages'
 
 test('keeps actionable safe causes, scoped business locations, and build identity after restart', () => {
   jest.isolateModules(() => {
-    const logs: typeof import('../utils/diagnosticLogs') = require('../utils/diagnosticLogs');
+    const logs: typeof import('../src/utils/diagnosticLogs') = require('../src/utils/diagnosticLogs');
     const {
       rememberDiagnosticContext,
-    }: typeof import('../utils/diagnosticContext') = require('../utils/diagnosticContext');
+    }: typeof import('../src/utils/diagnosticContext') = require('../src/utils/diagnosticContext');
     const error = new TypeError("Cannot read property 'id' of undefined");
     error.stack = [
       `TypeError: ${error.message}`,

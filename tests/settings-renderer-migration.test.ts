@@ -3,7 +3,7 @@ import {
   type AppSettings,
   type RichContentRenderer,
   useSettingsStore,
-} from '../store/useSettingsStore';
+} from '../src/store/useSettingsStore';
 
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async () => null),

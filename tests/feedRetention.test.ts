@@ -5,17 +5,17 @@ import {
   FeedCacheRepository,
   MAX_FEED_CACHE_BYTES_PER_CONTEXT,
   MAX_FEED_CACHE_CONTEXTS,
-} from '../storage/feedCacheRepository';
+} from '../src/storage/feedCacheRepository';
 import {
   FEED_EXPOSURE_MAINTENANCE_INTERVAL_MS,
   FEED_EXPOSURE_RETENTION_MS,
   FeedExposureRepository,
   MAX_FEED_EXPOSURES,
   MAX_FEED_EXPOSURES_PER_CONTEXT,
-} from '../storage/feedExposureRepository';
-import { localDatabase } from '../storage/localDatabase';
+} from '../src/storage/feedExposureRepository';
+import { localDatabase } from '../src/storage/localDatabase';
 
-jest.mock('../storage/localDatabase', () => ({
+jest.mock('../src/storage/localDatabase', () => ({
   localDatabase: { run: jest.fn() },
 }));
 

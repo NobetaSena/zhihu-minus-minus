@@ -1,17 +1,17 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import type { GestureResponderEvent } from 'react-native';
-import { FollowButton } from '../components/FollowButton';
-import { resolveThemeColors } from '../constants/theme';
-import { useSettingsStore } from '../store/useSettingsStore';
-import { contrastRatio } from '../utils/colorContrast';
+import { FollowButton } from '../src/components/FollowButton';
+import { resolveThemeColors } from '../src/constants/theme';
+import { useSettingsStore } from '../src/store/useSettingsStore';
+import { contrastRatio } from '../src/utils/colorContrast';
 
 let mockColorScheme: 'light' | 'dark' = 'light';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest.requireActual('zustand').create(() => ({
     primaryColor: null,
     readingBackground: 'default',
@@ -21,7 +21,7 @@ jest.mock('../store/useSettingsStore', () => ({
     lineHeightScale: 1.5,
   })),
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => mockColorScheme,
 }));
 

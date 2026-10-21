@@ -1,11 +1,11 @@
-import apiClient from '../api/client';
+import apiClient from '../src/api/client';
 import {
   createArticleComment,
   createCommentV5,
   createPinComment,
-} from '../api/zhihu/comment';
+} from '../src/api/zhihu/comment';
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { post: jest.fn() },
 }));

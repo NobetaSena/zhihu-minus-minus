@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const sourceRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 /** Minimal tool-only loader for the same TypeScript and @/ imports as the app. */
 export function createTypeScriptRequire(moduleUrl) {
@@ -14,7 +14,7 @@ export function createTypeScriptRequire(moduleUrl) {
     module.require = (specifier) =>
       originalRequire(
         specifier.startsWith('@/')
-          ? path.join(repositoryRoot, specifier.slice(2))
+          ? path.join(sourceRoot, specifier.slice(2))
           : specifier,
       );
     const { outputText } = ts.transpileModule(readFileSync(filename, 'utf8'), {

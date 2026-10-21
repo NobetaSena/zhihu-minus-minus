@@ -3,14 +3,14 @@ import {
   getGithubReleaseHistory,
   getLatestGithubRelease,
   UPDATE_REQUEST_TIMEOUT_MS,
-} from '../api/githubReleases';
+} from '../src/api/githubReleases';
 import {
   isTrustedAssetUrl,
   isTrustedReleaseUrl,
   normalizeGithubRelease,
   parseAssetChecksum,
-} from '../utils/updateSecurity';
-import { isVersionNewer } from '../utils/updateSelection';
+} from '../src/utils/updateSecurity';
+import { isVersionNewer } from '../src/utils/updateSelection';
 
 const tag = 'v0.8.0';
 const name = 'zhihu-minus-minus-v0.8.0-arm64-v8a.apk';

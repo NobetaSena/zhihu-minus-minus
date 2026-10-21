@@ -1,11 +1,15 @@
-import type { FeedItem, RawFeedItem, RawFeedTarget } from '../api/zhihu/feed';
+import type {
+  FeedItem,
+  RawFeedItem,
+  RawFeedTarget,
+} from '../src/api/zhihu/feed';
 import {
   applyFeedFilter,
   computeFilterStats,
   evaluateFeedItem,
   type FeedFilterRules,
-} from '../utils/feedFilter';
-import { parseRecommendData } from '../utils/recommendFeed';
+} from '../src/utils/feedFilter';
+import { parseRecommendData } from '../src/utils/recommendFeed';
 
 function rawItem(
   promotionExtra: unknown,

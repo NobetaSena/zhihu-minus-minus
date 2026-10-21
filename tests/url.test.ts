@@ -1,11 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { redirectSystemPath } from '../app/+native-intent';
+import { redirectSystemPath } from '../src/app/+native-intent';
 import {
   getSafeExternalUrl,
   parseRichContentDevelopmentUrl,
   parseZhihuUrl,
   sanitizeNavigationUrlForLog,
-} from '../utils/url';
+} from '../src/utils/url';
 
 test('the decoder backport preserves CommonJS queries and bounds malformed input work', () => {
   const output = execFileSync(

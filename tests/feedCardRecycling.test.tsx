@@ -1,15 +1,15 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import type React from 'react';
-import { type FeedItem, voteContent } from '../api/zhihu';
-import type { CollectionButton } from '../components/CollectionButton';
-import { CreationCard } from '../components/CreationCard';
-import { FeedCard } from '../components/FeedCard';
-import { seedAnswerPreviewEntry } from '../utils/answerPreviewEntry';
+import { type FeedItem, voteContent } from '../src/api/zhihu';
+import type { CollectionButton } from '../src/components/CollectionButton';
+import { CreationCard } from '../src/components/CreationCard';
+import { FeedCard } from '../src/components/FeedCard';
+import { seedAnswerPreviewEntry } from '../src/utils/answerPreviewEntry';
 import type {
   AnswerReadingContext,
   AnswerReadingRouteParams,
-} from '../utils/answerReadingContext';
-import { updateContentInteractionCaches } from '../utils/contentCache';
+} from '../src/utils/answerReadingContext';
+import { updateContentInteractionCaches } from '../src/utils/contentCache';
 
 interface MenuProps {
   visible: boolean;
@@ -43,18 +43,18 @@ jest.mock('react-native', () => {
     get: (target, key) => (key === 'View' ? View : target[key]),
   });
 });
-jest.mock('../api/zhihu', () => ({
-  ...jest.requireActual('../api/zhihu/contentCollection'),
+jest.mock('../src/api/zhihu', () => ({
+  ...jest.requireActual('../src/api/zhihu/contentCollection'),
   voteContent: jest.fn(),
   getVoteSuccessMessage: () => '合成成功',
   getContentVoteCount: () => 0,
   getContentVoteState: () => 0,
 }));
-jest.mock('../api/client', () => ({ hasAuthenticationCookie: () => true }));
+jest.mock('../src/api/client', () => ({ hasAuthenticationCookie: () => true }));
 jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('../components/CollectionButton', () => {
+jest.mock('../src/components/CollectionButton', () => {
   const react = jest.requireActual<typeof import('react')>('react');
   const native =
     jest.requireActual<typeof import('react-native')>('react-native');
@@ -79,14 +79,14 @@ jest.mock('react-native-reanimated', () => ({
   },
   SharedTransition: { duration: () => ({}) },
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   useAuthStore: () => ({ cookies: 'synthetic-session' }),
 }));
-jest.mock('../store/useCollectionStore', () => ({
+jest.mock('../src/store/useCollectionStore', () => ({
   useCollectionStore: (selector: (state: object) => unknown) =>
     selector({ collectedStatusMap: {}, collectedCountOffsetMap: {} }),
 }));
-jest.mock('../hooks/useContentActions', () => ({
+jest.mock('../src/hooks/useContentActions', () => ({
   useContentActions: (options: unknown) => {
     mockUseContentActions(options);
     return {
@@ -101,10 +101,10 @@ jest.mock('../hooks/useContentActions', () => ({
     };
   },
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
-jest.mock('../components/Themed', () => {
+jest.mock('../src/components/Themed', () => {
   const native = jest.requireActual('react-native');
   return {
     Text: native.Text,
@@ -112,14 +112,14 @@ jest.mock('../components/Themed', () => {
     useThemeColor: () => '#123456',
   };
 });
-jest.mock('../components/BouncyButton', () => ({
+jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: jest.requireActual('react-native').Pressable,
 }));
-jest.mock('../components/FeedCardPreview', () => ({
+jest.mock('../src/components/FeedCardPreview', () => ({
   FeedCardPreview: () => null,
 }));
-jest.mock('../components/FeedExcerpt', () => ({ FeedExcerpt: () => null }));
-jest.mock('../components/ShareMenu', () => ({
+jest.mock('../src/components/FeedExcerpt', () => ({ FeedExcerpt: () => null }));
+jest.mock('../src/components/ShareMenu', () => ({
   ShareMenu: (props: MenuProps) => {
     mockShareMenuProps = props;
     return props.visible
@@ -133,11 +133,11 @@ jest.mock('../components/ShareMenu', () => ({
       : null;
   },
 }));
-jest.mock('../features/rich-content', () => ({ ZhihuContent: () => null }));
+jest.mock('../src/features/rich-content', () => ({ ZhihuContent: () => null }));
 jest.mock('expo-linear-gradient', () => ({
   LinearGradient: jest.requireActual('react-native').View,
 }));
-jest.mock('../components/LikeButton', () => ({
+jest.mock('../src/components/LikeButton', () => ({
   LikeButton: ({ count, voted }: { count: number; voted: number }) =>
     jest
       .requireActual('react')
@@ -147,7 +147,7 @@ jest.mock('../components/LikeButton', () => ({
         `vote:${voted}/${count}`,
       ),
 }));
-jest.mock('../components/CustomContextMenu', () => ({
+jest.mock('../src/components/CustomContextMenu', () => ({
   CustomContextMenu: ({
     options,
   }: {
@@ -172,18 +172,18 @@ jest.mock('../components/CustomContextMenu', () => ({
       ),
     ),
 }));
-jest.mock('../utils/contentCache', () => ({
+jest.mock('../src/utils/contentCache', () => ({
   seedRichContentFromFeedItem: jest.fn(),
   updateContentInteractionCaches: jest.fn(),
 }));
-jest.mock('../utils/answerPreviewEntry', () => ({
+jest.mock('../src/utils/answerPreviewEntry', () => ({
   seedAnswerPreviewEntry: jest.fn(),
 }));
-jest.mock('../utils/haptics', () => ({
+jest.mock('../src/utils/haptics', () => ({
   impactAsync: jest.fn(),
   ImpactFeedbackStyle: { Medium: 'medium' },
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 
 beforeEach(() => jest.clearAllMocks());
 

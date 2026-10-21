@@ -1,13 +1,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import { createPublishingDocument } from '../features/publishing/document';
+import { createPublishingDocument } from '../src/features/publishing/document';
 import {
   emptyPublishingDraft,
   type PublishingDraftValue,
-} from '../features/publishing/types';
-import { usePublishingDraft } from '../features/publishing/usePublishingDraft';
-import { publishingDraftRepository } from '../storage/publishingDraftRepository';
-import { showToast } from '../utils/toast';
+} from '../src/features/publishing/types';
+import { usePublishingDraft } from '../src/features/publishing/usePublishingDraft';
+import { publishingDraftRepository } from '../src/storage/publishingDraftRepository';
+import { showToast } from '../src/utils/toast';
 
 let mockAccount = { me: { id: 'A', url_token: 'a' }, cookies: 'synthetic' };
 let mockVersion = 0;
@@ -25,12 +25,12 @@ jest.mock('@react-navigation/native', () => ({
     mockPrevent = { enabled, callback };
   },
 }));
-jest.mock('../store/useAuthStore', () => ({
+jest.mock('../src/store/useAuthStore', () => ({
   getAuthSessionVersion: () => mockVersion,
   useAuthStore: (selector: (value: typeof mockAccount) => unknown) =>
     selector(mockAccount),
 }));
-jest.mock('../storage/publishingDraftRepository', () => ({
+jest.mock('../src/storage/publishingDraftRepository', () => ({
   publishingDraftRepository: {
     getGeneration: () => 0,
     read: jest.fn(),
@@ -38,7 +38,7 @@ jest.mock('../storage/publishingDraftRepository', () => ({
     remove: jest.fn(),
   },
 }));
-jest.mock('../utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
 
 beforeEach(() => {
   jest.clearAllMocks();

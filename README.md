@@ -7,7 +7,7 @@
 > - <https://github.com/zhihulite/Hydrogen>  
 > - <https://github.com/zly2006/zhihu-plus-plus>
 
-![zhihu--](./assets/images/favicon.svg)
+![zhihu--](./src/assets/images/favicon.svg)
 
 一款轻量、无广告的第三方知乎客户端，支持 **Android 与 iOS**。
 
@@ -30,27 +30,27 @@
   <table style="border-collapse: separate; border-spacing: 15px;">
     <tr>
       <td align="center" valign="top">
-        <img src="./screenshot/v0.0.4/photo_2026-03-12_23-31-07.jpg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+        <img src="./docs/screenshot/v0.0.4/photo_2026-03-12_23-31-07.jpg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
         <br /><br />
         <b>搜索</b><br />
       </td>
       <td align="center" valign="top">
-        <img src="./screenshot/v0.7.1/photo_2026-10-03 14.37.26.jpeg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+        <img src="./docs/screenshot/v0.7.1/photo_2026-10-03 14.37.26.jpeg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
         <br /><br />
         <b>问题详情</b><br />
       </td>
       <td align="center" valign="top">
-        <img src="./screenshot/v0.7.1/photo_2026-10-03 14.41.21.jpeg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+        <img src="./docs/screenshot/v0.7.1/photo_2026-10-03 14.41.21.jpeg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
         <br /><br />
         <b>夜间模式</b><br />
       </td>
       <td align="center" valign="top">
-        <img src="./screenshot/v0.1.3/Screenshot_20260705_190004.jpg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+        <img src="./docs/screenshot/v0.1.3/Screenshot_20260705_190004.jpg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
         <br /><br />
         <b>关注更新</b><br />
       </td>
       <td align="center" valign="top">
-        <img src="./screenshot/v0.9.0/photo_2026-10-13 15.16.38.jpeg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+        <img src="./docs/screenshot/v0.9.0/photo_2026-10-13 15.16.38.jpeg" width="160" style="border-radius: 16px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
         <br /><br />
         <b>段落交互</b><br />
       </td>
@@ -158,7 +158,7 @@ npm run check
 
 `npm run check` 会依次执行 TypeScript、Biome、全部测试和富文本 fixture 分析。全仓只读检查也可单独运行 `npm run lint`；需要应用 Biome 修复时使用 `npm run lint:fix`，并逐项复核改动。
 
-富文本模块的目录约定、fixture 与专项命令见 [features/rich-content/README.md](./features/rich-content/README.md)。更多开发约定见 [DEVELOPMENT.md](./docs/DEVELOPMENT.md)；面向自动化开发者的维护规则见 [AGENTS.md](./AGENTS.md)。
+富文本模块的目录约定、fixture 与专项命令见 [src/features/rich-content/README.md](./src/features/rich-content/README.md)。更多开发约定见 [DEVELOPMENT.md](./docs/DEVELOPMENT.md)；面向自动化开发者的维护规则见 [AGENTS.md](./AGENTS.md)。
 
 ## 🔐 登录说明
 

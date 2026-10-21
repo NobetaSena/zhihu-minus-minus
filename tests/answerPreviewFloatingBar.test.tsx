@@ -7,8 +7,8 @@ import type {
 import type {
   ZhihuAnswerPreviewItem,
   ZhihuPreviewAnswer,
-} from '../api/zhihu/nextRender';
-import { useAnswerPreviewFloatingBar } from '../hooks/useAnswerPreviewFloatingBar';
+} from '../src/api/zhihu/nextRender';
+import { useAnswerPreviewFloatingBar } from '../src/hooks/useAnswerPreviewFloatingBar';
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   __esModule: true,

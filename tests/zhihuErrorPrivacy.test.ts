@@ -3,8 +3,11 @@ import {
   MAX_BUSINESS_MESSAGE_LENGTH,
   SafeFeedbackError,
   sanitizeBusinessFeedback,
-} from '../utils/safeFeedback';
-import { getZhihuErrorMessage, getZhihuErrorStatus } from '../utils/zhihuError';
+} from '../src/utils/safeFeedback';
+import {
+  getZhihuErrorMessage,
+  getZhihuErrorStatus,
+} from '../src/utils/zhihuError';
 
 const failedResponse = (message: unknown, status = 400) => ({
   response: { status, data: { error: { message } } },

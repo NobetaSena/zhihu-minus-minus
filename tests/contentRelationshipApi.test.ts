@@ -1,11 +1,11 @@
 import { AxiosHeaders, type AxiosResponse } from 'axios';
-import apiClient from '../api/client';
+import apiClient from '../src/api/client';
 import {
   getContentRelationship,
   normalizeContentRelationship,
-} from '../api/zhihu/relationship';
+} from '../src/api/zhihu/relationship';
 
-jest.mock('../api/client', () => ({
+jest.mock('../src/api/client', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
