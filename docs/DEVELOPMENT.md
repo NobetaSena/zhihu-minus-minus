@@ -122,7 +122,9 @@ SDK 58 升级后移除旧版 `expo-symbols` 的字体导入补丁，使用 SDK �
 npm run check
 ```
 
-它依次执行类型检查、只读 Biome 检查、全部 Jest 测试和富文本 fixture 分析。测试运行在 `jest-expo` preset 下；当前 `testMatch` 收集 `tests/` 下的 `.test.ts` / `.test.tsx` / `.test.js`，以及 `src/features/rich-content/tests/` 下的 `.test.ts` / `.test.tsx`。组件交互断言可使用 React Native Testing Library；其他目录或扩展名需要同步调整 `jest.config.js`。常用命令如下：
+`tsconfig.json` 显式加载 `expo/types`，为 CSS 等资源导入提供官方类型声明。CI 的干净检出不包含被 Git 忽略的 `expo-env.d.ts`，类型检查不能依赖本地 Expo 启动或 prebuild 生成该文件。
+
+`npm run check` 依次执行类型检查、只读 Biome 检查、全部 Jest 测试和富文本 fixture 分析。测试运行在 `jest-expo` preset 下；当前 `testMatch` 收集 `tests/` 下的 `.test.ts` / `.test.tsx` / `.test.js`，以及 `src/features/rich-content/tests/` 下的 `.test.ts` / `.test.tsx`。组件交互断言可使用 React Native Testing Library；其他目录或扩展名需要同步调整 `jest.config.js`。常用命令如下：
 
 ```bash
 npm run typecheck
