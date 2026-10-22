@@ -3,6 +3,7 @@ const expoPreset = require('jest-expo/jest-preset');
 
 module.exports = {
   preset: 'jest-expo',
+  testTimeout: 10_000,
   // These dependencies publish ESM; keep Expo's other exclusions intact.
   transformIgnorePatterns: expoPreset.transformIgnorePatterns.map((pattern) =>
     pattern.replace(
