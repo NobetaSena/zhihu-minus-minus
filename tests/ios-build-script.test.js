@@ -27,6 +27,7 @@ describe('unsigned iOS build script', () => {
       npx: 'echo "prebuild $*" >> "$IPA_TEST_TRACE"',
       pod: `echo "pods $*" >> "$IPA_TEST_TRACE"\nexit "\${IPA_TEST_POD_EXIT:-0}"`,
       xcodebuild: `echo "xcode $*" >> "$IPA_TEST_TRACE"
+echo "sentry-upload=\${SENTRY_DISABLE_AUTO_UPLOAD:-unset} no-upload=\${SENTRY_NO_UPLOAD:-unset} allow-failure=\${SENTRY_ALLOW_FAILURE:-unset} release=\${SENTRY_RELEASE:-unset} dist=\${SENTRY_DIST:-unset} args=\${SENTRY_CLI_RN_XCODE_EXTRA_ARGS:-}" >> "$IPA_TEST_TRACE"
 mkdir -p build/Release-iphoneos/ReviewFixture.app
 echo binary > build/Release-iphoneos/ReviewFixture.app/ReviewFixture
 if [ "\${IPA_TEST_MULTIPLE_APPS:-0}" = 1 ]; then
@@ -55,6 +56,13 @@ fi`,
           ...process.env,
           PATH: `${binDirectory}${path.delimiter}${process.env.PATH}`,
           IPA_TEST_TRACE: path.join(directory, 'trace.txt'),
+          SENTRY_AUTH_TOKEN: '',
+          SENTRY_DISABLE_AUTO_UPLOAD: '',
+          SENTRY_NO_UPLOAD: '',
+          SENTRY_ALLOW_FAILURE: '',
+          SENTRY_RELEASE: '',
+          SENTRY_DIST: '',
+          SENTRY_CLI_RN_XCODE_EXTRA_ARGS: '',
           ...extraEnv,
         },
       },
@@ -101,6 +109,44 @@ fi`,
     expect(
       fs.readFileSync(path.join(directory, 'trace.txt'), 'utf8'),
     ).not.toContain('xcode ');
+  });
+
+  test('keeps builds without upload credentials offline', () => {
+    expect(run().status).toBe(0);
+    expect(
+      fs.readFileSync(path.join(directory, 'trace.txt'), 'utf8'),
+    ).toContain('sentry-upload=true no-upload=1');
+  });
+
+  test('uploads with credentials and waits for processing without allowing failures', () => {
+    const result = run({
+      SENTRY_AUTH_TOKEN: 'synthetic-upload-token',
+      SENTRY_ALLOW_FAILURE: 'true',
+      SENTRY_RELEASE: 'synthetic-override',
+      SENTRY_DIST: 'synthetic-override',
+    });
+    expect(result.status).toBe(0);
+    const trace = fs.readFileSync(path.join(directory, 'trace.txt'), 'utf8');
+    expect(trace).toContain(
+      'sentry-upload=false no-upload=unset allow-failure=false release=unset dist=unset',
+    );
+    expect(trace).toContain('--force-foreground --wait');
+    expect(`${result.stdout}${result.stderr}${trace}`).not.toContain(
+      'synthetic-upload-token',
+    );
+  });
+
+  test.each([
+    { SENTRY_DISABLE_AUTO_UPLOAD: 'true' },
+    { SENTRY_NO_UPLOAD: '1' },
+    { SENTRY_NO_UPLOAD: 'true' },
+  ])('preserves an explicit upload opt-out: %s', (skipEnv) => {
+    expect(
+      run({ SENTRY_AUTH_TOKEN: 'synthetic-upload-token', ...skipEnv }).status,
+    ).toBe(0);
+    expect(
+      fs.readFileSync(path.join(directory, 'trace.txt'), 'utf8'),
+    ).toContain('sentry-upload=true no-upload=1');
   });
 
   test('rejects ambiguous workspaces or built apps', () => {

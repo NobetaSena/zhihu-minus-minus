@@ -7,6 +7,7 @@ import {
 
 export interface TelemetryBuildContext {
   appVersion?: string;
+  applicationId?: string;
   buildNumber?: string;
   commit?: string;
   sourceFingerprint?: string;
@@ -84,9 +85,35 @@ function uuid(value: unknown): string | undefined {
 }
 
 function version(value: unknown): string | undefined {
-  return typeof value === 'string' && /^\d+(?:[._-]\d+){0,4}$/.test(value)
+  return typeof value === 'string' &&
+    value.length < 40 &&
+    /^\d+(?:[._-]\d+){0,4}$/.test(value)
     ? value
     : undefined;
+}
+
+/** Match the native Sentry upload defaults without trusting SDK event metadata. */
+export function getSentryBuildIdentity(build: TelemetryBuildContext): {
+  release?: string;
+  dist?: string;
+} {
+  const appVersion = version(build.appVersion);
+  const dist = version(build.buildNumber);
+  const applicationId =
+    typeof build.applicationId === 'string' &&
+    build.applicationId.length <= 255 &&
+    /^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z][A-Za-z0-9_-]*)+$/.test(
+      build.applicationId,
+    )
+      ? build.applicationId
+      : undefined;
+  return compact({
+    release:
+      applicationId && appVersion && dist
+        ? `${applicationId}@${appVersion}+${dist}`
+        : undefined,
+    dist,
+  });
 }
 
 function enumValue<T extends string>(
@@ -102,12 +129,15 @@ function sanitizeFrame(
   frame: StackFrame,
   sourceFiles?: readonly string[],
 ): StackFrame {
+  const filename = sanitizeCodeFilename(
+    frame.filename ?? frame.abs_path,
+    sourceFiles,
+  );
   // Function/module names, source context and vars may contain runtime values.
   return compact({
-    filename: sanitizeCodeFilename(
-      frame.filename ?? frame.abs_path,
-      sourceFiles,
-    ),
+    filename,
+    // Sentry associates Debug ID images by abs_path/code_file after processing.
+    abs_path: sanitizeCodeFilename(frame.abs_path, sourceFiles) ?? filename,
     lineno: integer(frame.lineno),
     colno: integer(frame.colno),
     in_app: typeof frame.in_app === 'boolean' ? frame.in_app : undefined,
@@ -131,9 +161,7 @@ export function sanitizeSentryEvent<T extends Event>(
       new Set(['fatal', 'error', 'warning', 'log', 'info', 'debug'] as const),
     ),
     platform: 'javascript',
-    release: version(build.appVersion)
-      ? `zhihu-minus-minus@${build.appVersion}`
-      : undefined,
+    ...getSentryBuildIdentity(build),
     environment: build.environment,
     tags: compact({
       app_version: version(build.appVersion),

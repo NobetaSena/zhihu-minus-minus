@@ -16,7 +16,10 @@ import { classifyDiagnosticMessage } from './errorDiagnostics';
 import { loadFirebaseAnalytics } from './firebaseAnalytics';
 import { classifyNetworkError } from './networkFailure';
 import { getTelemetryBuildContext } from './telemetryBuildContext';
-import { sanitizeSentryEvent } from './telemetrySanitizer';
+import {
+  getSentryBuildIdentity,
+  sanitizeSentryEvent,
+} from './telemetrySanitizer';
 
 interface AppExtra {
   firebaseAnalyticsEnabled?: unknown;
@@ -144,9 +147,7 @@ function initializeSentry() {
     // Native crashes bypass JS beforeSend and opt-out. Keep automatic JS
     // errors, but do not initialize a separate unfiltered native transport.
     enableNative: false,
-    release: buildContext.appVersion
-      ? `zhihu-minus-minus@${buildContext.appVersion}`
-      : undefined,
+    ...getSentryBuildIdentity(buildContext),
     environment: buildContext.environment,
     sendDefaultPii: false,
     sendClientReports: false,

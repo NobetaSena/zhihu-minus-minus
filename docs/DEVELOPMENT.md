@@ -62,7 +62,7 @@ npx expo run:ios --configuration Debug --device
 
 个人签名安装 Development Build 时，选择证书所属的 Personal Team；证书名称括号里的标识不一定是 Team ID，实际 Team 可由证书主体的 OU 核实。使用 `xcodebuild` 时通过命令参数传入 `DEVELOPMENT_TEAM`，不要把个人 Team 固定进仓库配置。完成构建后用 `xcrun devicectl device install app --device <设备标识> <Debug-iphoneos/*.app>` 安装，再启动 Metro（`npm run start -- --dev-client`）；设备需已配对并开启开发者模式。
 
-只生成本地未签名 IPA 可运行 `bash scripts/build-unsigned-ipa.sh`。脚本每次执行 iOS prebuild（`--no-install`）后安装 Pods，自动发现唯一 workspace 和 scheme，禁用本地 Sentry 上传，并把当前版本 IPA 写入项目根目录。它不会改写 `.xcode.env.local` 或删除其他版本产物；已有同版本 IPA 在构建和打包成功后替换。产物已被 Git 忽略，仍需另行签名才能安装。
+只生成本地未签名 IPA 可运行 `bash scripts/build-unsigned-ipa.sh`。脚本每次执行 iOS prebuild（`--no-install`）后安装 Pods，自动发现唯一 workspace 和 scheme，并把当前版本 IPA 写入项目根目录。未导出 `SENTRY_AUTH_TOKEN` 时跳过上传；导出 Token 后默认上传 source map，等待服务端处理，上传失败会终止构建。显式设置 `SENTRY_DISABLE_AUTO_UPLOAD=true` 或 `SENTRY_NO_UPLOAD=1` 仍可跳过上传。脚本不会改写 `.xcode.env.local` 或删除其他版本产物；已有同版本 IPA 在构建和打包成功后替换。旧 `.xcode.env.local` 中若残留禁用上传设置，需自行移除后再验证上传。产物已被 Git 忽略，仍需另行签名才能安装。
 
 使用 Xcode 27 / iOS 27 SDK 时，UIKit 要求采用 Scene 生命周期，否则应用会在创建界面前退出。当前 SDK 55 由 [`withIosSceneLifecycle`](../plugins/withIosSceneLifecycle.js) 在 prebuild 时迁移窗口启动，并注入 [`ZhihuSceneDelegate.swift`](../plugins/ios/ZhihuSceneDelegate.swift)：以 `UIWindow(windowScene:)` 创建单个主窗口，将冷/热链接与前后台事件转给原有 Expo AppDelegate。生成目录无需手改；插件拒绝覆盖未知模板或已有自定义 Scene 配置，升级 Expo SDK 时须重新核对此适配。平台依据见 [Apple 迁移说明](https://developer.apple.com/documentation/uikit/transitioning-to-the-uikit-scene-based-life-cycle) 与 [Expo Scene 说明](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md)。
 

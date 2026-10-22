@@ -22,8 +22,21 @@ WORKSPACE="${WORKSPACES[0]}"
 SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
 
 echo "📦 [2/3] 开始编译 iOS App 产物 (未签名 Release)..."
-export SENTRY_DISABLE_AUTO_UPLOAD=true
-export SENTRY_NO_UPLOAD=1
+# 本地无上传凭据时仍可离线构建；配置凭据后默认上传，并保留显式跳过设置。
+if [ -z "${SENTRY_AUTH_TOKEN:-}" ] || \
+  [ "${SENTRY_DISABLE_AUTO_UPLOAD:-false}" = true ] || \
+  [ "${SENTRY_NO_UPLOAD:-0}" = 1 ] || \
+  [ "${SENTRY_NO_UPLOAD:-false}" = true ]; then
+  export SENTRY_DISABLE_AUTO_UPLOAD=true
+  export SENTRY_NO_UPLOAD=1
+  echo "Sentry source map 上传已跳过。"
+else
+  export SENTRY_DISABLE_AUTO_UPLOAD=false
+  # release/dist 必须与运行时从原生构建信息生成的值一致。
+  unset SENTRY_NO_UPLOAD SENTRY_RELEASE SENTRY_DIST
+  export SENTRY_ALLOW_FAILURE=false
+  export SENTRY_CLI_RN_XCODE_EXTRA_ARGS="${SENTRY_CLI_RN_XCODE_EXTRA_ARGS:-} --force-foreground --wait"
+fi
 xcodebuild -workspace "$WORKSPACE" \
   -scheme "$SCHEME" \
   -configuration Release \

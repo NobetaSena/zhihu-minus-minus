@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { osVersion } from 'expo-device';
+import { Platform } from 'react-native';
 import type { TelemetryBuildContext } from './telemetrySanitizer';
 
 const SOURCE_ROOTS = new Set([
@@ -35,6 +36,20 @@ function version(value: unknown): string | undefined {
     value.length < 40 &&
     /^\d+(?:[._-]\d+){0,4}$/.test(value)
     ? value
+    : undefined;
+}
+
+function applicationId(value: unknown): string | undefined {
+  return typeof value === 'string' &&
+    value.length <= 255 &&
+    /^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z][A-Za-z0-9_-]*)+$/.test(value)
+    ? value
+    : undefined;
+}
+
+function androidBuild(value: unknown): string | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? String(value)
     : undefined;
 }
 
@@ -81,20 +96,35 @@ export function getTelemetryBuildContext(): TelemetryBuildContext {
   const sourceFiles = Array.isArray(diagnostics.sourceFiles)
     ? [...new Set(diagnostics.sourceFiles.filter(sourceFile))]
     : undefined;
+  const platform =
+    Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'other';
+  const nativeBuildNumber =
+    platform === 'ios'
+      ? version(Constants.platform?.ios?.buildNumber)
+      : platform === 'android'
+        ? androidBuild(Constants.platform?.android?.versionCode)
+        : undefined;
+  const configuredBuildNumber =
+    platform === 'ios'
+      ? version(Constants.expoConfig?.ios?.buildNumber)
+      : platform === 'android'
+        ? androidBuild(Constants.expoConfig?.android?.versionCode)
+        : undefined;
   return {
     appVersion: version(Constants.expoConfig?.version),
-    buildNumber:
-      version(Constants.nativeBuildVersion) ??
-      version(Constants.platform?.ios?.buildNumber),
+    applicationId: applicationId(
+      platform === 'ios'
+        ? Constants.expoConfig?.ios?.bundleIdentifier
+        : platform === 'android'
+          ? Constants.expoConfig?.android?.package
+          : undefined,
+    ),
+    buildNumber: nativeBuildNumber ?? configuredBuildNumber,
     osVersion: version(osVersion),
     commit: hex(diagnostics.commit, 40),
     sourceFingerprint: hex(diagnostics.sourceFingerprint, 24),
     sourceFiles,
-    platform: Constants.platform?.ios
-      ? 'ios'
-      : Constants.platform?.android
-        ? 'android'
-        : 'other',
+    platform,
     environment: __DEV__ ? 'development' : 'production',
   };
 }

@@ -17,12 +17,13 @@ jest.mock('expo-constants', () => ({
   default: {
     expoConfig: {
       version: '0.7.0',
+      ios: { bundleIdentifier: 'com.example.zhihu', buildNumber: '1' },
       extra: {
         firebaseAnalyticsEnabled: true,
         sentryDsn: 'https://test@example.invalid/1',
       },
     },
-    platform: { ios: {} },
+    platform: { ios: { buildNumber: '1' } },
   },
 }));
 jest.mock('expo-device', () => ({ osVersion: '18.0' }));
@@ -420,11 +421,12 @@ test('both Sentry event callbacks use the safe contract and honor opt-out', asyn
   });
   const safeBase = {
     platform: 'javascript',
-    release: 'zhihu-minus-minus@0.7.0',
+    release: 'com.example.zhihu@0.7.0+1',
+    dist: '1',
     environment: 'development',
-    tags: { app_version: '0.7.0', platform: 'ios' },
+    tags: { app_version: '0.7.0', build_number: '1', platform: 'ios' },
     contexts: {
-      app: { app_version: '0.7.0' },
+      app: { app_version: '0.7.0', app_build: '1' },
       os: { name: 'ios', version: '18.0' },
       device: {},
     },
@@ -571,12 +573,18 @@ test('automatic JS errors retain type and code locations while dropping arbitrar
       frames: [
         {
           filename: 'source.js',
+          abs_path: 'source.js',
           lineno: 123,
           colno: 45,
           in_app: true,
           debug_id: debugId,
         },
-        { filename: 'source.js', lineno: 7, colno: 8 },
+        {
+          filename: 'source.js',
+          abs_path: 'source.js',
+          lineno: 7,
+          colno: 8,
+        },
       ],
     },
   });

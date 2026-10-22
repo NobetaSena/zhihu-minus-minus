@@ -76,6 +76,25 @@ base64 < GoogleService-Info.plist | tr -d '\n'
 
 `build.yaml` 会在每个构建 job 中把这两个 Firebase Secret 临时还原为根目录文件，并通过环境变量交给 `app.config.ts`。`.easignore` 会在 EAS 创建临时构建归档时将这两个刚生成的文件包含进去；它们仍被 `.gitignore` 忽略，不会进入 Git。runner 结束后文件随工作区一起销毁。Firebase 客户端文件本身不是服务端私钥，但仍按环境配置管理，不提交到 Git。`SENTRY_AUTH_TOKEN` 只放在 CI/EAS Secret 中，绝不能放进 App 包或提交到仓库。
 
+## Source map 匹配与上传
+
+Metro 使用 `@sentry/react-native/metro` 的 `getSentryExpoConfig`，再应用 NativeWind 配置，让生产 bundle、source map 和运行时异常共享 Debug ID。脱敏事件保留合法的 `debug_meta.images`、栈帧 Debug ID 和相应的 bundle 路径；这些定位字段不能替换为另一构建的值。
+
+Android Gradle 与 iOS Xcode 的 Sentry 上传脚本均采用原生默认标识，运行时上报与其对齐：
+
+| 平台 | release | dist |
+| --- | --- | --- |
+| Android | `<applicationId>@<versionName>+<versionCode>` | `<versionCode>` |
+| iOS | `<CFBundleIdentifier>@<CFBundleShortVersionString>+<CFBundleVersion>` | `<CFBundleVersion>` |
+
+Android 未提供原生构建编号时，运行时回退到 App 配置的 `android.versionCode`；当前构建不使用外部自动递增。未来若启用 EAS 远端版本管理、自动递增或修改原生版本号，须同步调整运行时元数据获取，确保上报使用最终打包的编号。
+
+不要单独覆盖上传时的 `SENTRY_RELEASE` / `SENTRY_DIST`，否则会再次与运行时不一致。CI 与本地未签名 IPA 脚本在上传前清除这两个覆盖值。CI 明确启用上传且不允许忽略上传失败；Android 上传报告直接显示在 EAS/Gradle 日志中。iOS 在前台上传并等待服务端处理，成功构建后还须找到 CLI 的 source map 上传报告，才输出固定成功摘要；不会将整份成功的 Xcode 日志输出。
+
+本地 `bash scripts/build-unsigned-ipa.sh` 没有导出的 `SENTRY_AUTH_TOKEN` 时保留离线构建能力；配置 Token 后默认执行上传并等待处理。需要离线构建可显式设置 `SENTRY_DISABLE_AUTO_UPLOAD=true` 或 `SENTRY_NO_UPLOAD=1`。Token 只通过构建进程环境传递，不应放入 `.xcode.env.local`、App 配置或包内。
+
+变更此链路后重新 prebuild 并构建 Release；在 Android 和 iOS 各触发一条不含用户数据的测试异常，检查新事件的 `release` / `dist` 与上传报告一致、`debug_meta.images[].debug_id` 与同次 source map 一致，并确认堆栈已还原到仓库源码。旧版本已经发出的事件仍保留原来的元数据；不能仅上传新构建的 source map 来修复旧构建的堆栈。
+
 ## 移除方式
 
 仅移除 Firebase Analytics 时，删除适配层中的 Firebase 分支、`package.json` 的两个 `@react-native-firebase/*` 依赖、Firebase config plugins、`firebase.json` 和 `app.config.ts` 的 Firebase 配置；同步删去工作流中的 Firebase 文件还原、校验与环境变量，以及 `.easignore` 的配置文件例外。保留 Sentry 分支和隐私开关。
