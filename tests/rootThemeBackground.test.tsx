@@ -18,27 +18,6 @@ jest.mock(
   () => jest.requireActual('react-native').View,
 );
 jest.mock('nativewind', () => ({ vars: () => ({}) }));
-jest.mock('@react-navigation/native', () => ({
-  DarkTheme: { dark: true, colors: {} },
-  DefaultTheme: { dark: false, colors: {} },
-  ThemeProvider: ({
-    children,
-    value,
-  }: {
-    children: ReactNode;
-    value: { colors: { background: string } };
-  }) => {
-    const { View } = jest.requireActual('react-native');
-    return (
-      <View
-        testID="navigation-theme"
-        style={{ backgroundColor: value.colors.background }}
-      >
-        {children}
-      </View>
-    );
-  },
-}));
 jest.mock('expo-router', () => {
   const React = jest.requireActual('react');
   const { View } = jest.requireActual('react-native');
@@ -50,7 +29,29 @@ jest.mock('expo-router', () => {
     return <View testID="navigator">{children}</View>;
   };
   Stack.Screen = () => null;
-  return { Stack, useRouter: () => ({ push: jest.fn() }) };
+  return {
+    DarkTheme: { dark: true, colors: {} },
+    DefaultTheme: { dark: false, colors: {} },
+    ThemeProvider: ({
+      children,
+      value,
+    }: {
+      children: ReactNode;
+      value: { colors: { background: string } };
+    }) => {
+      const { View } = jest.requireActual('react-native');
+      return (
+        <View
+          testID="navigation-theme"
+          style={{ backgroundColor: value.colors.background }}
+        >
+          {children}
+        </View>
+      );
+    },
+    Stack,
+    useRouter: () => ({ push: jest.fn() }),
+  };
 });
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: (props: ViewProps) => {

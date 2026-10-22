@@ -2,10 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView } from 'react-native';
-import {
-  GestureDetector,
-  type NativeGesture,
-} from 'react-native-gesture-handler';
+import { type Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { fetchRecentMoments } from '@/api/zhihu';
 import { useNestedHorizontalGesture } from '@/hooks/useNestedHorizontalGesture';
 import { normalizeRecentMoments } from '@/utils/recentMoments';
@@ -23,7 +20,7 @@ function RecentMomentsComponent({
 }: {
   isActive?: boolean;
   onInteractionChange?: (interacting: boolean) => void;
-  parentGesture?: NativeGesture;
+  parentGesture?: ReturnType<typeof Gesture.Native>;
 }) {
   const router = useRouter();
   const primaryColor = useThemeColor({}, 'primary');

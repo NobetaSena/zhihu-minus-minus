@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
-import type { ReactNode } from 'react';
-import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import type { ComponentProps, ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRuntimeThemeColors } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -15,7 +15,7 @@ export interface ContentActionBarProps {
   trailing?: ReactNode;
   accessory?: ReactNode;
   children?: ReactNode;
-  style?: StyleProp<ViewStyle>;
+  style?: ComponentProps<typeof Animated.View>['style'];
   visible?: boolean;
   shrinkLeading?: boolean;
 }

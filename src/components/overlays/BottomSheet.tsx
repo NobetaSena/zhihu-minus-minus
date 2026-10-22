@@ -204,7 +204,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
           <Reanimated.View
             pointerEvents="none"
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               {
                 backgroundColor: Colors[colorScheme].blackTransparent,
               },

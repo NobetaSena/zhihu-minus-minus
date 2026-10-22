@@ -2,7 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, View as RawView, ScrollView } from 'react-native';
+import {
+  ActivityIndicator,
+  View as RawView,
+  ScrollView,
+  type ScrollViewInstance,
+} from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { recordReadHistory } from '@/api/zhihu/history';
@@ -60,7 +65,7 @@ export default function PinDetailScreen() {
       opened === contentIdentity ? opened : null,
     );
   }, [contentIdentity]);
-  const scrollViewRef = React.useRef<ScrollView>(null);
+  const scrollViewRef = React.useRef<ScrollViewInstance>(null);
 
   const {
     data: pin,

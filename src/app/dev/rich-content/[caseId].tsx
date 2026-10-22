@@ -1,7 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View as RNView, ScrollView, StyleSheet, Switch } from 'react-native';
+import {
+  View as RNView,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  Switch,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BouncyButton } from '@/components/BouncyButton';
 import { Text, useThemeColor } from '@/components/Themed';
@@ -30,7 +36,7 @@ export default function RichContentFixtureDetailScreen() {
   const richContentRenderer = useSettingsStore(
     (state) => state.richContentRenderer,
   );
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const [mountIndex, setMountIndex] = useState(0);
   const [interactionsEnabled, setInteractionsEnabled] = useState(false);
   const [renderer, setRenderer] = useState<RichContentRenderer>(

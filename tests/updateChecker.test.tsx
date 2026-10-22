@@ -176,31 +176,31 @@ test('ignores a metadata response that arrives after unmount', async () => {
   expect(available).not.toHaveBeenCalled();
 });
 
-test.each([
-  'cancel',
-  'unmount',
-] as const)('aborts a running update on %s without showing an error toast', async (operation) => {
-  let rejectDownload: ((error: Error) => void) | undefined;
-  jest.mocked(downloadVerifiedApk).mockImplementation(
-    () =>
-      new Promise((_, reject) => {
-        rejectDownload = reject;
-      }),
-  );
-  const screen = await render(<UpdateChecker />);
-  await act(() => jest.advanceTimersByTimeAsync(2000));
-  await fireEvent.press(screen.getByText('直接更新'));
-  const signal = jest.mocked(downloadVerifiedApk).mock.calls[0]?.[1]?.signal;
-  expect(signal?.aborted).toBe(false);
-  if (operation === 'cancel') await fireEvent.press(screen.getByText('取消'));
-  else await screen.unmount();
-  expect(signal?.aborted).toBe(true);
-  await act(async () => {
-    rejectDownload?.(new UpdateFailure('cancelled'));
-    await Promise.resolve();
-  });
-  expect(showToast).not.toHaveBeenCalled();
-});
+test.each(['cancel', 'unmount'] as const)(
+  'aborts a running update on %s without showing an error toast',
+  async (operation) => {
+    let rejectDownload: ((error: Error) => void) | undefined;
+    jest.mocked(downloadVerifiedApk).mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectDownload = reject;
+        }),
+    );
+    const screen = await render(<UpdateChecker />);
+    await act(() => jest.advanceTimersByTimeAsync(2000));
+    await fireEvent.press(screen.getByText('直接更新'));
+    const signal = jest.mocked(downloadVerifiedApk).mock.calls[0]?.[1]?.signal;
+    expect(signal?.aborted).toBe(false);
+    if (operation === 'cancel') await fireEvent.press(screen.getByText('取消'));
+    else await screen.unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      rejectDownload?.(new UpdateFailure('cancelled'));
+      await Promise.resolve();
+    });
+    expect(showToast).not.toHaveBeenCalled();
+  },
+);
 
 test('keeps surrounding routes interactive during download and waits for an explicit install press', async () => {
   let finish: ((uri: string) => void) | undefined;
@@ -301,26 +301,26 @@ test('double tapping update starts only one download', async () => {
   await screen.unmount();
 });
 
-test.each([
-  'cancel',
-  'unmount',
-] as const)('does not start a download after %s while startup cleanup is pending', async (operation) => {
-  let finishCleanup: (() => void) | undefined;
-  jest.mocked(cleanupUpdatePartials).mockImplementationOnce(
-    () =>
-      new Promise((resolve) => {
-        finishCleanup = resolve;
-      }),
-  );
-  const screen = await render(<UpdateChecker />);
-  await act(() => jest.advanceTimersByTimeAsync(2000));
-  await fireEvent.press(screen.getByText('直接更新'));
-  if (operation === 'cancel') await fireEvent.press(screen.getByText('取消'));
-  else await screen.unmount();
-  await act(async () => {
-    finishCleanup?.();
-    await Promise.resolve();
-  });
-  expect(downloadVerifiedApk).not.toHaveBeenCalled();
-  expect(showToast).not.toHaveBeenCalled();
-});
+test.each(['cancel', 'unmount'] as const)(
+  'does not start a download after %s while startup cleanup is pending',
+  async (operation) => {
+    let finishCleanup: (() => void) | undefined;
+    jest.mocked(cleanupUpdatePartials).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishCleanup = resolve;
+        }),
+    );
+    const screen = await render(<UpdateChecker />);
+    await act(() => jest.advanceTimersByTimeAsync(2000));
+    await fireEvent.press(screen.getByText('直接更新'));
+    if (operation === 'cancel') await fireEvent.press(screen.getByText('取消'));
+    else await screen.unmount();
+    await act(async () => {
+      finishCleanup?.();
+      await Promise.resolve();
+    });
+    expect(downloadVerifiedApk).not.toHaveBeenCalled();
+    expect(showToast).not.toHaveBeenCalled();
+  },
+);

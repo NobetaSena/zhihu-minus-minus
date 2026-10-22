@@ -146,33 +146,33 @@ test('preview entries from answer details carry publish info', () => {
   ).not.toHaveProperty('publishInfo');
 });
 
-test.each([
-  false,
-  true,
-])('recommendation and local feed entries retain answer dates (restored cache: %s)', (restoredCache) => {
-  const created = new Date(2026, 9, 18, 12).getTime() / 1000;
-  const updated = new Date(2026, 9, 19, 9).getTime() / 1000;
-  const item = parseRecommendData({
-    created_time: created - 86400,
-    updated_time: updated + 86400,
-    target: {
-      id: 'a1',
-      type: 'answer',
-      content: '<p>合成正文</p>',
-      created_time: created,
-      updated_time: updated,
-    },
-  });
-  if (!item) throw new Error('Expected an answer feed item');
-  const source: FeedItem = restoredCache
-    ? JSON.parse(JSON.stringify(item))
-    : item;
+test.each([false, true])(
+  'recommendation and local feed entries retain answer dates (restored cache: %s)',
+  (restoredCache) => {
+    const created = new Date(2026, 9, 18, 12).getTime() / 1000;
+    const updated = new Date(2026, 9, 19, 9).getTime() / 1000;
+    const item = parseRecommendData({
+      created_time: created - 86400,
+      updated_time: updated + 86400,
+      target: {
+        id: 'a1',
+        type: 'answer',
+        content: '<p>合成正文</p>',
+        created_time: created,
+        updated_time: updated,
+      },
+    });
+    if (!item) throw new Error('Expected an answer feed item');
+    const source: FeedItem = restoredCache
+      ? JSON.parse(JSON.stringify(item))
+      : item;
 
-  expect(createAnswerPreviewEntry(source)?.publishInfo).toEqual({
-    published: '发布于 2026-10-18',
-    edited: '编辑于 2026-10-19',
-  });
-});
+    expect(createAnswerPreviewEntry(source)?.publishInfo).toEqual({
+      published: '发布于 2026-10-18',
+      edited: '编辑于 2026-10-19',
+    });
+  },
+);
 
 test('feed entries without answer dates remain usable without publish info', () => {
   const item = parseRecommendData({

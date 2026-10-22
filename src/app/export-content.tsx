@@ -1,5 +1,4 @@
-import { useIsFocused } from '@react-navigation/native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { Platform } from 'react-native';
 import { Text, View } from '@/components/Themed';

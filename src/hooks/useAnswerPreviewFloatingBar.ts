@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  type View as NativeView,
   useWindowDimensions,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
@@ -11,7 +11,7 @@ import type {
   ZhihuReadingPreviewItem,
 } from '@/api/zhihu/nextRender';
 
-type FooterView = Pick<NativeView, 'measureInWindow'>;
+type FooterView = Pick<ViewInstance, 'measureInWindow'>;
 type PreviewAnswer = Exclude<ZhihuReadingPreviewItem, ZhihuPreviewLoginPrompt>;
 
 interface FloatingBarOptions {

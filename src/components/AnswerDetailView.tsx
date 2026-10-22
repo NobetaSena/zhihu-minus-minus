@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 import React, { useRef } from 'react';
 import {
   Alert,
-  type ScrollView as NativeScrollView,
-  type View as NativeView,
+  type ScrollViewInstance as NativeScrollView,
+  type ViewInstance as NativeView,
   View as RawView,
   useWindowDimensions,
 } from 'react-native';

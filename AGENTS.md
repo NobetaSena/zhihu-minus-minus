@@ -6,7 +6,7 @@
 
 ## 项目概况
 
-Zhihu-- 是 Expo SDK 55 / React Native 0.83 / React 19 客户端，使用严格模式 TypeScript。主要技术链路如下：
+Zhihu-- 是 Expo SDK 58 / React Native 0.88 / React 19.3 客户端，使用严格模式 TypeScript 6。主要技术链路如下：
 
 - 路由与原生入口：Expo Router，页面位于 `src/app/`；已启用 typed routes；
 - 服务端状态：TanStack Query v5；全局与持久状态：Zustand；
@@ -82,7 +82,7 @@ Cookie、`z_c0`、`d_c0`、`_xsrf`、X-ZSE 请求头、完整 Axios config、Sen
 
 ## 工作流与验证
 
-开始前先检查 `git status --short --branch`，保留用户已有改动。安装依赖优先使用锁文件：
+本地与 CI 使用 Node.js 24（见 `.nvmrc`）；iOS 最低版本为 16.4，使用 Xcode 26.4 或更高版本与 CocoaPods。开始前先检查 `git status --short --branch`，保留用户已有改动。安装依赖优先使用锁文件：
 
 ```bash
 npm ci
@@ -102,7 +102,7 @@ npm run check
 
 PR 与 `main` push 使用 `.github/workflows/ci.yml`；手动构建/发布使用 `.github/workflows/build.yaml`。发布工作流构建四个 Android 单 ABI APK 和一个未签名 iOS IPA：Android 使用 `EXPO_TOKEN` 加 4 个 telemetry Secret，iOS 使用其中 4 个 telemetry Secret；完整 workflow 运行需要配置全部 5 个 Secret。详见 `docs/DEVELOPMENT.md`、`docs/RELEASING.md` 和 `docs/TELEMETRY.md`。
 
-Dependabot 的 npm 普通更新只允许每月分组的 patch 更新；GitHub Actions 允许每月分组的 minor/patch 更新；Expo SDK、React Native 及配套 `expo-*` 主版本升级必须手动统一进行，不能合并跨 SDK 的单包升级。依赖 PR 必须同步更新锁文件，并以 `npm ci` 成功作为前置条件。
+Dependabot 的 npm 普通更新只允许每月分组的 patch 更新；GitHub Actions 允许每月分组的 minor/patch 更新；Expo SDK、React Native 及配套 `expo-*` 主版本升级必须手动统一进行，不能合并跨 SDK 的单包升级。依赖 PR 必须同步更新锁文件，并以 `npm ci` 成功作为前置条件。NativeWind 4 与 Tailwind CSS 3 配套，Firebase 26 保留 CocoaPods 支持，TypeScript 6 保留工具使用的编译器 JS API；升级这些主版本前先核对 `docs/DEVELOPMENT.md` 的兼容边界。
 
 ## 完成标准
 

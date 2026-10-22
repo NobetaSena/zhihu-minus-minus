@@ -250,7 +250,7 @@ function persist(): void {
       payload = JSON.stringify({ version: 1, revision, entries });
     }
     // Alternate bounded snapshots so interruption never destroys both copies.
-    file.write(payload);
+    file.writeSync(payload);
     pendingEntries = [];
     persistenceAvailable = !ignorePersistedEntries;
   } catch {

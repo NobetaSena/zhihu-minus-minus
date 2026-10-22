@@ -286,11 +286,14 @@ test.each([
   ['videos', 'lens'],
   ['zvideo', 'zvideo'],
   ['zvideos', 'zvideo'],
-] as const)('recent creations preserve raw video type %s as source %s', (type, videoSource) => {
-  expect(
-    toUserCreationFeedItem(
-      { target: { id: '2088306465639604943', type } },
-      member,
-    ),
-  ).toMatchObject({ id: '2088306465639604943', type: 'videos', videoSource });
-});
+] as const)(
+  'recent creations preserve raw video type %s as source %s',
+  (type, videoSource) => {
+    expect(
+      toUserCreationFeedItem(
+        { target: { id: '2088306465639604943', type } },
+        member,
+      ),
+    ).toMatchObject({ id: '2088306465639604943', type: 'videos', videoSource });
+  },
+);

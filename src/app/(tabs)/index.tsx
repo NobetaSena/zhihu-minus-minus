@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useIsFocused } from '@react-navigation/native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import {
   type InfiniteData,
@@ -8,7 +7,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import React, {
   useCallback,
   useEffect,
@@ -22,11 +21,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import {
-  Gesture,
-  GestureDetector,
-  type NativeGesture,
-} from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import PagerView, {
   type PagerViewOnPageScrollEvent,
 } from 'react-native-pager-view';
@@ -832,7 +827,7 @@ const FeedList = React.forwardRef<
     isActive: boolean;
     insets: EdgeInsets;
     guestCookieReady: boolean;
-    pagerGesture: NativeGesture;
+    pagerGesture: ReturnType<typeof Gesture.Native>;
     onRecentMomentsInteractionChange?: (interacting: boolean) => void;
     topNavOffset: SharedValue<number>;
     bottomNavOffset: SharedValue<number>;

@@ -3,10 +3,11 @@ const path = require('node:path');
 
 // Run the real Metro config outside Jest's React Native module mocks. A single
 // transformed script exercises its production serializer without a Metro server.
-const serializeFixture = `
+const serializeFixture = String.raw`
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { Consumer } = require('@expo/metro/metro-source-map');
 const config = require('./metro.config');
 
 async function main() {
@@ -55,6 +56,16 @@ async function main() {
   const sandbox = {};
   vm.runInNewContext(result.code, sandbox, { filename: 'fixture.bundle' });
   const sourceMap = JSON.parse(result.map);
+  // Metro 0.87 emits indexed maps. Its consumer handles both flat maps and
+  // sections without weakening the source-content or original-position checks.
+  const consumer = new Consumer(sourceMap);
+  const generatedStart = result.code.indexOf(code);
+  if (generatedStart < 0) throw new Error('Fixture is missing from the bundle.');
+  const precedingCode = result.code.slice(0, generatedStart);
+  const position = consumer.originalPositionFor({
+    line: precedingCode.split('\n').length,
+    column: precedingCode.length - precedingCode.lastIndexOf('\n') - 1,
+  });
 
   // NativeWind must still redirect the configured CSS entry to a native module.
   const cssEntry = path.join(root, 'src/global.css');
@@ -66,7 +77,9 @@ async function main() {
     registeredDebugIds: Object.values(sandbox._sentryDebugIds || {}),
     mapDebugId: sourceMap.debugId ?? sourceMap.debug_id,
     bundleHasMatchingId: result.code.includes('//# debugId=' + sourceMap.debugId),
-    sourceRetained: sourceMap.sourcesContent.includes(code),
+    sourceRetained: consumer.sourceContentFor(entry, true) === code,
+    sourcePositionRetained: position.source === entry
+      && position.line === 1 && position.column === 0,
     fixtureRan: sandbox.fixtureRan === true,
     cssResolved: cssModule.type === 'sourceFile'
       && cssModule.filePath !== cssEntry
@@ -80,26 +93,27 @@ main().catch((error) => {
 });
 `;
 
-test.each([
-  'android',
-  'ios',
-])('%s registers the source map Debug ID with NativeWind enabled', (platform) => {
-  const result = JSON.parse(
-    execFileSync(process.execPath, ['-e', serializeFixture, platform], {
-      cwd: path.resolve(__dirname, '..'),
-      encoding: 'utf8',
-      timeout: 15_000,
-    }),
-  );
+test.each(['android', 'ios'])(
+  '%s registers the source map Debug ID with NativeWind enabled',
+  (platform) => {
+    const result = JSON.parse(
+      execFileSync(process.execPath, ['-e', serializeFixture, platform], {
+        cwd: path.resolve(__dirname, '..'),
+        encoding: 'utf8',
+        timeout: 15_000,
+      }),
+    );
 
-  expect(result.mapDebugId).toMatch(
-    /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i,
-  );
-  expect(result.registeredDebugIds).toEqual([result.mapDebugId]);
-  expect(result).toMatchObject({
-    bundleHasMatchingId: true,
-    sourceRetained: true,
-    fixtureRan: true,
-    cssResolved: true,
-  });
-});
+    expect(result.mapDebugId).toMatch(
+      /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i,
+    );
+    expect(result.registeredDebugIds).toEqual([result.mapDebugId]);
+    expect(result).toMatchObject({
+      bundleHasMatchingId: true,
+      sourceRetained: true,
+      sourcePositionRetained: true,
+      fixtureRan: true,
+      cssResolved: true,
+    });
+  },
+);

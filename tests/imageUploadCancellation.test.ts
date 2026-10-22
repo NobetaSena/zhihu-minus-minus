@@ -111,21 +111,24 @@ test.each([
   ['InternalError', 500, '图片上传服务暂时不可用，请稍后重试'],
   ['constructor', 400, '图片上传失败，请稍后重试'],
   ['syntheticUnknownCode', 403, '图片上传凭证无效，请重新登录后重试'],
-] as const)('OSS %s retains a fixed explanation and never includes echoed credentials or request IDs', async (code, status, expected) => {
-  mockTask.uploadAsync.mockResolvedValueOnce({
-    status,
-    body: `<Error><Code>${code}</Code><Message>Cookie z_c0=synthetic-private; https://example.invalid/?token=synthetic-private</Message><RequestId>synthetic-request-id</RequestId></Error>`,
-    headers: { 'x-oss-request-id': 'synthetic-header-request-id' },
-  });
-  let failure: unknown;
-  try {
-    await uploadImage(asset);
-  } catch (error) {
-    failure = error;
-  }
-  expect(failure).toBeInstanceOf(Error);
-  expect((failure as Error).message).toBe(expected);
-  expect(getZhihuErrorMessage(failure)).toBe(expected);
-  expect(apiClient.put).not.toHaveBeenCalled();
-  expect(apiClient.get).not.toHaveBeenCalled();
-});
+] as const)(
+  'OSS %s retains a fixed explanation and never includes echoed credentials or request IDs',
+  async (code, status, expected) => {
+    mockTask.uploadAsync.mockResolvedValueOnce({
+      status,
+      body: `<Error><Code>${code}</Code><Message>Cookie z_c0=synthetic-private; https://example.invalid/?token=synthetic-private</Message><RequestId>synthetic-request-id</RequestId></Error>`,
+      headers: { 'x-oss-request-id': 'synthetic-header-request-id' },
+    });
+    let failure: unknown;
+    try {
+      await uploadImage(asset);
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toBe(expected);
+    expect(getZhihuErrorMessage(failure)).toBe(expected);
+    expect(apiClient.put).not.toHaveBeenCalled();
+    expect(apiClient.get).not.toHaveBeenCalled();
+  },
+);

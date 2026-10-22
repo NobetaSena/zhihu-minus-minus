@@ -8,7 +8,7 @@ import {
   Alert,
   View as NativeView,
   StyleSheet,
-  type TextInput,
+  type TextInputInstance,
   useWindowDimensions,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
@@ -59,7 +59,7 @@ export default function ReplyDetailScreen() {
     canDelete: boolean;
     returnToParent: boolean;
   } | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
   const _insets = useSafeAreaInsets();

@@ -82,62 +82,65 @@ test.each([
   () => {
     throw new Error('Invalid formula');
   },
-])('initializes height reporting and interaction handlers when KaTeX is unavailable or fails', async (renderMathInElement) => {
-  const { html } = await renderPage();
-  const postMessage = jest.fn();
-  const timers: (() => void)[] = [];
-  let resolveFonts: () => void = () => {};
-  const fontsReady = new Promise<void>((resolve) => {
-    resolveFonts = resolve;
-  });
-  const container = {
-    innerHTML: '',
-    children: [],
-    scrollHeight: 240,
-    getBoundingClientRect: () => ({ height: container.scrollHeight }),
-    querySelectorAll: () => [],
-    addEventListener: jest.fn(),
-  };
-  const document = {
-    fonts: { ready: fontsReady },
-    getElementById: () => container,
-    addEventListener: jest.fn(),
-    body: { scrollHeight: 800, offsetHeight: 800 },
-    documentElement: { scrollHeight: 800, offsetHeight: 800, style: {} },
-  };
-  const window = {
-    ReactNativeWebView: { postMessage },
-    addEventListener: jest.fn(),
-    onload: undefined as (() => void) | undefined,
-  };
-  vm.runInNewContext(inlineScript(html), {
-    document,
-    window,
-    renderMathInElement,
-    setTimeout: (callback: () => void) => timers.push(callback),
-  });
-  expect(container.innerHTML).toContain('正文');
-  expect(container.addEventListener).toHaveBeenCalledWith(
-    'click',
-    expect.any(Function),
-  );
-  for (const timer of timers) timer();
-  expect(postMessage).toHaveBeenCalledWith(
-    bridgeMessage(html, { type: 'height', height: 240 }),
-  );
-  expect(postMessage).toHaveBeenCalledTimes(1);
-  container.scrollHeight = 300;
-  resolveFonts();
-  await fontsReady;
-  expect(postMessage).toHaveBeenLastCalledWith(
-    bridgeMessage(html, { type: 'height', height: 300 }),
-  );
-  container.scrollHeight = 120;
-  window.onload?.();
-  expect(postMessage).toHaveBeenLastCalledWith(
-    bridgeMessage(html, { type: 'height', height: 120 }),
-  );
-});
+])(
+  'initializes height reporting and interaction handlers when KaTeX is unavailable or fails',
+  async (renderMathInElement) => {
+    const { html } = await renderPage();
+    const postMessage = jest.fn();
+    const timers: (() => void)[] = [];
+    let resolveFonts: () => void = () => {};
+    const fontsReady = new Promise<void>((resolve) => {
+      resolveFonts = resolve;
+    });
+    const container = {
+      innerHTML: '',
+      children: [],
+      scrollHeight: 240,
+      getBoundingClientRect: () => ({ height: container.scrollHeight }),
+      querySelectorAll: () => [],
+      addEventListener: jest.fn(),
+    };
+    const document = {
+      fonts: { ready: fontsReady },
+      getElementById: () => container,
+      addEventListener: jest.fn(),
+      body: { scrollHeight: 800, offsetHeight: 800 },
+      documentElement: { scrollHeight: 800, offsetHeight: 800, style: {} },
+    };
+    const window = {
+      ReactNativeWebView: { postMessage },
+      addEventListener: jest.fn(),
+      onload: undefined as (() => void) | undefined,
+    };
+    vm.runInNewContext(inlineScript(html), {
+      document,
+      window,
+      renderMathInElement,
+      setTimeout: (callback: () => void) => timers.push(callback),
+    });
+    expect(container.innerHTML).toContain('正文');
+    expect(container.addEventListener).toHaveBeenCalledWith(
+      'click',
+      expect.any(Function),
+    );
+    for (const timer of timers) timer();
+    expect(postMessage).toHaveBeenCalledWith(
+      bridgeMessage(html, { type: 'height', height: 240 }),
+    );
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    container.scrollHeight = 300;
+    resolveFonts();
+    await fontsReady;
+    expect(postMessage).toHaveBeenLastCalledWith(
+      bridgeMessage(html, { type: 'height', height: 300 }),
+    );
+    container.scrollHeight = 120;
+    window.onload?.();
+    expect(postMessage).toHaveBeenLastCalledWith(
+      bridgeMessage(html, { type: 'height', height: 120 }),
+    );
+  },
+);
 
 test('keeps the document stable on height updates and rejects messages from replaced content', async () => {
   const onReady = jest.fn();

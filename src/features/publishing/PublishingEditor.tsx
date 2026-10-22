@@ -3,11 +3,11 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  type NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   TextInput,
-  type TextInputSelectionChangeEventData,
+  type TextInputInstance,
+  type TextInputSelectionChangeEvent,
 } from 'react-native';
 import type { UploadedImage } from '@/api/zhihu/image';
 import { BouncyButton } from '@/components/BouncyButton';
@@ -67,7 +67,7 @@ export function PublishingEditor({
 }: PublishingEditorProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const valueRef = useRef(value);
   const [selection, setSelection] = useState<TextSelection>({
     start: 0,
@@ -220,9 +220,8 @@ export function PublishingEditor({
     [uploadedImages, value],
   );
 
-  const handleSelectionChange = (
-    event: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
-  ) => setSelection(event.nativeEvent.selection);
+  const handleSelectionChange = (event: TextInputSelectionChangeEvent) =>
+    setSelection(event.nativeEvent.selection);
 
   return (
     <View className="bg-transparent">

@@ -1,4 +1,4 @@
-import { useNavigation, usePreventRemove } from '@react-navigation/native';
+import { usePreventRemove } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { publishingDraftRepository } from '@/storage/publishingDraftRepository';
@@ -78,7 +78,7 @@ export function usePublishingDraft(
   if (ready && scope) outgoingValueRef.current = { scope, value, dirty };
   const finishedScopesRef = useRef(new Set<PublishingDraftScope>());
   const skipLeaveRef = useRef(false);
-  const navigation = useNavigation();
+  const [leaveAllowed, setLeaveAllowed] = useState(false);
 
   useEffect(
     () => () => {
@@ -104,6 +104,7 @@ export function usePublishingDraft(
     setStatus('unsaved');
     setReadFailure(null);
     skipLeaveRef.current = false;
+    setLeaveAllowed(false);
     void publishingDraftRepository
       .read(scope)
       .then((saved) => {
@@ -205,28 +206,14 @@ export function usePublishingDraft(
       if (scope) finishedScopesRef.current.delete(scope);
       throw error;
     }
+    if (activeScopeRef.current === scope) setLeaveAllowed(true);
     return true;
   }, [scope]);
 
-  const completePublished = useCallback(async () => {
-    // The server has accepted this submission; local cleanup must never turn it
-    // into a retryable publishing failure or recreate the submitted draft.
-    skipLeaveRef.current = true;
-    if (scope) finishedScopesRef.current.add(scope);
-    try {
-      if (scope) await publishingDraftRepository.remove(scope);
-    } catch {
-      showToast('发布已成功，但本地草稿清理失败，请勿重复发布');
-    }
-  }, [scope]);
-
-  usePreventRemove(
-    (dirty || busy || submitting) && !skipLeaveRef.current,
-    ({ data }) => {
-      if (skipLeaveRef.current) {
-        navigation.dispatch(data.action);
-        return;
-      }
+  const disablePrevention = usePreventRemove(
+    (dirty || busy || submitting) && !leaveAllowed,
+    ({ repeat }) => {
+      if (skipLeaveRef.current) return;
       if (submitting) {
         Alert.alert('正在提交', '请等待提交结果确认后再离开，避免重复发布。');
         return;
@@ -239,8 +226,7 @@ export function usePublishingDraft(
           onPress: () => {
             void complete()
               .then((completed) => {
-                if (completed && activeScopeRef.current === scope)
-                  navigation.dispatch(data.action);
+                if (completed && activeScopeRef.current === scope) repeat();
               })
               .catch(() => showToast('清理草稿失败，请重试'));
           },
@@ -251,7 +237,8 @@ export function usePublishingDraft(
             void save().then((saved) => {
               if (saved) {
                 skipLeaveRef.current = true;
-                navigation.dispatch(data.action);
+                setLeaveAllowed(true);
+                repeat();
               }
             });
           },
@@ -259,6 +246,22 @@ export function usePublishingDraft(
       ]);
     },
   );
+
+  const completePublished = useCallback(async () => {
+    // The server has accepted this submission; local cleanup must never turn it
+    // into a retryable publishing failure or recreate the submitted draft.
+    if (activeScopeRef.current === scope) {
+      skipLeaveRef.current = true;
+      setLeaveAllowed(true);
+      disablePrevention();
+    }
+    if (scope) finishedScopesRef.current.add(scope);
+    try {
+      if (scope) await publishingDraftRepository.remove(scope);
+    } catch {
+      showToast('发布已成功，但本地草稿清理失败，请勿重复发布');
+    }
+  }, [scope, disablePrevention]);
 
   const restoreConflict = () => {
     const conflict = snapshot?.scope === scope ? snapshot.conflict : null;

@@ -142,16 +142,19 @@ describe('Native V2 source-text answer selection adapter', () => {
     '<p data-pid="p-one">甲<img eeimg="1" src="https://www.zhihu.com/equation?tex=x" alt="x">乙</p>',
     '<p data-pid="p-one">甲<a class="footnote-ref" data-numero="1">[1]</a>乙</p>',
     '<p data-pid="p-one">甲</p><p data-pid="p-one">乙</p>',
-  ])('keeps ambiguous or non-plain source structures out of answer mutations (%s)', (html) => {
-    const data = sample(html);
-    expect(
-      resolveNativeAnswerSelection(
-        selection(data.flow),
-        data.flow,
-        data.context,
-      ),
-    ).toBeNull();
-  });
+  ])(
+    'keeps ambiguous or non-plain source structures out of answer mutations (%s)',
+    (html) => {
+      const data = sample(html);
+      expect(
+        resolveNativeAnswerSelection(
+          selection(data.flow),
+          data.flow,
+          data.context,
+        ),
+      ).toBeNull();
+    },
+  );
 
   it('rejects semantic fallback nodes even when they supply copyable text', () => {
     const data = fromDocument({

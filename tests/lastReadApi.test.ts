@@ -100,13 +100,13 @@ test('posts a whole batch once, preserving large string IDs and first occurrence
   expect(ids[0]).toBe(` ${ANSWER_ID} `);
 });
 
-test.each([
-  { ids: [] },
-  { ids: ['', ' \n\t '] },
-])('skips batches without answer IDs (%#)', async ({ ids }) => {
-  await touchAnswersRead(ids);
-  expect(post).not.toHaveBeenCalled();
-});
+test.each([{ ids: [] }, { ids: ['', ' \n\t '] }])(
+  'skips batches without answer IDs (%#)',
+  async ({ ids }) => {
+    await touchAnswersRead(ids);
+    expect(post).not.toHaveBeenCalled();
+  },
+);
 
 test('rejects a whole outgoing batch after its originating account changes', async () => {
   await expect(
@@ -175,23 +175,22 @@ test('rejects an outgoing account event before creating a request for the curren
   expect(post).not.toHaveBeenCalled();
 });
 
-test.each([
-  '',
-  'd_c0=synthetic-tracking',
-  'z_c0=; d_c0=synthetic-tracking',
-])('skips unauthenticated requests (%#)', async (cookies) => {
-  mockCookies = cookies;
-  await touchAnswerRead('42');
-  expect(post).not.toHaveBeenCalled();
-});
+test.each(['', 'd_c0=synthetic-tracking', 'z_c0=; d_c0=synthetic-tracking'])(
+  'skips unauthenticated requests (%#)',
+  async (cookies) => {
+    mockCookies = cookies;
+    await touchAnswerRead('42');
+    expect(post).not.toHaveBeenCalled();
+  },
+);
 
-test.each([
-  '',
-  ' \n\t ',
-])('does not report an empty answer ID (%#)', async (id) => {
-  await touchAnswerRead(id);
-  expect(post).not.toHaveBeenCalled();
-});
+test.each(['', ' \n\t '])(
+  'does not report an empty answer ID (%#)',
+  async (id) => {
+    await touchAnswerRead(id);
+    expect(post).not.toHaveBeenCalled();
+  },
+);
 
 test('propagates a failed request so the reading hook can handle it without blocking content', async () => {
   const failure = new Error('Synthetic request failure');

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View as RNView } from 'react-native';
+import { View as RNView, type ViewInstance } from 'react-native';
 import Animated, { SharedTransition } from 'react-native-reanimated';
 import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
@@ -232,7 +232,7 @@ const FeedCardComponent = ({ item, tab, answerContext }: FeedCardProps) => {
   };
 
   const [previewVisible, setPreviewVisible] = useState(false);
-  const containerRef = useRef<RNView>(null);
+  const containerRef = useRef<ViewInstance>(null);
   const [originLayout, setOriginLayout] = useState<{
     x: number;
     y: number;

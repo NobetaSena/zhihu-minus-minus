@@ -86,16 +86,19 @@ describe('Native V2 answer segment interaction adapter', () => {
     [true, true, '200'],
     [false, true, '300'],
     [false, false, '300'],
-  ])('preserves liked/master precedence inside the clicked mark (%s, %s)', (segLiked, masterLiked, expectedId) => {
-    const mark = {
-      ...clickedMark,
-      seg_info: reaction('200', segLiked, 4),
-      master_seg_info: reaction('300', masterLiked, 9),
-    };
-    expect(
-      resolveNativeAnswerSegment(action, withMark(mark))?.interaction.seg_ids,
-    ).toEqual([expectedId]);
-  });
+  ])(
+    'preserves liked/master precedence inside the clicked mark (%s, %s)',
+    (segLiked, masterLiked, expectedId) => {
+      const mark = {
+        ...clickedMark,
+        seg_info: reaction('200', segLiked, 4),
+        master_seg_info: reaction('300', masterLiked, 9),
+      };
+      expect(
+        resolveNativeAnswerSegment(action, withMark(mark))?.interaction.seg_ids,
+      ).toEqual([expectedId]);
+    },
+  );
 
   it('retains a valid zero count and string IDs without changing the source metadata', () => {
     const info: ZhihuSegmentReaction = {
@@ -128,20 +131,18 @@ describe('Native V2 answer segment interaction adapter', () => {
     expect(result?.interaction.seg_ids).toBe('200,300');
   });
 
-  it.each([
-    true,
-    1,
-    'true',
-    '1',
-  ])('keeps API metadata flagged as a cross-paragraph thread out of same-paragraph reactions (%j)', (isSpan) => {
-    const info = { ...reaction('200'), is_span: isSpan };
-    expect(
-      resolveNativeAnswerSegment(
-        action,
-        withMark({ ...clickedMark, seg_info: info }),
-      ),
-    ).toBeNull();
-  });
+  it.each([true, 1, 'true', '1'])(
+    'keeps API metadata flagged as a cross-paragraph thread out of same-paragraph reactions (%j)',
+    (isSpan) => {
+      const info = { ...reaction('200'), is_span: isSpan };
+      expect(
+        resolveNativeAnswerSegment(
+          action,
+          withMark({ ...clickedMark, seg_info: info }),
+        ),
+      ).toBeNull();
+    },
+  );
 
   it('does not borrow another reaction ID when the preferred liked reaction has no ID', () => {
     expect(
@@ -156,41 +157,36 @@ describe('Native V2 answer segment interaction adapter', () => {
     ).toBeNull();
   });
 
-  it.each([
-    undefined,
-    '',
-    ' ',
-    'prototype-segment',
-    [],
-    [''],
-    ['200', ''],
-  ])('rejects missing, synthetic or invalid segment IDs %j', (ids) => {
-    const info = { ...reaction('200'), seg_ids: ids } as ZhihuSegmentReaction;
-    expect(
-      resolveNativeAnswerSegment(
-        action,
-        withMark({ ...clickedMark, seg_info: info }),
-      ),
-    ).toBeNull();
-  });
+  it.each([undefined, '', ' ', 'prototype-segment', [], [''], ['200', '']])(
+    'rejects missing, synthetic or invalid segment IDs %j',
+    (ids) => {
+      const info = { ...reaction('200'), seg_ids: ids } as ZhihuSegmentReaction;
+      expect(
+        resolveNativeAnswerSegment(
+          action,
+          withMark({ ...clickedMark, seg_info: info }),
+        ),
+      ).toBeNull();
+    },
+  );
 
-  it.each([
-    'article',
-    'pin',
-    'question',
-  ] as const)('keeps %s out of the answer-only API path', (type) => {
-    expect(resolveNativeAnswerSegment(action, { ...context, type })).toBeNull();
-  });
+  it.each(['article', 'pin', 'question'] as const)(
+    'keeps %s out of the answer-only API path',
+    (type) => {
+      expect(
+        resolveNativeAnswerSegment(action, { ...context, type }),
+      ).toBeNull();
+    },
+  );
 
-  it.each([
-    '',
-    'prototype-answer',
-    '0',
-  ])('rejects missing or synthetic answer targets %j', (objectId) => {
-    expect(
-      resolveNativeAnswerSegment(action, { ...context, objectId }),
-    ).toBeNull();
-  });
+  it.each(['', 'prototype-answer', '0'])(
+    'rejects missing or synthetic answer targets %j',
+    (objectId) => {
+      expect(
+        resolveNativeAnswerSegment(action, { ...context, objectId }),
+      ).toBeNull();
+    },
+  );
 
   it('rejects an absent exact mark, ambiguous paragraphs and duplicate exact ranges', () => {
     expect(
@@ -524,81 +520,88 @@ describe('stored sanitized answer metadata through Native interaction adapter', 
     ['pig', 35, true],
     ['question-feed-card-heavy', 19, true],
     ['question-feed-card-formula-table-001', 1, false],
-  ] as const)('checks exact marks and rejects synthetic object targets (%s)', (name, expectedCount, expectedBusinessTarget) => {
-    const manifest = parseRichContentFixtureManifest(
-      JSON.parse(
-        readFileSync(path.join(__dirname, '../fixtures/manifest.json'), 'utf8'),
-      ),
-    );
-    const summary = manifest.find(
-      (item) => item.file === `./cases/${name}.json`,
-    );
-    if (!summary) throw new Error('Missing registered test fixture');
-    const fixture: unknown = JSON.parse(
-      readFileSync(
-        path.join(__dirname, '../fixtures/cases', `${name}.json`),
-        'utf8',
-      ),
-    );
-    const source = decodeRichContentDevFixture(summary, fixture);
-    const document = normalizeZhihuDocument(source.content, {
-      documentId: `fixture:${name}`,
-      segmentInfos: source.segmentInfos,
-    }).document;
-    const runs = [...walkZhihuDocument(document)].filter(
-      (node) => node.type === 'segment',
-    );
-    const compilation = compileZhihuDocument(document, {
-      fontSize: 17,
-      lineHeight: 25.5,
-    });
-    expect(runs).toHaveLength(expectedCount);
-    for (const run of runs) {
-      const part = compilation.parts.find(
-        (item) =>
-          item.type === 'flow' &&
-          item.flow.decorations.some(
-            (decoration) => decoration.actionId === run.id,
+  ] as const)(
+    'checks exact marks and rejects synthetic object targets (%s)',
+    (name, expectedCount, expectedBusinessTarget) => {
+      const manifest = parseRichContentFixtureManifest(
+        JSON.parse(
+          readFileSync(
+            path.join(__dirname, '../fixtures/manifest.json'),
+            'utf8',
           ),
+        ),
       );
-      if (part?.type !== 'flow') throw new Error('Missing fixture marked flow');
-      const decoration = part.flow.decorations.find(
-        (item) => item.actionId === run.id,
+      const summary = manifest.find(
+        (item) => item.file === `./cases/${name}.json`,
       );
-      if (!decoration) throw new Error('Missing fixture decoration');
-      const mapping = mapRichTextSelection(
-        part.flow,
-        decoration.start,
-        decoration.end,
+      if (!summary) throw new Error('Missing registered test fixture');
+      const fixture: unknown = JSON.parse(
+        readFileSync(
+          path.join(__dirname, '../fixtures/cases', `${name}.json`),
+          'utf8',
+        ),
       );
-      if (!mapping) throw new Error('Missing fixture source mapping');
-      const resolved = resolveNativeAnswerSegment(
-        {
-          nodeId: run.id,
-          paragraphId: mapping.start.paragraphId,
-          start: mapping.start.offset,
-          end: mapping.end.offset,
-          text: getRichTextSelectionText(
-            part.flow,
-            decoration.start,
-            decoration.end,
-          ),
-          segment: run,
-        },
-        {
-          objectId: source.objectId,
-          type: source.rendererType,
-          document,
-          segmentInfos: source.segmentInfos,
-        },
+      const source = decodeRichContentDevFixture(summary, fixture);
+      const document = normalizeZhihuDocument(source.content, {
+        documentId: `fixture:${name}`,
+        segmentInfos: source.segmentInfos,
+      }).document;
+      const runs = [...walkZhihuDocument(document)].filter(
+        (node) => node.type === 'segment',
       );
-      // Avoid snapshotting body text or unrelated user metadata from fixtures.
-      expect(Boolean(resolved)).toBe(expectedBusinessTarget);
-      if (resolved)
-        expect(
-          resolved.interaction.mark.start_index === run.range.start &&
-            resolved.interaction.mark.end_index === run.range.end,
-        ).toBe(true);
-    }
-  });
+      const compilation = compileZhihuDocument(document, {
+        fontSize: 17,
+        lineHeight: 25.5,
+      });
+      expect(runs).toHaveLength(expectedCount);
+      for (const run of runs) {
+        const part = compilation.parts.find(
+          (item) =>
+            item.type === 'flow' &&
+            item.flow.decorations.some(
+              (decoration) => decoration.actionId === run.id,
+            ),
+        );
+        if (part?.type !== 'flow')
+          throw new Error('Missing fixture marked flow');
+        const decoration = part.flow.decorations.find(
+          (item) => item.actionId === run.id,
+        );
+        if (!decoration) throw new Error('Missing fixture decoration');
+        const mapping = mapRichTextSelection(
+          part.flow,
+          decoration.start,
+          decoration.end,
+        );
+        if (!mapping) throw new Error('Missing fixture source mapping');
+        const resolved = resolveNativeAnswerSegment(
+          {
+            nodeId: run.id,
+            paragraphId: mapping.start.paragraphId,
+            start: mapping.start.offset,
+            end: mapping.end.offset,
+            text: getRichTextSelectionText(
+              part.flow,
+              decoration.start,
+              decoration.end,
+            ),
+            segment: run,
+          },
+          {
+            objectId: source.objectId,
+            type: source.rendererType,
+            document,
+            segmentInfos: source.segmentInfos,
+          },
+        );
+        // Avoid snapshotting body text or unrelated user metadata from fixtures.
+        expect(Boolean(resolved)).toBe(expectedBusinessTarget);
+        if (resolved)
+          expect(
+            resolved.interaction.mark.start_index === run.range.start &&
+              resolved.interaction.mark.end_index === run.range.end,
+          ).toBe(true);
+      }
+    },
+  );
 });

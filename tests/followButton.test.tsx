@@ -47,21 +47,21 @@ beforeEach(() => {
   });
 });
 
-test.each([
-  false,
-  true,
-])('following=%s keeps its status label and accessible state', async (following) => {
-  const host = await render(
-    <FollowButton following={following} onPress={jest.fn()} />,
-  );
-  const button = host.getByRole('button', {
-    name: following ? '取消关注' : '关注',
-  });
-  expect(host.getByText(following ? '已关注' : '关注')).toBeTruthy();
-  if (following) expect(button).toBeSelected();
-  else expect(button).not.toBeSelected();
-  expect(button).toBeEnabled();
-});
+test.each([false, true])(
+  'following=%s keeps its status label and accessible state',
+  async (following) => {
+    const host = await render(
+      <FollowButton following={following} onPress={jest.fn()} />,
+    );
+    const button = host.getByRole('button', {
+      name: following ? '取消关注' : '关注',
+    });
+    expect(host.getByText(following ? '已关注' : '关注')).toBeTruthy();
+    if (following) expect(button).toBeSelected();
+    else expect(button).not.toBeSelected();
+    expect(button).toBeEnabled();
+  },
+);
 
 test('an already mounted button keeps readable text with a white accent and dark mode', async () => {
   const onPress = jest.fn();
@@ -97,31 +97,31 @@ test('an already mounted button keeps readable text with a white accent and dark
   ).toBeGreaterThanOrEqual(4.5);
 });
 
-test.each([
-  false,
-  true,
-])('loading disables following=%s without losing its status label', async (following) => {
-  const onPress = jest.fn();
-  const host = await render(
-    <FollowButton following={following} loading onPress={onPress} />,
-  );
-  const button = host.getByRole('button', {
-    name: following ? '取消关注' : '关注',
-  });
-  expect(button).toBeDisabled();
-  expect(button).toBeBusy();
-  expect(host.getByText(following ? '已关注' : '关注')).toBeTruthy();
-  await fireEvent.press(button);
-  expect(onPress).not.toHaveBeenCalled();
+test.each([false, true])(
+  'loading disables following=%s without losing its status label',
+  async (following) => {
+    const onPress = jest.fn();
+    const host = await render(
+      <FollowButton following={following} loading onPress={onPress} />,
+    );
+    const button = host.getByRole('button', {
+      name: following ? '取消关注' : '关注',
+    });
+    expect(button).toBeDisabled();
+    expect(button).toBeBusy();
+    expect(host.getByText(following ? '已关注' : '关注')).toBeTruthy();
+    await fireEvent.press(button);
+    expect(onPress).not.toHaveBeenCalled();
 
-  await host.rerender(
-    <FollowButton following={following} disabled onPress={onPress} />,
-  );
-  expect(button).toBeDisabled();
-  expect(button).not.toBeBusy();
-  await fireEvent.press(button);
-  expect(onPress).not.toHaveBeenCalled();
-});
+    await host.rerender(
+      <FollowButton following={following} disabled onPress={onPress} />,
+    );
+    expect(button).toBeDisabled();
+    expect(button).not.toBeBusy();
+    await fireEvent.press(button);
+    expect(onPress).not.toHaveBeenCalled();
+  },
+);
 
 test('custom labels and the original press event survive for nested card actions', async () => {
   const onPress = jest.fn((event: GestureResponderEvent) => {

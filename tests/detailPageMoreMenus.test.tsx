@@ -533,27 +533,25 @@ test.each([
     source: undefined,
     loadingMessage: '载入想法中...喵',
   },
-])('$type waits for its first paused request instead of reporting deleted content', async ({
-  Screen,
-  query,
-  source,
-  loadingMessage,
-}) => {
-  mockParams = { id: '7', source };
-  const content = mockQueryData[query];
-  mockQueryData[query] = undefined;
-  mockPausedQueries.add(query);
+])(
+  '$type waits for its first paused request instead of reporting deleted content',
+  async ({ Screen, query, source, loadingMessage }) => {
+    mockParams = { id: '7', source };
+    const content = mockQueryData[query];
+    mockQueryData[query] = undefined;
+    mockPausedQueries.add(query);
 
-  const host = await render(<Screen />);
-  expect(host.getByText(loadingMessage)).toBeOnTheScreen();
-  expect(host.queryByText(/可能已被删除/)).toBeNull();
-  expect(host.queryByTestId('detail-body')).toBeNull();
+    const host = await render(<Screen />);
+    expect(host.getByText(loadingMessage)).toBeOnTheScreen();
+    expect(host.queryByText(/可能已被删除/)).toBeNull();
+    expect(host.queryByTestId('detail-body')).toBeNull();
 
-  mockQueryData[query] = content;
-  await host.rerender(<Screen />);
-  expect(host.queryByText(loadingMessage)).toBeNull();
-  expect(host.getByTestId('detail-body')).toBeOnTheScreen();
-});
+    mockQueryData[query] = content;
+    await host.rerender(<Screen />);
+    expect(host.queryByText(loadingMessage)).toBeNull();
+    expect(host.getByTestId('detail-body')).toBeOnTheScreen();
+  },
+);
 
 test('both article more buttons directly open the same article menu', async () => {
   const host = await render(<ArticleDetail />);
@@ -583,39 +581,40 @@ test('both article more buttons directly open the same article menu', async () =
   }
 });
 
-test.each([
-  -1, 0, 1,
-])('article action bar preserves voting state %d', async (voting) => {
-  mockQueryData['zhihu-article'] = {
-    ...(mockQueryData['zhihu-article'] as object),
-    relationship: { voting },
-  };
-  await render(<ArticleDetail />);
-  expect(mockDownvoteButton).toHaveBeenLastCalledWith(
-    expect.objectContaining({ voted: voting }),
-  );
-});
+test.each([-1, 0, 1])(
+  'article action bar preserves voting state %d',
+  async (voting) => {
+    mockQueryData['zhihu-article'] = {
+      ...(mockQueryData['zhihu-article'] as object),
+      relationship: { voting },
+    };
+    await render(<ArticleDetail />);
+    expect(mockDownvoteButton).toHaveBeenLastCalledWith(
+      expect.objectContaining({ voted: voting }),
+    );
+  },
+);
 
-test.each([
-  'https://daily.zhihu.com/story/7?source=synthetic',
-  undefined,
-])('daily more uses a daily URL and never article collection data (%s)', async (shareUrl) => {
-  mockParams = { id: '7', source: 'daily' };
-  mockQueryData['daily-article'] = {
-    title: '合成日报',
-    body: '<p>正文</p>',
-    share_url: shareUrl,
-  };
-  const host = await render(<ArticleDetail />);
-  expect(host.queryByRole('button', { name: '收藏' })).toBeNull();
-  expect(mockCollectionButton).not.toHaveBeenCalled();
-  await pressButton(host.getByRole('button', { name: '更多操作' }));
-  expect(host.getByText('menu:daily:7')).toBeTruthy();
-  expect(mockMenuProps.data?.url).toBe(
-    shareUrl ?? 'https://daily.zhihu.com/story/7',
-  );
-  expect(mockMenuProps.data?.isCollected).toBeUndefined();
-});
+test.each(['https://daily.zhihu.com/story/7?source=synthetic', undefined])(
+  'daily more uses a daily URL and never article collection data (%s)',
+  async (shareUrl) => {
+    mockParams = { id: '7', source: 'daily' };
+    mockQueryData['daily-article'] = {
+      title: '合成日报',
+      body: '<p>正文</p>',
+      share_url: shareUrl,
+    };
+    const host = await render(<ArticleDetail />);
+    expect(host.queryByRole('button', { name: '收藏' })).toBeNull();
+    expect(mockCollectionButton).not.toHaveBeenCalled();
+    await pressButton(host.getByRole('button', { name: '更多操作' }));
+    expect(host.getByText('menu:daily:7')).toBeTruthy();
+    expect(mockMenuProps.data?.url).toBe(
+      shareUrl ?? 'https://daily.zhihu.com/story/7',
+    );
+    expect(mockMenuProps.data?.isCollected).toBeUndefined();
+  },
+);
 
 test('pin header and bottom more buttons open the same pin menu', async () => {
   const host = await render(<PinDetailScreen />);
@@ -689,37 +688,36 @@ test('places the pin relationship notice before its body using the loaded pin id
 test.each([
   { type: 'article', Screen: ArticleDetail, query: 'zhihu-article' },
   { type: 'pin', Screen: PinDetailScreen, query: 'pin-detail' },
-])('$type menus close when the route changes and stay closed when new content finishes loading', async ({
-  type,
-  Screen,
-  query,
-}) => {
-  const original = mockQueryData[query] as object;
-  const host = await render(<Screen />);
-  await pressButton(host.getAllByRole('button', { name: '更多操作' })[0]);
-  expect(host.getByText(`menu:${type}:7`)).toBeTruthy();
+])(
+  '$type menus close when the route changes and stay closed when new content finishes loading',
+  async ({ type, Screen, query }) => {
+    const original = mockQueryData[query] as object;
+    const host = await render(<Screen />);
+    await pressButton(host.getAllByRole('button', { name: '更多操作' })[0]);
+    expect(host.getByText(`menu:${type}:7`)).toBeTruthy();
 
-  mockParams = { id: '8' };
-  mockQueryData[query] = undefined;
-  await host.rerender(<Screen />);
-  expect(host.queryByText(`menu:${type}:7`)).toBeNull();
+    mockParams = { id: '8' };
+    mockQueryData[query] = undefined;
+    await host.rerender(<Screen />);
+    expect(host.queryByText(`menu:${type}:7`)).toBeNull();
 
-  mockQueryData[query] = { ...original, id: '8', title: '新的合成内容' };
-  await host.rerender(<Screen />);
-  if (type === 'article') {
-    expect(mockCollectionButton).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: '8', type: 'article' }),
-    );
-    expect(host.queryByTestId('collection:article:7')).toBeNull();
-  }
-  expect(host.queryByText(`menu:${type}:8`)).toBeNull();
-  expect(mockMenuProps.visible).toBe(false);
+    mockQueryData[query] = { ...original, id: '8', title: '新的合成内容' };
+    await host.rerender(<Screen />);
+    if (type === 'article') {
+      expect(mockCollectionButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: '8', type: 'article' }),
+      );
+      expect(host.queryByTestId('collection:article:7')).toBeNull();
+    }
+    expect(host.queryByText(`menu:${type}:8`)).toBeNull();
+    expect(mockMenuProps.visible).toBe(false);
 
-  mockParams = { id: '7' };
-  mockQueryData[query] = original;
-  await host.rerender(<Screen />);
-  expect(host.queryByText(`menu:${type}:7`)).toBeNull();
-});
+    mockParams = { id: '7' };
+    mockQueryData[query] = original;
+    await host.rerender(<Screen />);
+    expect(host.queryByText(`menu:${type}:7`)).toBeNull();
+  },
+);
 
 test('switching between an article and daily story with the same ID does not reuse an open menu', async () => {
   const host = await render(<ArticleDetail />);
@@ -889,17 +887,16 @@ test.each([
       enabled: true,
     },
   },
-])('the $name detail page wires double-tap voting to its own content and vote state', async ({
-  Screen,
-  source,
-  expected,
-}) => {
-  mockParams = { id: '7', ...(source ? { source } : {}) };
-  mockDoubleTapVote.mockClear();
-  await render(<Screen />);
+])(
+  'the $name detail page wires double-tap voting to its own content and vote state',
+  async ({ Screen, source, expected }) => {
+    mockParams = { id: '7', ...(source ? { source } : {}) };
+    mockDoubleTapVote.mockClear();
+    await render(<Screen />);
 
-  expect(mockDoubleTapVote).toHaveBeenCalledWith(expected);
-});
+    expect(mockDoubleTapVote).toHaveBeenCalledWith(expected);
+  },
+);
 
 test('a daily story never wires double-tap voting to article endpoints', async () => {
   mockParams = { id: '7', source: 'daily' };

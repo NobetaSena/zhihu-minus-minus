@@ -188,7 +188,10 @@ beforeEach(() => {
   useCollectionStore.getState().resetSession();
   jest.mocked(getAllContentCollectionStatus).mockResolvedValue({ data: [] });
   jest.mocked(copyToClipboard).mockResolvedValue(true);
-  share.mockResolvedValue({ action: Share.sharedAction });
+  share.mockResolvedValue({
+    action: Share.sharedAction,
+    activityType: undefined,
+  });
 });
 
 afterEach(() => {
@@ -263,16 +266,19 @@ test.each([
   'pin',
   'video',
   'daily',
-] satisfies ContentShareType[])('shows collection only for supported content type %s', async (type) => {
-  const host = await setup({ type });
-  const collection = host.queryByRole('button', { name: '收藏' });
-  if (type === 'answer' || type === 'article') {
-    expect(collection).toBeTruthy();
-  } else {
-    expect(collection).toBeNull();
-  }
-  expect(host.getByRole('button', { name: '复制链接' })).toBeTruthy();
-});
+] satisfies ContentShareType[])(
+  'shows collection only for supported content type %s',
+  async (type) => {
+    const host = await setup({ type });
+    const collection = host.queryByRole('button', { name: '收藏' });
+    if (type === 'answer' || type === 'article') {
+      expect(collection).toBeTruthy();
+    } else {
+      expect(collection).toBeNull();
+    }
+    expect(host.getByRole('button', { name: '复制链接' })).toBeTruthy();
+  },
+);
 
 test('honors server-known fallback, newer store state and pending mutation', async () => {
   const host = await setup({ data: { ...knownData, isCollected: true } });
@@ -382,28 +388,28 @@ test('system sharing executes once after the close animation completes', async (
   expect(share).toHaveBeenCalledTimes(1);
 });
 
-test.each([
-  '复制链接',
-  '复制信息（Markdown）',
-])('%s executes only after closing and uses the selected content', async (label) => {
-  const host = await setup();
-  await fireEvent.press(host.getByRole('button', { name: label }));
-  expect(copyToClipboard).not.toHaveBeenCalled();
-  await finishClose();
-  expect(copyToClipboard).toHaveBeenCalledTimes(1);
-  if (label === '复制链接') {
-    expect(copyToClipboard).toHaveBeenCalledWith(
-      'https://www.zhihu.com/answer/42',
-    );
-  } else {
-    expect(copyToClipboard).toHaveBeenCalledWith(
-      expect.stringContaining('**合成作者**'),
-    );
-    expect(copyToClipboard).toHaveBeenCalledWith(
-      expect.stringContaining('https://www.zhihu.com/answer/42'),
-    );
-  }
-});
+test.each(['复制链接', '复制信息（Markdown）'])(
+  '%s executes only after closing and uses the selected content',
+  async (label) => {
+    const host = await setup();
+    await fireEvent.press(host.getByRole('button', { name: label }));
+    expect(copyToClipboard).not.toHaveBeenCalled();
+    await finishClose();
+    expect(copyToClipboard).toHaveBeenCalledTimes(1);
+    if (label === '复制链接') {
+      expect(copyToClipboard).toHaveBeenCalledWith(
+        'https://www.zhihu.com/answer/42',
+      );
+    } else {
+      expect(copyToClipboard).toHaveBeenCalledWith(
+        expect.stringContaining('**合成作者**'),
+      );
+      expect(copyToClipboard).toHaveBeenCalledWith(
+        expect.stringContaining('https://www.zhihu.com/answer/42'),
+      );
+    }
+  },
+);
 
 test('changing content identity discards a queued copy without closing the new content menu', async () => {
   const host = await setup();

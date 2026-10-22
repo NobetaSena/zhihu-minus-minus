@@ -1,4 +1,4 @@
-import { isTag, isText, type Node } from 'domhandler';
+import { type ChildNode, isTag, isText } from 'domhandler';
 import { DomUtils, parseDocument } from 'htmlparser2';
 import { getZhihuVideoRoute } from '@/utils/zhihuVideoRoute';
 import { videoPlaybackHtml } from './videoHtml';
@@ -104,8 +104,8 @@ function safeStyle(value: string): string {
 
 /** Keep Zhihu's content dialect while excluding executable page capabilities. */
 export function sanitizeRichContentHtml(html: string): string {
-  const clean = (nodes: readonly Node[]): Node[] =>
-    nodes.flatMap((node): Node[] => {
+  const clean = (nodes: readonly ChildNode[]): ChildNode[] =>
+    nodes.flatMap((node): ChildNode[] => {
       if (isText(node)) return [node];
       if (!isTag(node) || REMOVED_TAGS.has(node.name)) return [];
       if (

@@ -164,18 +164,15 @@ test('rejects unsafe manifest values and limits filenames to relative source pat
   });
 });
 
-test.each([
-  undefined,
-  null,
-  [],
-  'invalid',
-  { sourceFiles: 'invalid' },
-])('supports builds without a valid source manifest: %s', (diagnostics) => {
-  if (!Constants.expoConfig) throw new Error('Missing test config');
-  Constants.expoConfig.extra = { diagnostics };
-  expect(getTelemetryBuildContext()).toMatchObject({
-    appVersion: '0.9.2',
-    buildNumber: '42',
-    sourceFiles: undefined,
-  });
-});
+test.each([undefined, null, [], 'invalid', { sourceFiles: 'invalid' }])(
+  'supports builds without a valid source manifest: %s',
+  (diagnostics) => {
+    if (!Constants.expoConfig) throw new Error('Missing test config');
+    Constants.expoConfig.extra = { diagnostics };
+    expect(getTelemetryBuildContext()).toMatchObject({
+      appVersion: '0.9.2',
+      buildNumber: '42',
+      sourceFiles: undefined,
+    });
+  },
+);

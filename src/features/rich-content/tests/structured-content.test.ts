@@ -642,11 +642,14 @@ test.each([
     type: 'paragraph',
     paragraph: { pid: 'source', marks: [] },
   },
-])('rejects missing body structure with a fixed error that does not include source content', (segment) => {
-  expect(() =>
-    parseZhihuStructuredContent({ paging: PAGING, segments: [segment] }),
-  ).toThrow('原生正文返回结构无效');
-});
+])(
+  'rejects missing body structure with a fixed error that does not include source content',
+  (segment) => {
+    expect(() =>
+      parseZhihuStructuredContent({ paging: PAGING, segments: [segment] }),
+    ).toThrow('原生正文返回结构无效');
+  },
+);
 
 test('invalid formula ranges preserve visible placeholder text rather than dropping source text', () => {
   const mark = formulaMark();

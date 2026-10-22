@@ -199,7 +199,7 @@ export function matchesFeedRegex(
   }
   if (expressions === null) return false;
   const text = getBodyText(item);
-  // find() requests match boundaries, bypassing RE2JS 2.8.6's DFA Unicode
+  // find() requests match boundaries, bypassing RE2JS 2.9.0's DFA Unicode
   // transition cache. Its one-pass/NFA or memoized bit-state paths avoid
   // exponential backtracking; test() and RE2Set.match() use that DFA cache.
   return (

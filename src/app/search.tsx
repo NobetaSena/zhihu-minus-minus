@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSearchSuggest, searchContent } from '@/api/zhihu';
@@ -67,14 +68,157 @@ const SEARCH_TIME_FILTERS = [
   { label: '一年内', value: 'a_year' as const },
 ];
 
+type SearchType = 'general' | 'people';
+
+const SEARCH_TABS: ReadonlyArray<{ label: string; value: SearchType }> = [
+  { label: '综合', value: 'general' },
+  { label: '用户', value: 'people' },
+];
+
+function SearchTabs({
+  selected,
+  onSelect,
+}: {
+  selected: SearchType;
+  onSelect: (value: SearchType) => void;
+}) {
+  const borderColor = useThemeColor({}, 'border');
+  const backgroundColor = useThemeColor({}, 'background');
+  const tintColor = useThemeColor({}, 'primary');
+  const linkColor = useThemeColor({}, 'link');
+  const secondaryTextColor = useThemeColor({}, 'textSecondary');
+
+  return (
+    <View
+      className="flex-row px-[15px]"
+      style={{
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: borderColor,
+        backgroundColor,
+      }}
+    >
+      {SEARCH_TABS.map((tab) => (
+        <BouncyButton
+          key={tab.value}
+          onPress={() => onSelect(tab.value)}
+          className="py-3 mr-[25px]"
+          style={{
+            borderBottomWidth: 2,
+            borderBottomColor:
+              selected === tab.value ? tintColor : 'transparent',
+          }}
+        >
+          <Text
+            className="text-[15px]"
+            style={{
+              color: selected === tab.value ? linkColor : secondaryTextColor,
+              fontWeight: selected === tab.value ? 'bold' : 'normal',
+            }}
+          >
+            {tab.label}
+          </Text>
+        </BouncyButton>
+      ))}
+    </View>
+  );
+}
+
+function FilterRow<Value extends string>({
+  title,
+  options,
+  selected,
+  onSelect,
+}: {
+  title: string;
+  options: ReadonlyArray<{ label: string; value: Value | undefined }>;
+  selected: Value | undefined;
+  onSelect: (value: Value | undefined) => void;
+}) {
+  const selectedSurfaceColor = useThemeColor({}, 'primaryTransparent');
+  const surfaceColor = useThemeColor({}, 'backgroundTertiary');
+  const linkColor = useThemeColor({}, 'link');
+  const textColor = useThemeColor({}, 'text');
+
+  return (
+    <View className="flex-row items-center mb-2">
+      <Text type="secondary" className="w-[58px] text-xs">
+        {title}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 15 }}
+      >
+        {options.map((option) => {
+          const active = option.value === selected;
+          return (
+            <BouncyButton
+              key={option.value ?? 'all'}
+              onPress={() => onSelect(option.value)}
+              className="mr-2 px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: active ? selectedSurfaceColor : surfaceColor,
+              }}
+            >
+              <Text
+                className="text-xs"
+                style={{
+                  color: active ? linkColor : textColor,
+                  fontWeight: active ? '600' : '400',
+                }}
+              >
+                {option.label}
+              </Text>
+            </BouncyButton>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function renderHighlightedText(text: string): React.ReactNode {
+  if (!text) return '';
+  const decodedText = text
+    .replace(/&lt;em&gt;/g, '[[EM]]')
+    .replace(/&lt;\/em&gt;/g, '[[/EM]]')
+    .replace(/<em>/g, '[[EM]]')
+    .replace(/<\/em>/g, '[[/EM]]')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ');
+  const parts = decodedText.split(/(\[\[EM\]\].*?\[\[\/EM\]\])/gs);
+  return (
+    <React.Fragment>
+      {parts.map((part, i) => {
+        if (part.startsWith('[[EM]]') && part.endsWith('[[/EM]]')) {
+          return (
+            <Text
+              // biome-ignore lint/suspicious/noArrayIndexKey: parts 是同一段文本按 [[EM]] 标记 split 出的片段,数量与顺序由该次渲染的文本唯一决定,不增删也不重排。
+              key={i}
+              type="primary"
+              className="font-bold"
+            >
+              {part.replace(/\[\[\/?EM\]\]/g, '')}
+            </Text>
+          );
+        }
+        return part;
+      })}
+    </React.Fragment>
+  );
+}
+
 export default function SearchScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [searchType, setSearchType] = useState('general');
+  const [searchType, setSearchType] = useState<SearchType>('general');
   const [contentFilter, setContentFilter] = useState<
     'answer' | 'article' | 'zvideo' | undefined
   >();
@@ -99,7 +243,6 @@ export default function SearchScreen() {
   const tintColor = useThemeColor({}, 'primary');
   const linkColor = useThemeColor({}, 'link');
   const onPrimaryColor = useThemeColor({}, 'onPrimary');
-  const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'backgroundTertiary');
   const selectedSurfaceColor = useThemeColor({}, 'primaryTransparent');
@@ -187,40 +330,6 @@ export default function SearchScreen() {
     Keyboard.dismiss();
   };
 
-  const HighlightText = (text: string) => {
-    if (!text) return '';
-    const decodedText = text
-      .replace(/&lt;em&gt;/g, '[[EM]]')
-      .replace(/&lt;\/em&gt;/g, '[[/EM]]')
-      .replace(/<em>/g, '[[EM]]')
-      .replace(/<\/em>/g, '[[/EM]]')
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&nbsp;/g, ' ');
-    const parts = decodedText.split(/(\[\[EM\]\].*?\[\[\/EM\]\])/gs);
-    return (
-      <React.Fragment>
-        {parts.map((part, i) => {
-          if (part.startsWith('[[EM]]') && part.endsWith('[[/EM]]')) {
-            return (
-              <Text
-                // biome-ignore lint/suspicious/noArrayIndexKey: parts 是同一段文本按 [[EM]] 标记 split 出的片段,数量与顺序由该次渲染的文本唯一决定,不增删也不重排。
-                key={i}
-                type="primary"
-                className="font-bold"
-              >
-                {part.replace(/\[\[\/?EM\]\]/g, '')}
-              </Text>
-            );
-          }
-          return part;
-        })}
-      </React.Fragment>
-    );
-  };
-
   const parseSearchResult = (
     item: ZhihuSearchResultItem,
   ): FeedItem | ParsedPeople | null => {
@@ -234,9 +343,11 @@ export default function SearchScreen() {
         type: 'peoples',
         id: String(obj.id),
         avatar_url: obj.avatar_url || '',
-        name: highlight.title ? HighlightText(highlight.title) : obj.name || '',
+        name: highlight.title
+          ? renderHighlightedText(highlight.title)
+          : obj.name || '',
         headline: highlight.description
-          ? HighlightText(highlight.description)
+          ? renderHighlightedText(highlight.description)
           : obj.headline || undefined,
       };
     }
@@ -263,12 +374,12 @@ export default function SearchScreen() {
       ...(obj.type === 'answer' &&
         Array.isArray(obj.endorsements) && { endorsements: obj.endorsements }),
       title: highlight.title
-        ? HighlightText(highlight.title)
+        ? renderHighlightedText(highlight.title)
         : obj.question?.title || obj.question?.name || obj.title || '无标题',
       titleString:
         obj.question?.title || obj.question?.name || obj.title || '无标题',
       excerpt: highlight.description
-        ? HighlightText(highlight.description)
+        ? renderHighlightedText(highlight.description)
         : obj.excerpt || '',
       image: obj.thumbnail_info?.thumbnails?.[0]?.url || null,
       voteCount: obj.voteup_count || 0,
@@ -335,90 +446,6 @@ export default function SearchScreen() {
       </BouncyButton>
     );
   };
-
-  const SearchTabs = () => (
-    <View
-      className="flex-row px-[15px]"
-      style={{
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: borderColor,
-        backgroundColor,
-      }}
-    >
-      {[
-        { label: '综合', value: 'general' },
-        { label: '用户', value: 'people' },
-      ].map((tab) => (
-        <BouncyButton
-          key={tab.value}
-          onPress={() => setSearchType(tab.value)}
-          className="py-3 mr-[25px]"
-          style={{
-            borderBottomWidth: 2,
-            borderBottomColor:
-              searchType === tab.value ? tintColor : 'transparent',
-          }}
-        >
-          <Text
-            className="text-[15px]"
-            style={{
-              color: searchType === tab.value ? linkColor : secondaryTextColor,
-              fontWeight: searchType === tab.value ? 'bold' : 'normal',
-            }}
-          >
-            {tab.label}
-          </Text>
-        </BouncyButton>
-      ))}
-    </View>
-  );
-
-  const FilterRow = ({
-    title,
-    options,
-    selected,
-    onSelect,
-  }: {
-    title: string;
-    options: ReadonlyArray<{ label: string; value: string | undefined }>;
-    selected: string | undefined;
-    onSelect: (value: string | undefined) => void;
-  }) => (
-    <View className="flex-row items-center mb-2">
-      <Text type="secondary" className="w-[58px] text-xs">
-        {title}
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: 15 }}
-      >
-        {options.map((option) => {
-          const active = option.value === selected;
-          return (
-            <BouncyButton
-              key={option.value ?? 'all'}
-              onPress={() => onSelect(option.value)}
-              className="mr-2 px-3 py-1 rounded-full"
-              style={{
-                backgroundColor: active ? selectedSurfaceColor : surfaceColor,
-              }}
-            >
-              <Text
-                className="text-xs"
-                style={{
-                  color: active ? linkColor : textColor,
-                  fontWeight: active ? '600' : '400',
-                }}
-              >
-                {option.label}
-              </Text>
-            </BouncyButton>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
 
   return (
     <View className="flex-1">
@@ -494,7 +521,9 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {isSearching && <SearchTabs />}
+      {isSearching && (
+        <SearchTabs selected={searchType} onSelect={setSearchType} />
+      )}
 
       {isSearching && searchType === 'general' && (
         <View
@@ -606,38 +635,19 @@ export default function SearchScreen() {
             title="类型"
             options={SEARCH_CONTENT_FILTERS}
             selected={contentFilter}
-            onSelect={(value) =>
-              setContentFilter(
-                value as 'answer' | 'article' | 'zvideo' | undefined,
-              )
-            }
+            onSelect={setContentFilter}
           />
           <FilterRow
             title="排序"
             options={SEARCH_SORT_FILTERS}
             selected={sortFilter}
-            onSelect={(value) =>
-              setSortFilter(
-                value as 'created_time' | 'upvoted_count' | undefined,
-              )
-            }
+            onSelect={setSortFilter}
           />
           <FilterRow
             title="时间"
             options={SEARCH_TIME_FILTERS}
             selected={timeFilter}
-            onSelect={(value) =>
-              setTimeFilter(
-                value as
-                  | 'a_day'
-                  | 'a_week'
-                  | 'a_month'
-                  | 'three_months'
-                  | 'half_a_year'
-                  | 'a_year'
-                  | undefined,
-              )
-            }
+            onSelect={setTimeFilter}
           />
           <View className="flex-row items-center mt-3">
             <BouncyButton

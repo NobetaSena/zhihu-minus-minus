@@ -1,11 +1,13 @@
+import * as Sentry from '@sentry/react-native';
+import { QueryClientProvider } from '@tanstack/react-query';
 import {
   DarkTheme,
   DefaultTheme,
+  type Href,
+  Stack,
   ThemeProvider,
-} from '@react-navigation/native';
-import * as Sentry from '@sentry/react-native';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { type Href, Stack, useRouter } from 'expo-router';
+  useRouter,
+} from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';

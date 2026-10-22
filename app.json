@@ -7,36 +7,16 @@
     "icon": "./src/assets/images/icon.png",
     "scheme": "zhihu--",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./src/assets/images/android-icon-monochrome.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "icon": "./src/assets/images/app-icons/default.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.huamu013.ZhihuMinusMinus",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "splash": {
-        "backgroundColor": "#ffffff",
-        "dark": {
-          "backgroundColor": "#121212",
-          "image": "./src/assets/images/android-icon-monochrome.png"
-        }
       }
     },
     "android": {
       "versionCode": 903,
-      "splash": {
-        "backgroundColor": "#ffffff",
-        "image": "./src/assets/images/android-icon-monochrome.png",
-        "dark": {
-          "backgroundColor": "#121212",
-          "image": "./src/assets/images/android-icon-monochrome.png"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./src/assets/images/android-icon-foreground.png",
@@ -248,10 +228,22 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/images/android-icon-monochrome.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#121212",
+            "image": "./src/assets/images/android-icon-monochrome.png"
+          }
+        }
+      ],
       "./plugins/withAppIcons",
       "./plugins/withAndroidAbiSplits",
       "./plugins/withIosFirebaseCocoaPods",
-      "./plugins/withIosSceneLifecycle",
       "expo-secure-store",
       [
         "expo-build-properties",
@@ -262,7 +254,7 @@
             "useLegacyPackaging": true
           },
           "ios": {
-            "deploymentTarget": "15.1",
+            "deploymentTarget": "16.4",
             "useFrameworks": "static",
             "forceStaticLinking": ["RNFBApp", "RNFBAnalytics"]
           }

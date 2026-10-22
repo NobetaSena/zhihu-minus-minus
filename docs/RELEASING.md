@@ -30,9 +30,9 @@ Android job 需要全部 5 个 Secret：`EXPO_TOKEN` 加上 4 个 telemetry Secr
 
 ## 工作流做什么
 
-1. `quality` job 使用 Node.js 22 执行 `npm ci` 和 `npm run check`，包括 TypeScript、Biome、全部测试和富文本 fixture 分析。
-2. `build-android` 使用 EAS CLI 23 和 `preview` profile，在 Ubuntu 上执行 `assembleRelease` 生成四个单 ABI APK，并检查每个 APK 实际包含的 ABI。`preview` 是 EAS 构建配置名称，不再写入 APK 文件名。
-3. `build-ios` 在 macOS 26 上执行 iOS prebuild、CocoaPods 安装和无签名 `xcodebuild`，再把 `.app` 打包为 IPA。
+1. `quality` job 使用 Node.js 24 执行 `npm ci` 和 `npm run check`，包括 TypeScript、Biome、全部测试和富文本 fixture 分析。
+2. `build-android` 使用 EAS CLI 25.3.0 和 `preview` profile，在 Ubuntu 上执行 `assembleRelease` 生成四个单 ABI APK，并检查每个 APK 实际包含的 ABI。`preview` 是 EAS 构建配置名称，不再写入 APK 文件名。
+3. `build-ios` 在 macOS 26 上使用 Xcode 26.4 或更高版本执行干净 iOS prebuild、CocoaPods 安装和无签名 `xcodebuild`（iOS 最低版本 16.4），再把 `.app` 打包为 IPA。
 4. 两个平台分别上传 artifact，临时 artifact 默认保留 7 天。
 5. `release` 模式下载全部产物，从真实 IPA 生成 `altstore-source.json` 和 `SHA256SUMS.txt`，先用 arm64-v8a APK 创建草稿 Release，再上传其余附件，确保旧版一键更新仍将 arm64-v8a 识别为第一个 APK。只有全部附件上传成功后，才按 `publish_release` 公开 Release。
 6. Release 的说明由 GitHub 结合 [`.github/release.yml`](../.github/release.yml) 和 PR label 自动生成；工作流额外注明 ABI、未签名 IPA 和校验文件信息。
@@ -85,7 +85,7 @@ npm test -- tests/altstoreSource.test.js --runInBand
 
 ## Pull Request 检查
 
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) 会在 Pull Request 和 `main` push 时使用 Node.js 22 运行 `npm ci` 与 `npm run check`。建议在分支保护规则中将 **TypeScript, Biome and tests** job 设置为合并前必须通过。
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) 会在 Pull Request 和 `main` push 时使用 Node.js 24 运行 `npm ci` 与 `npm run check`。建议在分支保护规则中将 **TypeScript, Biome and tests** job 设置为合并前必须通过。
 
 ## 依赖更新策略
 
@@ -95,5 +95,7 @@ Expo SDK 会约束 React Native 与大量 `expo-*` 包的兼容版本，不能�
 - npm 安全更新单独分组，不受普通版本更新级别限制；
 - GitHub Actions 每月检查一次，只允许 minor/patch，并合并为一个 PR；
 - Expo SDK 主版本升级由维护者手动执行，并使用 `npx expo install --check` 校验整套依赖。
+
+SDK 58 使用 React Native 0.88、React 19.3 与 Node.js 24。NativeWind 4/Tailwind 3、Firebase 26 的 CocoaPods 链路及 TypeScript 6 的编译器 API 暂时保留，升级边界见 [开发指南](./DEVELOPMENT.md#sdk-58-升级与依赖边界)。原生依赖升级后，发布前须重新生成双平台工程并实际构建，不能仅沿用此前 SDK 的验证记录。
 
 依赖 PR 必须包含同步更新的 `package-lock.json` 并通过 `npm ci`。若 `npm ci` 报告 manifest 与 lock file 不一致，该 PR 不应合并。

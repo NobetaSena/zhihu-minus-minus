@@ -1,11 +1,20 @@
-diff --git a/node_modules/react-native-screens/ios/bottom-tabs/screen/RNSTabsScreenViewController.mm b/node_modules/react-native-screens/ios/bottom-tabs/screen/RNSTabsScreenViewController.mm
-index ba94d37..c43f264 100644
---- a/node_modules/react-native-screens/ios/bottom-tabs/screen/RNSTabsScreenViewController.mm
-+++ b/node_modules/react-native-screens/ios/bottom-tabs/screen/RNSTabsScreenViewController.mm
-@@ -6,6 +6,22 @@
+diff --git a/node_modules/react-native-screens/ios/tabs/screen/RNSTabsScreenViewController.mm b/node_modules/react-native-screens/ios/tabs/screen/RNSTabsScreenViewController.mm
+--- a/node_modules/react-native-screens/ios/tabs/screen/RNSTabsScreenViewController.mm
++++ b/node_modules/react-native-screens/ios/tabs/screen/RNSTabsScreenViewController.mm
+@@ -3,6 +3,7 @@
+ #import "RNSContainerItemSupport.h"
+ #import "RNSDefines.h"
+ #import "RNSLog.h"
++#import "RNSScrollViewFinder.h"
+ #import "RNSTabBarController.h"
+ #import "UIScrollView+RNScreens.h"
  
- @implementation RNSTabsScreenViewController
- 
+@@ -16,6 +17,22 @@
+     _containerItemSupport = [RNSContainerItemSupport new];
+   }
+   return self;
++}
++
 +- (nullable UIScrollView *)contentScrollViewForEdge:(NSDirectionalRectEdge)edge
 +{
 +  UIScrollView *configuredScrollView = [super contentScrollViewForEdge:edge];
@@ -20,36 +29,37 @@ index ba94d37..c43f264 100644
 +  }
 +
 +  return [RNSScrollViewFinder findScrollViewBreadthFirstFrom:self.view];
-+}
-+
+ }
+ 
  - (nullable RNSTabBarController *)findTabBarController
- {
-   return static_cast<RNSTabBarController *_Nullable>(self.tabBarController);
 diff --git a/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.h b/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.h
-index 04d40b3..81d1324 100644
 --- a/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.h
 +++ b/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.h
-@@ -15,6 +15,12 @@
-  */
+@@ -16,6 +16,12 @@
  + (nullable UIScrollView *)findScrollViewInFirstDescendantChainFrom:(nullable UIView *)view;
  
-+/**
+ /**
 + * Searches all descendants breadth-first and returns the first vertically scrollable UIScrollView.
 + * This is used for tab content that is wrapped in pagers or other native containers.
 + */
 ++ (nullable UIScrollView *)findScrollViewBreadthFirstFrom:(nullable UIView *)view;
 +
- /**
++/**
   * Looks for UIScrollView in a similar way to `findScrollViewInFirstDescendantChainFrom`, until it finds
   * `RNSContentScrollViewProviding`. Then, it delegates the task to the provider, and returns the results. This can
+  * overcome the problems of subviews' children not being mounted yet, or ScrollView being mounted at index different
 diff --git a/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.mm b/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.mm
-index 2434c61..21d0629 100644
 --- a/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.mm
 +++ b/node_modules/react-native-screens/ios/helpers/scroll-view/RNSScrollViewFinder.mm
-@@ -19,6 +19,35 @@ + (UIScrollView *)findScrollViewInFirstDescendantChainFrom:(UIView *)view
-   return nil;
- }
- 
+@@ -14,6 +14,35 @@
+     } else {
+       break;
+     }
++  }
++
++  return nil;
++}
++
 ++ (nullable UIScrollView *)findScrollViewBreadthFirstFrom:(nullable UIView *)view
 +{
 +  if (view == nil) {
@@ -74,11 +84,6 @@ index 2434c61..21d0629 100644
 +    }
 +
 +    [queue addObjectsFromArray:currentView.subviews];
-+  }
-+
-+  return nil;
-+}
-+
- + (nullable UIScrollView *)findContentScrollViewWithDelegatingToProvider:(nullable UIView *)view
- {
-   UIView *currentView = view;
+   }
+ 
+   return nil;

@@ -91,27 +91,27 @@ test('copies only the formatted diagnostic report without requiring app provider
   );
 });
 
-test.each([
-  'false',
-  'rejection',
-])('shows a safe inline failure when copying returns %s', async (failure) => {
-  if (failure === 'false') {
-    jest.mocked(Clipboard.setStringAsync).mockResolvedValue(false);
-  } else {
-    jest.mocked(Clipboard.setStringAsync).mockRejectedValue(syntheticError);
-  }
-  const host = await render(
-    <AppErrorBoundary error={syntheticError} retry={async () => {}} />,
-  );
+test.each(['false', 'rejection'])(
+  'shows a safe inline failure when copying returns %s',
+  async (failure) => {
+    if (failure === 'false') {
+      jest.mocked(Clipboard.setStringAsync).mockResolvedValue(false);
+    } else {
+      jest.mocked(Clipboard.setStringAsync).mockRejectedValue(syntheticError);
+    }
+    const host = await render(
+      <AppErrorBoundary error={syntheticError} retry={async () => {}} />,
+    );
 
-  await fireEvent.press(host.getByRole('button', { name: '复制报错日志' }));
+    await fireEvent.press(host.getByRole('button', { name: '复制报错日志' }));
 
-  await waitFor(() =>
-    expect(host.getByText('复制失败，请重试。')).toBeTruthy(),
-  );
-  expect(host.queryByText(syntheticError.message)).toBeNull();
-  expect(host.getByRole('button', { name: '复制报错日志' })).toBeEnabled();
-});
+    await waitFor(() =>
+      expect(host.getByText('复制失败，请重试。')).toBeTruthy(),
+    );
+    expect(host.queryByText(syntheticError.message)).toBeNull();
+    expect(host.getByRole('button', { name: '复制报错日志' })).toBeEnabled();
+  },
+);
 
 test('reporting and retry failures leave recovery controls available', async () => {
   jest.mocked(captureTelemetryException).mockImplementation(() => {

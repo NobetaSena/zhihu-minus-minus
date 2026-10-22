@@ -15,6 +15,7 @@ import {
   type NativeSyntheticEvent,
   View as NativeView,
   RefreshControl,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { recordReadHistory } from '@/api/zhihu/history';
@@ -90,7 +91,7 @@ interface AnswerPreviewCardProps {
   onQuestionTitleLayout?: (bottom: number) => void;
   onFooterRef: (
     id: string,
-    view: Pick<NativeView, 'measureInWindow'> | null,
+    view: Pick<ViewInstance, 'measureInWindow'> | null,
   ) => void;
   onFooterLayout: () => void;
   onBodyLoader: (id: string, loader: (() => Promise<unknown>) | null) => void;
@@ -173,7 +174,7 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
   const router = useRouter();
   const colors = useRuntimeThemeColors();
   const footerRef = useCallback(
-    (view: NativeView | null) => onFooterRef(item.id, view),
+    (view: ViewInstance | null) => onFooterRef(item.id, view),
     [item.id, onFooterRef],
   );
   const footerContent = item.publishInfo ? (
@@ -426,7 +427,7 @@ export function AnswerPreviewList({
     ],
   );
   const handleFooterRef = useCallback(
-    (id: string, view: Pick<NativeView, 'measureInWindow'> | null) => {
+    (id: string, view: Pick<ViewInstance, 'measureInWindow'> | null) => {
       floatingBar.registerFooter(id, view);
       autoLoad.registerFooter(id, view);
     },

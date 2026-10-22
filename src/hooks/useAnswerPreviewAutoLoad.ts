@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  type View as NativeView,
   useWindowDimensions,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type FooterView = Pick<NativeView, 'measureInWindow'>;
+type FooterView = Pick<ViewInstance, 'measureInWindow'>;
 type BodyLoader = () => Promise<unknown>;
 
 interface AutoLoadOptions {

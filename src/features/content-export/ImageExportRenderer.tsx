@@ -7,6 +7,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 import {
   WebView,
@@ -48,7 +49,7 @@ function ImageExportSurface({ request }: { request: CaptureRequest }) {
   const colors = useRuntimeThemeColors();
   const dimensions = useWindowDimensions();
   const webview = useRef<WebView<WebViewProps>>(null);
-  const surface = useRef<View>(null);
+  const surface = useRef<ViewInstance>(null);
   const pages = useRef<readonly ImageSlice[]>([]);
   const captured = useRef<string[]>([]);
   const completed = useRef(false);

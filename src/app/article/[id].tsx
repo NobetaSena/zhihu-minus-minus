@@ -7,9 +7,9 @@ import {
   Animated,
   Image,
   type NativeScrollEvent,
-  type ScrollView as NativeScrollView,
   type NativeSyntheticEvent,
   View as RawView,
+  type ScrollViewInstance,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
@@ -87,7 +87,7 @@ export default function ArticleDetail() {
   }, [contentIdentity]);
 
   const scrollY = useRef(new Animated.Value(0)).current;
-  const scrollViewRef = useRef<NativeScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   // 1. 获取日报详情
   const {
@@ -329,7 +329,7 @@ export default function ArticleDetail() {
       >
         <Animated.View
           style={[
-            StyleSheet.absoluteFillObject,
+            StyleSheet.absoluteFill,
             {
               backgroundColor: Colors[colorScheme].backgroundSecondary,
               opacity: headerBgOpacity,

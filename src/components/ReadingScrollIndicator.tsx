@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   rail: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 2,
     opacity: 0.08,
   },

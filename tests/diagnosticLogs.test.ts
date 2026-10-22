@@ -44,7 +44,7 @@ jest.mock('expo-file-system', () => ({
         throw new Error('Read failure');
       return mockFiles.get(this.path) ?? '';
     }
-    write(content: string) {
+    writeSync(content: string) {
       if (mockFailures.has('write')) throw new Error('Write failure');
       mockWrites(content);
       mockFiles.set(this.path, content);
@@ -344,36 +344,36 @@ test('isolates disk failures, keeps memory logs available, and retries later wri
   expect(loadLogs().readDiagnosticLogs().entries).toHaveLength(2);
 });
 
-test.each([
-  'read',
-  'read:file:///documents/diagnostic-errors-0.json',
-])('does not overwrite an unknown revision after %s fails, and merges pending records on recovery', (failure) => {
-  const previousRun = loadLogs();
-  for (let index = 0; index < 6; index += 1)
-    previousRun.recordDiagnosticError(new TypeError('old'));
-  mockWrites.mockClear();
-  mockFailures.add(failure);
-  const logs = loadLogs();
-  logs.recordDiagnosticError(new ReferenceError('new while read failed'));
-  expect(mockWrites).not.toHaveBeenCalled();
-  expect(logs.readDiagnosticLogs()).toMatchObject({
-    persistenceAvailable: false,
-    entries: expect.arrayContaining([
-      expect.objectContaining({ errorType: 'ReferenceError' }),
-    ]),
-  });
-  mockFailures.delete(failure);
-  logs.recordDiagnosticError(new SyntaxError('new after recovery'));
-  expect(mockWrites).toHaveBeenCalledTimes(1);
-  const restarted = loadLogs().readDiagnosticLogs();
-  expect(restarted.persistenceAvailable).toBe(true);
-  expect(restarted.entries.map((entry) => entry.errorType)).toEqual([
-    ...Array.from({ length: 6 }, () => 'TypeError'),
-    'ReferenceError',
-    'SyntaxError',
-  ]);
-  expect(JSON.parse(mockWrites.mock.calls[0][0]).revision).toBe(7);
-});
+test.each(['read', 'read:file:///documents/diagnostic-errors-0.json'])(
+  'does not overwrite an unknown revision after %s fails, and merges pending records on recovery',
+  (failure) => {
+    const previousRun = loadLogs();
+    for (let index = 0; index < 6; index += 1)
+      previousRun.recordDiagnosticError(new TypeError('old'));
+    mockWrites.mockClear();
+    mockFailures.add(failure);
+    const logs = loadLogs();
+    logs.recordDiagnosticError(new ReferenceError('new while read failed'));
+    expect(mockWrites).not.toHaveBeenCalled();
+    expect(logs.readDiagnosticLogs()).toMatchObject({
+      persistenceAvailable: false,
+      entries: expect.arrayContaining([
+        expect.objectContaining({ errorType: 'ReferenceError' }),
+      ]),
+    });
+    mockFailures.delete(failure);
+    logs.recordDiagnosticError(new SyntaxError('new after recovery'));
+    expect(mockWrites).toHaveBeenCalledTimes(1);
+    const restarted = loadLogs().readDiagnosticLogs();
+    expect(restarted.persistenceAvailable).toBe(true);
+    expect(restarted.entries.map((entry) => entry.errorType)).toEqual([
+      ...Array.from({ length: 6 }, () => 'TypeError'),
+      'ReferenceError',
+      'SyntaxError',
+    ]);
+    expect(JSON.parse(mockWrites.mock.calls[0][0]).revision).toBe(7);
+  },
+);
 
 test('opening logs after storage recovers persists pending records without needing another error', () => {
   const previousRun = loadLogs();

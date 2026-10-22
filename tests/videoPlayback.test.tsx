@@ -40,10 +40,8 @@ const mockWebView = jest.fn(() => null);
 jest.mock('../src/api/zhihu/video', () => ({
   getZhihuVideoPlayback: jest.fn(),
 }));
-jest.mock('@react-navigation/native', () => ({
-  useIsFocused: () => mockFocused,
-}));
 jest.mock('expo-router', () => ({
+  useIsFocused: () => mockFocused,
   Stack: { Screen: () => null },
   useLocalSearchParams: () => mockParams,
 }));
@@ -298,15 +296,18 @@ test.each([
   'file:///synthetic.mp4',
   'https://www.zhihu.com/video/42',
   'https://user:password@example.com/synthetic.mp4',
-])('an invalid direct URL does not crash, create a player or request metadata: %s', async (uri) => {
-  mockParams = { id: 'direct', source: 'direct', uri };
-  const { host, client } = await screen();
-  expect(host.getByText('无效的视频地址')).toBeTruthy();
-  expect(mockedGetPlayback).not.toHaveBeenCalled();
-  expect(mockPlayers).toHaveLength(0);
-  await host.unmount();
-  client.clear();
-});
+])(
+  'an invalid direct URL does not crash, create a player or request metadata: %s',
+  async (uri) => {
+    mockParams = { id: 'direct', source: 'direct', uri };
+    const { host, client } = await screen();
+    expect(host.getByText('无效的视频地址')).toBeTruthy();
+    expect(mockedGetPlayback).not.toHaveBeenCalled();
+    expect(mockPlayers).toHaveLength(0);
+    await host.unmount();
+    client.clear();
+  },
+);
 
 test('a direct HLS resource uses native playback without requesting Lens metadata', async () => {
   mockParams = {

@@ -57,29 +57,29 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-test.each([
-  name,
-  name.replace('-arm64-', '-preview-arm64-'),
-])('normalizes %s and preserves the authenticated GitHub size and SHA-256', (assetName) => {
-  const browserDownloadUrl = assetUrl.replace(name, assetName);
-  expect(
-    normalizeGithubRelease({
-      ...release(),
-      assets: [
-        {
-          ...release().assets[0],
-          name: assetName,
-          browser_download_url: browserDownloadUrl,
-        },
-      ],
-    })?.assets[0],
-  ).toEqual({
-    name: assetName,
-    browser_download_url: browserDownloadUrl,
-    size: 64,
-    sha256: sha,
-  });
-});
+test.each([name, name.replace('-arm64-', '-preview-arm64-')])(
+  'normalizes %s and preserves the authenticated GitHub size and SHA-256',
+  (assetName) => {
+    const browserDownloadUrl = assetUrl.replace(name, assetName);
+    expect(
+      normalizeGithubRelease({
+        ...release(),
+        assets: [
+          {
+            ...release().assets[0],
+            name: assetName,
+            browser_download_url: browserDownloadUrl,
+          },
+        ],
+      })?.assets[0],
+    ).toEqual({
+      name: assetName,
+      browser_download_url: browserDownloadUrl,
+      size: 64,
+      sha256: sha,
+    });
+  },
+);
 
 test.each([
   'http://github.com/huamurui/zhihu-minus-minus/releases/tag/v0.8.0',

@@ -268,59 +268,58 @@ test('a context-menu vote remains attached to its original item after recycling 
   );
 });
 
-test.each([
-  'answers',
-  'articles',
-  'pins',
-  'questions',
-  'videos',
-] as const)('a %s feed card exposes its more entry and collection for supported content', async (type) => {
-  const host = await render(
-    <FeedCard item={{ ...baseItem, type, questionId: 'question' }} />,
-  );
-  if (type === 'answers' || type === 'articles') {
-    expect(mockCollectionButton).toHaveBeenLastCalledWith({
-      id: 'original',
-      type: type === 'answers' ? 'answer' : 'article',
-      isCollected: undefined,
-      count: undefined,
-      variant: 'inline',
-    });
-    expect(
-      host
-        .getAllByRole('button')
-        .map((button) => button.props.accessibilityLabel)
-        .slice(-3),
-    ).toEqual(['收藏', '评论', '更多操作']);
-  } else {
-    expect(host.queryByRole('button', { name: '收藏' })).toBeNull();
-  }
-  expect(mockUseContentActions).toHaveBeenLastCalledWith(
-    expect.objectContaining({ enabled: false }),
-  );
-  const stopPropagation = jest.fn();
-  await fireEvent.press(host.getByRole('button', { name: '更多操作' }), {
-    stopPropagation,
-  });
-  expect(stopPropagation).toHaveBeenCalledTimes(1);
-  expect(mockPush).not.toHaveBeenCalled();
-  expect(host.getByText('更多:original')).toBeTruthy();
-  expect(mockShareMenuProps.data).toMatchObject({
-    id: 'original',
-    questionId: 'question',
-    isCollected: undefined,
-  });
-  await host.rerender(
-    <FeedCard item={{ ...baseItem, type, id: 'next', title: '合成新卡片' }} />,
-  );
-  expect(host.queryByText('更多:original')).toBeNull();
-  expect(host.queryByText('更多:next')).toBeNull();
-  if (type === 'answers' || type === 'articles') {
-    expect(mockCollectionButton).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: 'next' }),
+test.each(['answers', 'articles', 'pins', 'questions', 'videos'] as const)(
+  'a %s feed card exposes its more entry and collection for supported content',
+  async (type) => {
+    const host = await render(
+      <FeedCard item={{ ...baseItem, type, questionId: 'question' }} />,
     );
-  }
-});
+    if (type === 'answers' || type === 'articles') {
+      expect(mockCollectionButton).toHaveBeenLastCalledWith({
+        id: 'original',
+        type: type === 'answers' ? 'answer' : 'article',
+        isCollected: undefined,
+        count: undefined,
+        variant: 'inline',
+      });
+      expect(
+        host
+          .getAllByRole('button')
+          .map((button) => button.props.accessibilityLabel)
+          .slice(-3),
+      ).toEqual(['收藏', '评论', '更多操作']);
+    } else {
+      expect(host.queryByRole('button', { name: '收藏' })).toBeNull();
+    }
+    expect(mockUseContentActions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false }),
+    );
+    const stopPropagation = jest.fn();
+    await fireEvent.press(host.getByRole('button', { name: '更多操作' }), {
+      stopPropagation,
+    });
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(host.getByText('更多:original')).toBeTruthy();
+    expect(mockShareMenuProps.data).toMatchObject({
+      id: 'original',
+      questionId: 'question',
+      isCollected: undefined,
+    });
+    await host.rerender(
+      <FeedCard
+        item={{ ...baseItem, type, id: 'next', title: '合成新卡片' }}
+      />,
+    );
+    expect(host.queryByText('更多:original')).toBeNull();
+    expect(host.queryByText('更多:next')).toBeNull();
+    if (type === 'answers' || type === 'articles') {
+      expect(mockCollectionButton).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'next' }),
+      );
+    }
+  },
+);
 
 test('feed collection actions receive the current list state and refreshed count', async () => {
   const host = await render(
@@ -363,21 +362,21 @@ test('feed previews use the shared action builder with the current content ident
   expect(mockCopy).toHaveBeenCalledTimes(1);
 });
 
-test.each([
-  'created_time',
-  'updated_time',
-] as const)('feed navigation seeds the refreshed %s when other card fields are unchanged', async (field) => {
-  const item = { ...baseItem, created_time: 100, updated_time: 200 };
-  const host = await render(<FeedCard item={item} />);
-  const refreshed = { ...item, [field]: 300 };
-  await host.rerender(<FeedCard item={refreshed} />);
-  await fireEvent.press(host.getByText('合成原卡片'));
+test.each(['created_time', 'updated_time'] as const)(
+  'feed navigation seeds the refreshed %s when other card fields are unchanged',
+  async (field) => {
+    const item = { ...baseItem, created_time: 100, updated_time: 200 };
+    const host = await render(<FeedCard item={item} />);
+    const refreshed = { ...item, [field]: 300 };
+    await host.rerender(<FeedCard item={refreshed} />);
+    await fireEvent.press(host.getByText('合成原卡片'));
 
-  expect(seedAnswerPreviewEntry).toHaveBeenLastCalledWith(
-    expect.any(Object),
-    refreshed,
-  );
-});
+    expect(seedAnswerPreviewEntry).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      refreshed,
+    );
+  },
+);
 
 test('recycled card navigation updates answer context with the same item reference and leaves article routes alone', async () => {
   const host = await render(<FeedCard item={baseItem} />);
@@ -537,50 +536,47 @@ test('ordinary creation cards navigate to answers and reset their more menu afte
   );
 });
 
-test.each([
-  'article',
-  'pin',
-  'question',
-  'video',
-] as const)('%s creation cards expose collection only for supported content', async (type) => {
-  const host = await render(
-    <CreationCard
-      item={{
+test.each(['article', 'pin', 'question', 'video'] as const)(
+  '%s creation cards expose collection only for supported content',
+  async (type) => {
+    const host = await render(
+      <CreationCard
+        item={{
+          id: 'creation',
+          title: '合成创作',
+          relationship: { is_favorited: true },
+          favlists_count: 12,
+        }}
+        type={type}
+      />,
+    );
+    if (type === 'article') {
+      expect(mockCollectionButton).toHaveBeenLastCalledWith({
         id: 'creation',
-        title: '合成创作',
-        relationship: { is_favorited: true },
-        favlists_count: 12,
-      }}
-      type={type}
-    />,
-  );
-  if (type === 'article') {
-    expect(mockCollectionButton).toHaveBeenLastCalledWith({
-      id: 'creation',
-      type: 'article',
-      isCollected: true,
-      count: 12,
-      variant: 'inline',
-    });
-  } else {
-    expect(host.queryByRole('button', { name: '收藏' })).toBeNull();
-    expect(mockCollectionButton).not.toHaveBeenCalled();
-  }
-});
+        type: 'article',
+        isCollected: true,
+        count: 12,
+        variant: 'inline',
+      });
+    } else {
+      expect(host.queryByRole('button', { name: '收藏' })).toBeNull();
+      expect(mockCollectionButton).not.toHaveBeenCalled();
+    }
+  },
+);
 
-test.each([
-  'lens',
-  'zvideo',
-  undefined,
-] as const)('video feed cards route with their source %s and retain the legacy default', async (source) => {
-  const item: FeedItem = { ...baseItem, type: 'videos', videoSource: source };
-  const host = await render(<FeedCard item={item} />);
-  await fireEvent.press(host.getByText('合成原卡片'));
-  expect(mockPush).toHaveBeenLastCalledWith({
-    pathname: '/video/[id]',
-    params: { id: item.id, title: item.title, source: source || 'zvideo' },
-  });
-});
+test.each(['lens', 'zvideo', undefined] as const)(
+  'video feed cards route with their source %s and retain the legacy default',
+  async (source) => {
+    const item: FeedItem = { ...baseItem, type: 'videos', videoSource: source };
+    const host = await render(<FeedCard item={item} />);
+    await fireEvent.press(host.getByText('合成原卡片'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/video/[id]',
+      params: { id: item.id, title: item.title, source: source || 'zvideo' },
+    });
+  },
+);
 
 test('a memoized video card with the same ID switches its playback namespace', async () => {
   const item: FeedItem = { ...baseItem, type: 'videos', videoSource: 'lens' };
@@ -604,12 +600,19 @@ test.each([
   ['video', 'lens'],
   ['zvideo', 'zvideo'],
   [undefined, 'zvideo'],
-] as const)('collection creation cards retain raw video type %s when routing', async (rawType, source) => {
-  const item = { id: '2088306465639604943', type: rawType, title: '收藏视频' };
-  const host = await render(<CreationCard item={item} type="video" />);
-  await fireEvent.press(host.getByText('收藏视频'));
-  expect(mockPush).toHaveBeenLastCalledWith({
-    pathname: '/video/[id]',
-    params: { id: item.id, title: item.title, source },
-  });
-});
+] as const)(
+  'collection creation cards retain raw video type %s when routing',
+  async (rawType, source) => {
+    const item = {
+      id: '2088306465639604943',
+      type: rawType,
+      title: '收藏视频',
+    };
+    const host = await render(<CreationCard item={item} type="video" />);
+    await fireEvent.press(host.getByText('收藏视频'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/video/[id]',
+      params: { id: item.id, title: item.title, source },
+    });
+  },
+);

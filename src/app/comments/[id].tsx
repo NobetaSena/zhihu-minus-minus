@@ -9,7 +9,7 @@ import {
   Alert,
   View as NativeView,
   StyleSheet,
-  type TextInput,
+  type TextInputInstance,
   useWindowDimensions,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
@@ -69,7 +69,7 @@ export default function CommentScreen() {
     authorName: string;
     canDelete: boolean;
   } | null>(null);
-  const inputRef = React.useRef<TextInput>(null);
+  const inputRef = React.useRef<TextInputInstance>(null);
   const queryClient = useQueryClient();
   const _insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();

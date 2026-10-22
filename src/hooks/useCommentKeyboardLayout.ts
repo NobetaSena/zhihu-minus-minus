@@ -3,7 +3,7 @@ import {
   Keyboard,
   type KeyboardEvent,
   Platform,
-  type View,
+  type ViewInstance,
 } from 'react-native';
 import {
   useAnimatedStyle,
@@ -13,7 +13,7 @@ import {
 
 /** Position the composer against the keyboard top in the page's coordinates. */
 export function useCommentKeyboardLayout(bottomInset: number) {
-  const containerRef = useRef<View>(null);
+  const containerRef = useRef<ViewInstance>(null);
   const keyboardFrame = useRef(Keyboard.metrics());
   const measurementSequence = useRef(0);
   const mounted = useRef(false);

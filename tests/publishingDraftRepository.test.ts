@@ -110,16 +110,15 @@ test('a stale editor token cannot recreate the draft after account removal', asy
   expect(await publishingDraftRepository.read(a)).toBeNull();
 });
 
-test.each([
-  '{broken',
-  '{"version":7,"value":{}}',
-  '{"version":1,"value":{}}',
-])('an unreadable stored row stays intact and fails closed: %s', async (stored) => {
-  const key = `${a.accountKey}|article:new`;
-  mockRows.set(key, stored);
-  await expect(publishingDraftRepository.read(a)).rejects.toThrow(
-    '草稿内容暂时无法读取',
-  );
-  expect(mockRows.get(key)).toBe(stored);
-  expect(mockDatabase.runAsync).not.toHaveBeenCalled();
-});
+test.each(['{broken', '{"version":7,"value":{}}', '{"version":1,"value":{}}'])(
+  'an unreadable stored row stays intact and fails closed: %s',
+  async (stored) => {
+    const key = `${a.accountKey}|article:new`;
+    mockRows.set(key, stored);
+    await expect(publishingDraftRepository.read(a)).rejects.toThrow(
+      '草稿内容暂时无法读取',
+    );
+    expect(mockRows.get(key)).toBe(stored);
+    expect(mockDatabase.runAsync).not.toHaveBeenCalled();
+  },
+);

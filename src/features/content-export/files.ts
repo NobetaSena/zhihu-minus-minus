@@ -529,9 +529,9 @@ export async function saveExportImages(
   assertExportActive(context);
   if (result.files.some((file) => file.mimeType !== 'image/png'))
     throw new ExportIoError('storage');
-  let gallery: typeof import('expo-media-library');
+  let gallery: typeof import('expo-media-library/legacy');
   try {
-    gallery = require('expo-media-library');
+    gallery = require('expo-media-library/legacy');
   } catch {
     throw new ExportIoError('gallery-unavailable');
   }

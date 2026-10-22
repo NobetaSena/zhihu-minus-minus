@@ -1,7 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { createRef } from 'react';
-import { Alert, type TextInput } from 'react-native';
+import { Alert, type TextInputInstance } from 'react-native';
 import { type UploadedImage, uploadImage } from '../src/api/zhihu/image';
 import {
   CommentComposer,
@@ -54,7 +54,7 @@ async function setup(
     <CommentComposer
       colorScheme="light"
       borderColor="#ddd"
-      inputRef={createRef<TextInput>()}
+      inputRef={createRef<TextInputInstance>()}
       inputText="合成草稿"
       isSubmitting={false}
       onChangeText={onChangeText}

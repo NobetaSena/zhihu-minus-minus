@@ -323,20 +323,23 @@ test.each([
   ['videos', 'lens'],
   ['zvideo', 'zvideo'],
   ['zvideos', 'zvideo'],
-] as const)('profile search preserves raw video type %s as source %s', (type, videoSource) => {
-  expect(
-    toProfileSearchFeedItem(
-      {
-        type: 'search_result',
-        index: 0,
-        highlight: {},
-        object: { id: '2088306465639604943', type, title: '用户视频' },
-      },
-      member,
-      '#00f',
-    ),
-  ).toMatchObject({ id: '2088306465639604943', type: 'videos', videoSource });
-});
+] as const)(
+  'profile search preserves raw video type %s as source %s',
+  (type, videoSource) => {
+    expect(
+      toProfileSearchFeedItem(
+        {
+          type: 'search_result',
+          index: 0,
+          highlight: {},
+          object: { id: '2088306465639604943', type, title: '用户视频' },
+        },
+        member,
+        '#00f',
+      ),
+    ).toMatchObject({ id: '2088306465639604943', type: 'videos', videoSource });
+  },
+);
 
 test('profile search preserves a known zero count and leaves unavailable collection data unknown', () => {
   const result = page('合成搜索结果').data[0];

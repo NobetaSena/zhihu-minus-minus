@@ -52,53 +52,52 @@ beforeEach(() => {
 });
 
 describe('native rich text availability', () => {
-  it.each([
-    'android',
-    'ios',
-  ])('loads the registered %s view lazily and passes the existing bridge props', (platform) => {
-    mockPlatform = platform;
-    const bridge = loadNativeBridge();
-    expect(mockRequireOptionalNativeModule).not.toHaveBeenCalled();
-    expect(mockRequireNativeView).not.toHaveBeenCalled();
+  it.each(['android', 'ios'])(
+    'loads the registered %s view lazily and passes the existing bridge props',
+    (platform) => {
+      mockPlatform = platform;
+      const bridge = loadNativeBridge();
+      expect(mockRequireOptionalNativeModule).not.toHaveBeenCalled();
+      expect(mockRequireNativeView).not.toHaveBeenCalled();
 
-    expect(bridge.isRichTextNativeAvailable()).toBe(true);
-    const element = bridge.RichTextNativeView(props);
-    expect(element?.type).toBe(mockNativeComponent);
-    expect(element?.props).toEqual(props);
-    expect(bridge.isRichTextNativeAvailable()).toBe(true);
-    expect(mockRequireOptionalNativeModule).toHaveBeenCalledTimes(1);
-    expect(mockRequireOptionalNativeModule).toHaveBeenCalledWith(
-      'ZhihuRichText',
-    );
-    expect(mockRequireNativeView).toHaveBeenCalledTimes(1);
-    expect(mockRequireNativeView).toHaveBeenCalledWith('ZhihuRichText');
-  });
+      expect(bridge.isRichTextNativeAvailable()).toBe(true);
+      const element = bridge.RichTextNativeView(props);
+      expect(element?.type).toBe(mockNativeComponent);
+      expect(element?.props).toEqual(props);
+      expect(bridge.isRichTextNativeAvailable()).toBe(true);
+      expect(mockRequireOptionalNativeModule).toHaveBeenCalledTimes(1);
+      expect(mockRequireOptionalNativeModule).toHaveBeenCalledWith(
+        'ZhihuRichText',
+      );
+      expect(mockRequireNativeView).toHaveBeenCalledTimes(1);
+      expect(mockRequireNativeView).toHaveBeenCalledWith('ZhihuRichText');
+    },
+  );
 
-  it.each([
-    'android',
-    'ios',
-  ])('returns unavailable for a %s client without the module', (platform) => {
-    mockPlatform = platform;
-    mockRequireOptionalNativeModule.mockReturnValue(null);
-    const bridge = loadNativeBridge();
-    expect(bridge.isRichTextNativeAvailable()).toBe(false);
-    expect(bridge.RichTextNativeView(props)).toBeNull();
-    expect(mockRequireOptionalNativeModule).toHaveBeenCalledTimes(1);
-    expect(mockRequireNativeView).not.toHaveBeenCalled();
-  });
+  it.each(['android', 'ios'])(
+    'returns unavailable for a %s client without the module',
+    (platform) => {
+      mockPlatform = platform;
+      mockRequireOptionalNativeModule.mockReturnValue(null);
+      const bridge = loadNativeBridge();
+      expect(bridge.isRichTextNativeAvailable()).toBe(false);
+      expect(bridge.RichTextNativeView(props)).toBeNull();
+      expect(mockRequireOptionalNativeModule).toHaveBeenCalledTimes(1);
+      expect(mockRequireNativeView).not.toHaveBeenCalled();
+    },
+  );
 
-  it.each([
-    'web',
-    'windows',
-    'macos',
-  ])('keeps %s unsupported without requesting a native module or view', (platform) => {
-    mockPlatform = platform;
-    const bridge = loadNativeBridge();
-    expect(bridge.isRichTextNativeAvailable()).toBe(false);
-    expect(bridge.RichTextNativeView(props)).toBeNull();
-    expect(mockRequireOptionalNativeModule).not.toHaveBeenCalled();
-    expect(mockRequireNativeView).not.toHaveBeenCalled();
-  });
+  it.each(['web', 'windows', 'macos'])(
+    'keeps %s unsupported without requesting a native module or view',
+    (platform) => {
+      mockPlatform = platform;
+      const bridge = loadNativeBridge();
+      expect(bridge.isRichTextNativeAvailable()).toBe(false);
+      expect(bridge.RichTextNativeView(props)).toBeNull();
+      expect(mockRequireOptionalNativeModule).not.toHaveBeenCalled();
+      expect(mockRequireNativeView).not.toHaveBeenCalled();
+    },
+  );
 
   it('fails closed if the native view cannot be loaded', () => {
     mockRequireNativeView.mockImplementation(() => {

@@ -7,7 +7,7 @@ import { useChatMessages } from '../src/hooks/useChatMessages';
 
 jest.mock('../src/api/zhihu', () => ({ getMessages: jest.fn() }));
 let mockFocused = true;
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useIsFocused: () => mockFocused,
 }));
 const initialAppState = AppState.currentState;

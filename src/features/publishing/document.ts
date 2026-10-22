@@ -1,4 +1,5 @@
-import { DomUtils, parseDocument } from 'htmlparser2';
+import { isTag, isText } from 'domhandler';
+import { parseDocument } from 'htmlparser2';
 import type { UploadedImage } from '@/api/zhihu/image';
 import {
   deserializePublishingHtml,
@@ -42,13 +43,11 @@ const EDITABLE_TAGS = new Set([
 function canEdit(
   node: ReturnType<typeof parseDocument>['children'][number],
 ): boolean {
-  if (DomUtils.isText(node)) return true;
-  if (!DomUtils.isTag(node) || !EDITABLE_TAGS.has(node.name)) return false;
+  if (isText(node)) return true;
+  if (!isTag(node) || !EDITABLE_TAGS.has(node.name)) return false;
   if (
     (node.name === 'code' || node.name === 'pre') &&
-    node.children.some(
-      (child) => DomUtils.isText(child) && child.data.includes('`'),
-    )
+    node.children.some((child) => isText(child) && child.data.includes('`'))
   )
     return false;
   const allowedAttributes =
@@ -67,8 +66,8 @@ function canEdit(
 function canonical(
   node: ReturnType<typeof parseDocument>['children'][number],
 ): unknown {
-  if (DomUtils.isText(node)) return node.data;
-  if (!DomUtils.isTag(node)) return null;
+  if (isText(node)) return node.data;
+  if (!isTag(node)) return null;
   const name =
     node.name === 'b' ? 'strong' : node.name === 'i' ? 'em' : node.name;
   const attributes = { ...node.attribs };

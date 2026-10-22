@@ -48,12 +48,15 @@ describe.each([
     ['request timeout', new AxiosError('Timed out', 'ECONNABORTED')],
     ['connection timeout', new AxiosError('Timed out', 'ETIMEDOUT')],
     ['cancellation', new CanceledError('Canceled')],
-  ] as const)('does not issue a second request after %s', async (_name, error) => {
-    get.mockRejectedValueOnce(error);
+  ] as const)(
+    'does not issue a second request after %s',
+    async (_name, error) => {
+      get.mockRejectedValueOnce(error);
 
-    await expect(getFeed(url)).rejects.toBe(error);
-    expect(get).toHaveBeenCalledTimes(1);
-  });
+      await expect(getFeed(url)).rejects.toBe(error);
+      expect(get).toHaveBeenCalledTimes(1);
+    },
+  );
 
   test('retains compatibility fallback when the endpoint responds with HTTP 403', async () => {
     const data = { data: [], paging: { is_end: true } };

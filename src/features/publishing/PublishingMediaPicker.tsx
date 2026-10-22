@@ -103,7 +103,7 @@ export function PublishingMediaList({
               {item.status !== 'uploaded' && (
                 <View
                   style={{
-                    ...StyleSheet.absoluteFillObject,
+                    ...StyleSheet.absoluteFill,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: 10,
