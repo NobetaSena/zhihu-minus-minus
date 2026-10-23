@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { LayoutChangeEvent } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { getAnswer } from '@/api/zhihu';
 import { recordReadHistory } from '@/api/zhihu/history';
@@ -237,6 +245,41 @@ function AnswerDetailScreen() {
     pageListKey: string;
     index: number;
   } | null>(null);
+  const layoutRetry = useRef<typeof pendingPage.current>(null);
+  const positionRetry = useRef<typeof pendingPage.current>(null);
+  const retryPageSynchronization = useCallback(
+    (reason: 'layout' | 'position') => {
+      const pending = pendingPage.current;
+      if (
+        !pending ||
+        currentMotion.current.state !== 'idle' ||
+        currentPager.current.pagerKey !== pending.pagerKey ||
+        currentPager.current.pageListKey !== pending.pageListKey
+      )
+        return;
+      const retried = reason === 'layout' ? layoutRetry : positionRetry;
+      if (retried.current === pending) return;
+      retried.current = pending;
+      // Pager 9 rejects a command whose index has not been inserted natively
+      // yet. Retry after native layout/position feedback, once per signal type
+      // and page-list revision, so a rejected scroll event cannot form a loop.
+      pagerRef.current?.setPageWithoutAnimation(pending.index);
+    },
+    [],
+  );
+  const handlePagerLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      if (
+        currentPager.current.pagerKey !== pagerKey ||
+        currentPager.current.pageListKey !== pageListKey ||
+        event.nativeEvent.layout.width <= 0 ||
+        event.nativeEvent.layout.height <= 0
+      )
+        return;
+      retryPageSynchronization('layout');
+    },
+    [pageListKey, pagerKey, retryPageSynchronization],
+  );
 
   useLayoutEffect(() => {
     const previous = synchronizedPager.current;
@@ -370,6 +413,7 @@ function AnswerDetailScreen() {
         style={{ flex: 1 }}
         initialPage={initialPage}
         offscreenPageLimit={1}
+        onLayout={handlePagerLayout}
         onPageScrollStateChanged={(event) => {
           if (
             currentPager.current.pagerKey !== pagerKey ||
@@ -416,7 +460,10 @@ function AnswerDetailScreen() {
               pending?.pagerKey === pagerKey &&
               pending.pageListKey === pageListKey
             ) {
-              if (position !== pending.index) return;
+              if (position !== pending.index) {
+                retryPageSynchronization('position');
+                return;
+              }
               pendingPage.current = null;
             }
             nativePage.current = { pagerKey, pageListKey, index: position };
@@ -435,7 +482,10 @@ function AnswerDetailScreen() {
             pending?.pagerKey === pagerKey &&
             pending.pageListKey === pageListKey
           ) {
-            if (newIndex !== pending.index) return;
+            if (newIndex !== pending.index) {
+              retryPageSynchronization('position');
+              return;
+            }
             pendingPage.current = null;
           }
           const newId = answerIds[newIndex];
@@ -455,7 +505,7 @@ function AnswerDetailScreen() {
         }}
       >
         {answerIds.map((aid, index) => (
-          <View key={aid} className="flex-1">
+          <View key={aid} className="flex-1" onLayout={handlePagerLayout}>
             <AnswerDetailView
               id={aid}
               readSession={readSession}

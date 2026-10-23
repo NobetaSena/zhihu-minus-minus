@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react-native';
 import React from 'react';
+import type { LayoutChangeEvent } from 'react-native';
 import AnswerDetailScreen from '../src/app/answer/[id]';
 import type { AnswerReadSession } from '../src/hooks/useAnswerDetailRead';
 import { calculateDetailHeaderAppearance } from '../src/utils/detailHeaderAppearance';
@@ -7,6 +8,7 @@ import { calculateDetailHeaderAppearance } from '../src/utils/detailHeaderAppear
 interface PagerProps {
   children?: React.ReactNode;
   initialPage: number;
+  onLayout: (event: LayoutChangeEvent) => void;
   onPageSelected: (event: { nativeEvent: { position: number } }) => void;
   onPageScrollStateChanged: (event: {
     nativeEvent: { pageScrollState: string };
@@ -396,6 +398,7 @@ beforeEach(() => {
   mockReadingMode = 'detail';
   mockSessionVersion = 1;
   jest.clearAllMocks();
+  mockSetPage.mockReset();
   mockParams = {
     id: '42',
     questionId: '7',
@@ -600,6 +603,109 @@ describe('answer pager list transitions', () => {
     await selectPage(1);
     expect(mockAnswerProps.get('42')?.isFocused).toBe(true);
     expect(mockSetParams).toHaveBeenLastCalledWith({ id: '42' });
+  });
+
+  it('recovers when the first answer moves beyond the natively mounted pages', async () => {
+    let nativeCount = 1;
+    let nativeIndex = 0;
+    mockSetPage.mockImplementation((index: number) => {
+      // Pager 9 drops commands for children that Fabric has not inserted yet.
+      if (index < nativeCount) nativeIndex = index;
+    });
+    const page = await render(React.createElement(AnswerDetailScreen));
+    const previousLayout = mockPagerProps.onLayout;
+    setList(['11', '99', '101', '42']);
+    await page.rerender(React.createElement(AnswerDetailScreen));
+    expect(mockSetPage).toHaveBeenCalledWith(3);
+    expect(nativeIndex).toBe(0);
+    expect(mockAnswerProps.get('11')?.isFocused).toBe(false);
+    expect(mockAnswerProps.get('11')?.isPreloading).toBe(false);
+    await act(() =>
+      previousLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } },
+      } as LayoutChangeEvent),
+    );
+    expect(mockSetPage).toHaveBeenCalledTimes(1);
+
+    nativeCount = 4;
+    const firstPage = React.Children.toArray(
+      mockPagerProps.children,
+    )[0] as React.ReactElement<{
+      onLayout: (event: LayoutChangeEvent) => void;
+    }>;
+    await act(() =>
+      firstPage.props.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } },
+      } as LayoutChangeEvent),
+    );
+    expect(nativeIndex).toBe(3);
+    const visibleId = renderedAnswerIds()[nativeIndex];
+    expect(visibleId).toBe('42');
+    expect(mockAnswerProps.get(visibleId)?.isFocused).toBe(true);
+    expect(mockAnswerMounts.get('42')).toBe(1);
+    await act(() =>
+      firstPage.props.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } },
+      } as LayoutChangeEvent),
+    );
+    expect(mockSetPage).toHaveBeenCalledTimes(2);
+
+    await selectPage(nativeIndex);
+    await act(() =>
+      mockPagerProps.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } },
+      } as LayoutChangeEvent),
+    );
+    expect(mockSetPage).toHaveBeenCalledTimes(2);
+    expect(mockSetParams).not.toHaveBeenCalled();
+  });
+
+  it('retries a rejected native position once and still waits for layout confirmation', async () => {
+    const page = await render(React.createElement(AnswerDetailScreen));
+    setList(['11', '99', '101', '42']);
+    await page.rerender(React.createElement(AnswerDetailScreen));
+    mockSetPage.mockClear();
+
+    await selectPage(0);
+    await selectPage(0);
+    await scrollPage(0, 0);
+    expect(mockSetPage).toHaveBeenCalledTimes(1);
+    expect(mockSetPage).toHaveBeenLastCalledWith(3);
+    expect(mockAnswerProps.get('42')?.isFocused).toBe(true);
+    expect(mockSetParams).not.toHaveBeenCalled();
+
+    await act(() =>
+      mockPagerProps.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 0 } },
+      } as LayoutChangeEvent),
+    );
+    expect(mockSetPage).toHaveBeenCalledTimes(1);
+    await act(() =>
+      mockPagerProps.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } },
+      } as LayoutChangeEvent),
+    );
+    expect(mockSetPage).toHaveBeenCalledTimes(2);
+    await selectPage(3);
+    await startDrag();
+    await selectPage(2);
+    expect(mockAnswerProps.get('101')?.isFocused).toBe(true);
+  });
+
+  it('does not restore an obsolete page after a new native swipe starts', async () => {
+    const page = await render(React.createElement(AnswerDetailScreen));
+    setList(['11', '42', '99']);
+    await page.rerender(React.createElement(AnswerDetailScreen));
+    mockSetPage.mockClear();
+    await startDrag();
+    await act(() =>
+      mockPagerProps.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } },
+      } as LayoutChangeEvent),
+    );
+    expect(mockSetPage).not.toHaveBeenCalled();
+    await selectPage(2);
+    expect(mockAnswerProps.get('99')?.isFocused).toBe(true);
   });
 
   it('keeps a selected answer omitted from a list refresh until the reader leaves it', async () => {
