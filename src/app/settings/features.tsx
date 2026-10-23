@@ -68,7 +68,7 @@ export default function FeatureSettings() {
             label="列表预加载"
             icon="download-outline"
             colorScheme={colorScheme}
-            help="提前加载下一页，会略微增加流量。"
+            help="提前加载下一页，会略微增加流量和耗电。"
           >
             <ThemedSwitch
               accessibilityLabel="列表预加载"
@@ -82,7 +82,7 @@ export default function FeatureSettings() {
             label="多页同时加载"
             icon="layers-outline"
             colorScheme={colorScheme}
-            help="同时请求后面几页，会略微增加流量，也可能更容易触发知乎验证。"
+            help="同时请求后面几页，会略微增加流量和耗电，也可能更容易触发知乎验证。"
           >
             <ThemedSwitch
               accessibilityLabel="多页同时加载"
