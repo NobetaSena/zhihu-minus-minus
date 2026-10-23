@@ -9,7 +9,10 @@ import {
 } from '../src/api/zhihu/comment';
 import { CommentIdentityBadges } from '../src/components/CommentIdentityBadges';
 import { getCommentIdentityBadges } from '../src/utils/commentIdentity';
-import { parseParentComment } from '../src/utils/commentRoute';
+import {
+  parseParentComment,
+  serializeParentComment,
+} from '../src/utils/commentRoute';
 
 jest.mock('../src/api/client', () => ({
   __esModule: true,
@@ -109,8 +112,9 @@ test('legacy detail responses and routed parents retain their identity labels', 
   jest.mocked(apiClient.get).mockResolvedValue({ data: comment });
   const result = await getComment('synthetic-comment');
   const parent = parseParentComment(
-    JSON.stringify(result),
+    serializeParentComment(result, 1),
     'synthetic-comment',
+    1,
   );
   expect(parent).not.toBeNull();
   expect(getCommentIdentityBadges(parent ?? comment)).toEqual(

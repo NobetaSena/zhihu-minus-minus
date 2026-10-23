@@ -1,10 +1,19 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  createContext,
+  Suspense,
+  startTransition,
+  useLayoutEffect,
+  useState,
+} from 'react';
+import { Text } from 'react-native';
 import type { WebViewProps } from 'react-native-webview';
 import QuestionLogScreen from '../src/app/question/[id]/log';
 
 let mockQuestionId = '42';
 let mockSessionVersion = 1;
 let mockColorScheme = 'light';
+const mockQuestionRouteContext = createContext<string | null>(null);
 const mockBack = jest.fn();
 const mockSyncCookies = jest.fn<Promise<void>, [string | null]>();
 const mockAuthState = { cookies: 'z_c0=synthetic-session' };
@@ -12,7 +21,11 @@ const mockAuthState = { cookies: 'z_c0=synthetic-session' };
 jest.mock('@expo/vector-icons/Ionicons', () => 'Icon');
 jest.mock('expo-router', () => ({
   Stack: { Screen: () => null },
-  useLocalSearchParams: () => ({ id: mockQuestionId }),
+  useLocalSearchParams: () => ({
+    id:
+      jest.requireActual('react').useContext(mockQuestionRouteContext) ??
+      mockQuestionId,
+  }),
   useRouter: () => ({ back: mockBack }),
 }));
 jest.mock('react-native-webview', () => ({
@@ -147,6 +160,57 @@ test('obsolete session readiness cannot mount a WebView for the replacement sess
   await act(() => completions[1]());
   await host.findByTestId('question-log-webview');
 });
+
+test.each(['loadEnd', 'error'] as const)(
+  'an uncommitted route render does not swallow the current WebView %s event',
+  async (event) => {
+    let navigate: (id: string) => void = () => {};
+    let suspendedRenders = 0;
+    const neverReady = new Promise<void>(() => {});
+    function PendingRoute({ id }: { id: string }) {
+      if (id === '43') {
+        suspendedRenders += 1;
+        throw neverReady;
+      }
+      return null;
+    }
+    function RouteHost() {
+      const [id, setId] = useState('42');
+      useLayoutEffect(() => {
+        navigate = setId;
+      }, []);
+      return (
+        <mockQuestionRouteContext.Provider value={id}>
+          <Suspense fallback={<Text>等待下一页</Text>}>
+            <QuestionLogScreen />
+            <PendingRoute id={id} />
+          </Suspense>
+        </mockQuestionRouteContext.Provider>
+      );
+    }
+    const host = await render(<RouteHost />);
+    const webview = await host.findByTestId('question-log-webview');
+    await act(() => {
+      startTransition(() => navigate('43'));
+    });
+    expect(suspendedRenders).toBeGreaterThan(0);
+    expect(host.getByTestId('question-log-webview').props.source.uri).toBe(
+      'https://www.zhihu.com/question/42/log',
+    );
+    expect(mockSyncCookies).toHaveBeenCalledTimes(1);
+    await act(() => {
+      if (event === 'loadEnd') webview.props.onLoadEnd();
+      else webview.props.onError();
+    });
+    if (event === 'loadEnd') {
+      expect(host.queryByLabelText('正在加载问题日志')).toBeNull();
+      expect(host.getByTestId('question-log-webview')).toBeTruthy();
+    } else {
+      expect(host.getByText('问题日志加载失败，请重试')).toBeTruthy();
+    }
+    await act(() => navigate('42'));
+  },
+);
 
 test('subresource HTTP errors do not obscure a loaded log', async () => {
   const host = await render(<QuestionLogScreen />);

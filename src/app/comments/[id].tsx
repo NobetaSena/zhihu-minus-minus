@@ -43,6 +43,8 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { useCommentKeyboardLayout } from '@/hooks/useCommentKeyboardLayout';
 import { useCommentListQuery } from '@/hooks/useCommentQueries';
+import { getAuthSessionVersion } from '@/store/useAuthStore';
+import { serializeParentComment } from '@/utils/commentRoute';
 import { formatDate } from '@/utils/date';
 import { buildZhihuContent, buildZhihuImageHtml } from '@/utils/zhihuContent';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -60,6 +62,7 @@ export default function CommentScreen() {
       endOffset?: string;
     }>();
   const router = useRouter();
+  const parentSessionVersion = React.useRef(getAuthSessionVersion()).current;
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(
     null,
@@ -323,7 +326,7 @@ export default function CommentScreen() {
                 onPress={() =>
                   router.push(
                     `/comments/replies/${item.id}?parent=${encodeURIComponent(
-                      JSON.stringify(item),
+                      serializeParentComment(item, parentSessionVersion),
                     )}&resourceId=${encodeURIComponent(
                       String(id),
                     )}&resourceType=${encodeURIComponent(commentResourceType)}`,

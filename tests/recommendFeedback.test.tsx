@@ -3,8 +3,17 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import { act, renderHook } from '@testing-library/react-native';
-import type { PropsWithChildren } from 'react';
+import { act, render, renderHook } from '@testing-library/react-native';
+import {
+  type Dispatch,
+  type PropsWithChildren,
+  type SetStateAction,
+  Suspense,
+  startTransition,
+  useLayoutEffect,
+  useState,
+} from 'react';
+import { Text } from 'react-native';
 import { markRecommendationUninterested } from '../src/api/zhihu/feed';
 import { useRecommendFeedback } from '../src/hooks/useRecommendFeedback';
 import { feedCacheRepository } from '../src/storage/feedCacheRepository';
@@ -208,4 +217,122 @@ test('a concurrent refresh cannot restore content after feedback succeeds', asyn
   expect(client.getQueryData(queryKey)).toEqual(
     removeRecommendationFromPages(pages(), 'answer:same-token'),
   );
+});
+
+test('a discarded suspended account render preserves the committed menu, hidden content and pending feedback', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  clients.push(client);
+  client.setQueryData(queryKey, pages());
+  const accountBKey = ['zhihu-feed', 'id:account-b', 'recommend', {}];
+  client.setQueryData(accountBKey, pages());
+  const suspension = deferred();
+  const pendingFeedback = deferred();
+  interface ScreenState {
+    accountKey: string;
+    suspended: boolean;
+  }
+  let updateScreen!: Dispatch<SetStateAction<ScreenState>>;
+  let committedFeedback!: ReturnType<typeof useRecommendFeedback>;
+  const committedAccounts: string[] = [];
+  const attemptedFilters: FeedIdentitySource[][] = [];
+
+  function Feed({ accountKey, suspended }: ScreenState) {
+    const feedback = useRecommendFeedback(accountKey);
+    useLayoutEffect(() => {
+      committedFeedback = feedback;
+      committedAccounts.push(accountKey);
+    }, [accountKey, feedback]);
+    const filtered = feedback.filterRecommendations([answer, article]);
+    if (suspended) {
+      attemptedFilters.push(filtered);
+      throw suspension.promise;
+    }
+    return <Text>{accountKey}</Text>;
+  }
+
+  function App() {
+    const [screen, setScreen] = useState<ScreenState>({
+      accountKey: 'id:account-a',
+      suspended: false,
+    });
+    useLayoutEffect(() => {
+      updateScreen = setScreen;
+    }, []);
+    return (
+      <QueryClientProvider client={client}>
+        <Suspense fallback={<Text>正在切换账号</Text>}>
+          <Feed {...screen} />
+        </Suspense>
+      </QueryClientProvider>
+    );
+  }
+
+  const host = await render(<App />);
+  await act(async () => committedFeedback.markUninterested(answer));
+  const originalMenu = committedFeedback;
+  jest
+    .mocked(markRecommendationUninterested)
+    .mockReturnValueOnce(pendingFeedback.promise);
+  const originalRequest = originalMenu.markUninterested(otherAnswer);
+  await act(() => {
+    startTransition(() =>
+      updateScreen({ accountKey: 'id:account-b', suspended: true }),
+    );
+  });
+
+  expect(attemptedFilters.length).toBeGreaterThan(0);
+  expect(attemptedFilters.every((items) => items.length === 2)).toBe(true);
+  expect(host.getByText('id:account-a')).toBeOnTheScreen();
+  expect(host.queryByText('正在切换账号')).toBeNull();
+  expect(committedFeedback).toBe(originalMenu);
+  expect(originalMenu.filterRecommendations([answer, article])).toEqual([
+    article,
+  ]);
+  await originalMenu.markUninterested(otherAnswer);
+  expect(markRecommendationUninterested).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    pendingFeedback.resolve();
+    await originalRequest;
+  });
+  expect(client.getQueryData(queryKey)).toEqual(
+    removeRecommendationFromPages(
+      removeRecommendationFromPages(pages(), 'answer:same-token'),
+      'answer:other-token',
+    ),
+  );
+  await act(async () => originalMenu.markUninterested(article));
+  expect(markRecommendationUninterested).toHaveBeenCalledTimes(3);
+
+  await act(() => {
+    updateScreen({ accountKey: 'id:account-a', suspended: false });
+  });
+  await act(() => suspension.resolve());
+  expect(committedAccounts).not.toContain('id:account-b');
+  expect(
+    committedFeedback.filterRecommendations([answer, otherAnswer, article]),
+  ).toEqual([]);
+  expect(client.getQueryData(accountBKey)).toEqual(pages());
+});
+
+test('committing a different account rejects prior callbacks even without a session version change', async () => {
+  const { client, host } = await setup();
+  const request = deferred();
+  jest
+    .mocked(markRecommendationUninterested)
+    .mockReturnValueOnce(request.promise);
+  const originalMenu = host.result.current;
+  const pending = originalMenu.markUninterested(answer);
+  await host.rerender({ accountKey: 'id:account-b' });
+  await act(async () => {
+    request.resolve();
+    await pending;
+  });
+  await originalMenu.markUninterested(otherAnswer);
+  expect(markRecommendationUninterested).toHaveBeenCalledTimes(1);
+  expect(client.getQueryData(queryKey)).toEqual(pages());
+  expect(feedCacheRepository.removeFeedCacheItem).not.toHaveBeenCalled();
+  expect(showToast).not.toHaveBeenCalled();
+  expect(host.result.current.filterRecommendations([answer])).toEqual([answer]);
 });

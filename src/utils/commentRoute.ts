@@ -7,14 +7,31 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+export function serializeParentComment(
+  comment: CommentItem,
+  sessionVersion: number,
+): string {
+  return JSON.stringify({ sessionVersion, comment });
+}
+
 /** Expo Router already decodes query parameters, including literal % in text. */
 export function parseParentComment(
   parent: string | undefined,
   expectedId: string,
+  sessionVersion: number,
 ): CommentItem | null {
   if (!parent) return null;
   try {
-    const value = record(JSON.parse(parent));
+    const snapshot = record(JSON.parse(parent));
+    if (
+      !snapshot ||
+      typeof snapshot.sessionVersion !== 'number' ||
+      !Number.isSafeInteger(snapshot.sessionVersion) ||
+      snapshot.sessionVersion < 0 ||
+      snapshot.sessionVersion !== sessionVersion
+    )
+      return null;
+    const value = record(snapshot.comment);
     const member = record(record(value?.author)?.member);
     if (
       !value ||

@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import {
   SafeAreaView,
@@ -28,7 +28,9 @@ export default function QuestionLogScreen() {
   const [attempt, setAttempt] = useState(0);
   const requestKey = `${id}:${sessionVersion}:${attempt}`;
   const activeRequestKey = useRef(requestKey);
-  activeRequestKey.current = requestKey;
+  useLayoutEffect(() => {
+    activeRequestKey.current = requestKey;
+  }, [requestKey]);
   const [session, setSession] = useState<{
     key: string;
     status: 'preparing' | 'ready' | 'error';

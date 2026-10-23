@@ -1,5 +1,5 @@
 import { type InfiniteData, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { hasAuthenticationCookie } from '@/api/client';
 import { markRecommendationUninterested } from '@/api/zhihu/feed';
 import { feedCacheRepository } from '@/storage/feedCacheRepository';
@@ -19,27 +19,29 @@ export function useRecommendFeedback(accountKey: string | null) {
   const queryClient = useQueryClient();
   const sessionVersion = getAuthSessionVersion();
   const scopeKey = `${sessionVersion}:${accountKey || ''}`;
-  const scope = useRef({
-    key: scopeKey,
-    hidden: new Set<string>(),
-    pending: new Set<string>(),
-  });
-  if (scope.current.key !== scopeKey) {
-    scope.current = {
+  const scope = useMemo(
+    () => ({
       key: scopeKey,
       hidden: new Set<string>(),
       pending: new Set<string>(),
+    }),
+    [scopeKey],
+  );
+  const activeScope = useRef<typeof scope | null>(null);
+  useLayoutEffect(() => {
+    activeScope.current = scope;
+    return () => {
+      if (activeScope.current === scope) activeScope.current = null;
     };
-  }
+  }, [scope]);
   const filterRecommendations = useCallback(
     <TItem extends FeedIdentitySource>(items: TItem[]): TItem[] => {
-      const hidden = scope.current.hidden;
       return items.filter((item) => {
         const key = getFeedContentKey(item);
-        return !key || !hidden.has(key);
+        return !key || !scope.hidden.has(key);
       });
     },
-    [],
+    [scope],
   );
 
   const markUninterested = useCallback(
@@ -54,9 +56,9 @@ export function useRecommendFeedback(accountKey: string | null) {
         !hasAuthenticationCookie(useAuthStore.getState().cookies)
       )
         return;
-      const startedScope = scope.current;
+      const startedScope = scope;
       if (
-        startedScope.key !== scopeKey ||
+        activeScope.current !== startedScope ||
         startedScope.pending.has(contentKey) ||
         startedScope.hidden.has(contentKey)
       )
@@ -65,7 +67,7 @@ export function useRecommendFeedback(accountKey: string | null) {
       try {
         await markRecommendationUninterested(target);
         if (
-          scope.current !== startedScope ||
+          activeScope.current !== startedScope ||
           sessionVersion !== getAuthSessionVersion()
         )
           return;
@@ -73,7 +75,7 @@ export function useRecommendFeedback(accountKey: string | null) {
         const queryKey = ['zhihu-feed', accountKey, 'recommend'];
         await queryClient.cancelQueries({ queryKey });
         if (
-          scope.current !== startedScope ||
+          activeScope.current !== startedScope ||
           sessionVersion !== getAuthSessionVersion()
         )
           return;
@@ -91,7 +93,7 @@ export function useRecommendFeedback(accountKey: string | null) {
         showToast('将减少推荐相似内容');
       } catch (error: unknown) {
         if (
-          scope.current === startedScope &&
+          activeScope.current === startedScope &&
           sessionVersion === getAuthSessionVersion()
         )
           showToast(getZhihuErrorMessage(error) || '反馈失败，请重试');
@@ -99,7 +101,7 @@ export function useRecommendFeedback(accountKey: string | null) {
         startedScope.pending.delete(contentKey);
       }
     },
-    [accountKey, queryClient, scopeKey, sessionVersion],
+    [accountKey, queryClient, scope, sessionVersion],
   );
 
   return { markUninterested, filterRecommendations };

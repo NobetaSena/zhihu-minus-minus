@@ -7,11 +7,11 @@
 ## 内容补充功能验证
 
 - 想法：详情菜单仅向当前作者提供编辑和删除，编辑读取 `content/plugin` 的 `draft_plugin`（缺省时使用 `online_plugin`），保存草稿与发布分别调用 `content/drafts`、`content/publish`。保留原始正文块、图片及插件扩展字段，未知媒体暂停编辑。云端保存前先保存本地草稿，云端 ID 保存在兼容 v1 的 v2 草稿 JSON 中；无需 SQLite migration。验证新建草稿后再次保存/发布复用 ID、编辑已发布想法的 `isPublished`、图片增删、读取失败保留当前编辑，以及账号切换后的旧确认框、迟到响应和重复提交。
-- 评论：`is_author`、关注关系、`author_tag`、`reply_author_tag` 和非 IP 的 `comment_tag` 统一生成身份提示，主评论、回复预览、回复列表及父评论路由均保留。验证身份提示去重、未知字段和标签异常值。
-- 问题日志：从问题菜单进入 `/question/{id}/log`，WebView 加载知乎日志网址前同步当前账号 Cookie。验证加载/HTTP 失败重试、返回、主题、账号切换，以及旧页面回调不能影响新会话。
+- 评论：`is_author`、关注关系、`author_tag`、`reply_author_tag` 和非 IP 的 `comment_tag` 统一生成身份提示，主评论、回复预览、回复列表及父评论路由均保留。父评论路由快照携带来源会话版本；缺少版本或会话变化时弃用整个快照，按当前会话重新请求父评论，避免保留旧关注、投票及删除权限。验证身份提示去重、未知字段、标签异常值、切换账号及同账号重新登录。
+- 问题日志：从问题菜单进入 `/question/{id}/log`，WebView 加载知乎日志网址前同步当前账号 Cookie。事件使用布局提交阶段更新的请求标识，未提交的路由渲染不影响当前页面。验证加载/HTTP 失败重试、返回、主题、账号切换，以及旧页面回调不能影响新会话。
 - 推荐反馈：回答/文章的更多和长按菜单发送表单 `POST /zrec-feedback/uninterested`（`content_type` 分别为 1/2）。成功后精确移除本账号推荐查询和 SQLite 启动缓存中的该内容，保留分页信息；失败保留卡片。验证重复点击、刷新/分页并发、账号切换及非推荐列表隔离。其他内容类型的编码尚未确认，暂不提供此操作。
 
-专项回归见 `pinApi`、`pinActions`、`pinEditor`、`publishingDraftRepository`、`commentIdentity`、`questionLog`、`recommendFeedback` 和 `recommendFeedbackApi` 测试。实际云端写入、删除、推荐反馈和 WebView Cookie 行为仍需用测试账号在 Android/iOS 验证。
+专项回归见 `pinApi`、`pinActions`、`pinEditor`、`publishingDraftRepository`、`commentIdentity`、`parentCommentSession`、`questionLog`、`recommendFeedback` 和 `recommendFeedbackApi` 测试。日志与推荐反馈的并发回归通过 Suspense 和 transition 保留未提交渲染，确认当前页面事件、隐藏集合和请求去重仍生效。实际云端写入、删除、推荐反馈和 WebView Cookie 行为仍需用测试账号在 Android/iOS 验证。
 
 ## 技术基线
 
