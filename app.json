@@ -2,7 +2,7 @@
   "expo": {
     "name": "知乎--",
     "slug": "ZhihuMinusMinus",
-    "version": "0.9.3",
+    "version": "0.9.4",
     "orientation": "default",
     "icon": "./src/assets/images/icon.png",
     "scheme": "zhihu--",
@@ -16,7 +16,7 @@
       }
     },
     "android": {
-      "versionCode": 903,
+      "versionCode": 904,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./src/assets/images/android-icon-foreground.png",
@@ -356,8 +356,8 @@
           "基础稳定性优化: 修复了若干 UI 细节与已知的小概率崩溃问题。"
         ]
       },
-      "status": "🚀 v0.9.3 - 功能完善中",
-      "lastUpdated": "2026-10-21",
+      "status": "🚀 v0.9.4 - 功能完善中",
+      "lastUpdated": "2026-10-23",
       "eas": {
         "projectId": "faa0f061-50e6-4ec4-bb6f-accda0dbd24f"
       }
