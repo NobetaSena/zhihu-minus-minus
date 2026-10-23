@@ -19,11 +19,12 @@ test('keeps each list threshold when preloading is off', async () => {
   expect(result.current).toEqual({ onEndReachedThreshold: 0.3 });
 });
 
-test('requests pages screens ahead when preloading is on', async () => {
+test('requests pages screens ahead and hides the scroll bar when preloading is on', async () => {
   useSettingsStore.setState({ enableListPreload: true });
   const { result } = await renderHook(() => useListPreload(0.5));
   expect(result.current).toEqual({
     onEndReachedThreshold: PRELOAD_END_THRESHOLD,
+    showsVerticalScrollIndicator: false,
   });
 });
 

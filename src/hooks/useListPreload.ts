@@ -16,14 +16,20 @@ export const MAX_RESTING_FOLLOW_UPS = 3;
  * 列表分页距离；开启「列表预加载」后提前请求下一页。
  * 只提前请求、不加大屏外渲染：真机实测 drawDistance 1500px 让快速滑动的掉帧
  * 从约 3% 升到 10–17%（回答卡片挂载开销大）。
+ * 开启后同时隐藏竖向滚动条：列表不断在底部追加，滚动条的长短与位置一直在变，
+ * 已不能说明读到了哪里。关闭时不改列表自己的滚动条设置。
  */
-export function useListPreload(endThreshold: number) {
+export function useListPreload(endThreshold: number): {
+  onEndReachedThreshold: number;
+  showsVerticalScrollIndicator?: false;
+} {
   const enabled = useSettingsStore((state) => state.enableListPreload);
-  return {
-    onEndReachedThreshold: enabled
-      ? Math.max(endThreshold, PRELOAD_END_THRESHOLD)
-      : endThreshold,
-  };
+  return enabled
+    ? {
+        onEndReachedThreshold: Math.max(endThreshold, PRELOAD_END_THRESHOLD),
+        showsVerticalScrollIndicator: false,
+      }
+    : { onEndReachedThreshold: endThreshold };
 }
 
 type EndGeometry = Pick<
