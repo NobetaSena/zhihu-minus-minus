@@ -94,6 +94,7 @@ fi
 PACKAGE_DIRECTORY="$(mktemp -d "$PROJECT_ROOT/build/ipa.XXXXXX")"
 mkdir -p "$PACKAGE_DIRECTORY/Payload"
 cp -R "${APPS[0]}" "$PACKAGE_DIRECTORY/Payload/"
+python3 "$PROJECT_ROOT/scripts/strip-ios-app.py" "$PACKAGE_DIRECTORY/Payload/$(basename "${APPS[0]}")"
 (cd "$PACKAGE_DIRECTORY" && zip -qr "$IPA_NAME" Payload)
 mv "$PACKAGE_DIRECTORY/$IPA_NAME" "$PROJECT_ROOT/$IPA_NAME"
 

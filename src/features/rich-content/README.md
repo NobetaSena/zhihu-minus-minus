@@ -137,6 +137,10 @@ tiqian-super-mini选区已接回回答的既有业务菜单，但仅开放可逐
 
 Android 手势库在第二次抬起识别双击时会吞掉原生 `UP`；3.3.0 的原生取消路径在终止事件上仍可能拿不到已清空的 pointer 状态，导致文字流的长按计时未结束。项目通过 [RNGH 补丁](../../../patches/react-native-gesture-handler+3.3.0.patch) 在首次接管恰好发生于 `UP/CANCEL` 时，沿原生触摸目标链补发一次 `CANCEL`。已在 `MOVE` 阶段交给手势库的触摸不额外取消，避免中断 `NativeViewGestureHandler` 驱动的滚动或惯性滚动；不调整系统长按时限。
 
+Android 首次进入回答时，文字可能在加入窗口前完成测量。系统 `TextView.Editor` 此时会缓存不可用的选择控制器，复用已有文字布局后，单纯挂载窗口不会重新计算它。`FlowTextView` 在挂载已有布局且允许选择的文字时，通过公开的 cursor visibility setter 刷新控制器，并同步恢复原光标偏好，不替换文字、movement method 或已有选区。`bash scripts/test-android-text-selection.sh <adb-serial>` 使用合成正文对照原生 TextView 和实际编译的 FlowTextView；API 36.1 模拟器已复现旧逻辑长按不建立选区，并验证修复后可选、重新挂载保留已有选区。它不代替完整回答页上的双击、拖柄、滚动和不同厂商系统验收。
+
+平台依据见 AOSP 的 [`Editor.prepareCursorControllers`](https://github.com/aosp-mirror/platform_frameworks_base/blob/main/core/java/android/widget/Editor.java) 与 [`TextView.onAttachedToWindow` / `setCursorVisible`](https://github.com/aosp-mirror/platform_frameworks_base/blob/main/core/java/android/widget/TextView.java)。该选字问题与 Pager 首次空白分开验证；Pager 零尺寸测量的相关上游报告见 [#1191](https://github.com/callstack/react-native-pager-view/issues/1191)。
+
 WebView 同步这项策略并取消 DOM 多击默认选字，但 WKWebView 还有由 UIKit 直接处理的选词路径，当前 DOM 防护不能保证覆盖它。代码块、未知块和公式文字兜底仍使用普通 RN `Text`，也不经过原生文字流仲裁。Android 默认原生正文已真机验证连续双击不误选、长按与惯性滚动正常；上述 WebView/RN Text 路径、iOS 实际手势关系，以及复制、读屏等交互仍须分别验收，不能把编译通过视为完整交互验证。
 
 反应接口保留完整片段ID集合，并安全解析服务端新建segId。回答段评链接携带原始片段文本和完整段落/范围，当前评论页的根评论和直接回复才使用段评接口；旧链接缺少这些字段时仍可阅读，需重新选择原文后发段评。独立replies页沿用原有comment-ID回复流程，本轮未扩展。

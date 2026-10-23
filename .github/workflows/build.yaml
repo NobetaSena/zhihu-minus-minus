@@ -334,6 +334,7 @@ jobs:
 
           mkdir -p "${ARTIFACT_DIR}/Payload"
           cp -R "$APP_PATH" "${ARTIFACT_DIR}/Payload/"
+          python3 scripts/strip-ios-app.py "${ARTIFACT_DIR}/Payload/$(basename "$APP_PATH")"
           cd "$ARTIFACT_DIR"
           zip -r "$IPA_NAME" Payload
           echo "path=${ARTIFACT_DIR}/${IPA_NAME}" >> "$GITHUB_OUTPUT"

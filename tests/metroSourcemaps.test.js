@@ -73,6 +73,27 @@ async function main() {
     resolveRequest: () => ({ type: 'sourceFile', filePath: cssEntry }),
     isDev: false,
   }, cssEntry, platform);
+  const browserOrigin = path.join(root, 'node_modules/@sentry/browser/build/npm/esm/index.js');
+  const resolveSentry = (moduleName, originModulePath = browserOrigin) =>
+    config.resolver.resolveRequest({
+      resolveRequest: () => ({ type: 'sourceFile', filePath: entry }),
+      originModulePath,
+      isDev: false,
+    }, moduleName, platform);
+  const excludedWebPackages = [
+    '@sentry/replay',
+    '@sentry/replay-canvas',
+    '@sentry-internal/replay',
+    '@sentry/feedback',
+    '@sentry-internal/feedback',
+    './feedbackSync.js',
+    './feedbackAsync.js',
+  ].every((moduleName) => resolveSentry(moduleName).type === 'empty');
+  const errorPackagesPreserved = [
+    '@sentry/react-native',
+    '@sentry/core',
+    '@sentry/browser',
+  ].every((moduleName) => resolveSentry(moduleName).type === 'sourceFile');
   process.stdout.write(JSON.stringify({
     registeredDebugIds: Object.values(sandbox._sentryDebugIds || {}),
     mapDebugId: sourceMap.debugId ?? sourceMap.debug_id,
@@ -84,6 +105,9 @@ async function main() {
     cssResolved: cssModule.type === 'sourceFile'
       && cssModule.filePath !== cssEntry
       && fs.existsSync(cssModule.filePath),
+    excludedWebPackages,
+    errorPackagesPreserved,
+    unrelatedFeedbackPreserved: resolveSentry('./feedbackSync.js', entry).type === 'sourceFile',
   }));
 }
 
@@ -114,6 +138,9 @@ test.each(['android', 'ios'])(
       sourcePositionRetained: true,
       fixtureRan: true,
       cssResolved: true,
+      excludedWebPackages: true,
+      errorPackagesPreserved: true,
+      unrelatedFeedbackPreserved: true,
     });
   },
 );

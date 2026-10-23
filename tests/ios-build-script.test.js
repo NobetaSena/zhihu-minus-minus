@@ -19,6 +19,10 @@ describe('unsigned iOS build script', () => {
       path.join(__dirname, '..', 'scripts', 'build-unsigned-ipa.sh'),
       path.join(directory, 'scripts', 'build-unsigned-ipa.sh'),
     );
+    fs.copyFileSync(
+      path.join(__dirname, '..', 'scripts', 'strip-ios-app.py'),
+      path.join(directory, 'scripts', 'strip-ios-app.py'),
+    );
     fs.writeFileSync(
       path.join(directory, 'package.json'),
       '{"version":"1.2.3"}',
@@ -34,6 +38,13 @@ if [[ " $* " == *" --clean "* ]]; then
 fi
 exit "\${IPA_TEST_PREBUILD_EXIT:-0}"`,
       pod: `echo "pods $*" >> "$IPA_TEST_TRACE"\nexit "\${IPA_TEST_POD_EXIT:-0}"`,
+      python3: `echo "strip $*" >> "$IPA_TEST_TRACE"
+test "$1" = "$PWD/scripts/strip-ios-app.py"
+test -f "$2/ReviewFixture"
+if [ "\${IPA_TEST_STRIP_EXIT:-0}" != 0 ]; then
+  exit "$IPA_TEST_STRIP_EXIT"
+fi
+echo stripped > "$2/ReviewFixture"`,
       xcodebuild: `echo "xcode $*" >> "$IPA_TEST_TRACE"
 echo "sentry-upload=\${SENTRY_DISABLE_AUTO_UPLOAD:-unset} no-upload=\${SENTRY_NO_UPLOAD:-unset} allow-failure=\${SENTRY_ALLOW_FAILURE:-unset} release=\${SENTRY_RELEASE:-unset} dist=\${SENTRY_DIST:-unset} args=\${SENTRY_CLI_RN_XCODE_EXTRA_ARGS:-}" >> "$IPA_TEST_TRACE"
 mkdir -p build/Release-iphoneos/ReviewFixture.app
@@ -112,6 +123,28 @@ fi`,
     const entries = spawnSync('unzip', ['-Z1', ipa], { encoding: 'utf8' });
     expect(entries.status).toBe(0);
     expect(entries.stdout).toContain('Payload/ReviewFixture.app/ReviewFixture');
+    expect(trace).toContain('/Payload/ReviewFixture.app');
+    expect(
+      spawnSync(
+        'unzip',
+        ['-p', ipa, 'Payload/ReviewFixture.app/ReviewFixture'],
+        {
+          encoding: 'utf8',
+        },
+      ).stdout,
+    ).toBe('stripped\n');
+    expect(
+      fs.readFileSync(
+        path.join(
+          directory,
+          'build',
+          'Release-iphoneos',
+          'ReviewFixture.app',
+          'ReviewFixture',
+        ),
+        'utf8',
+      ),
+    ).toBe('binary\n');
     expect(fs.readdirSync(path.join(directory, 'build'))).toEqual([
       'Release-iphoneos',
     ]);
@@ -162,6 +195,17 @@ exec /bin/cp "$@"
     expect(
       fs.readFileSync(path.join(directory, 'trace.txt'), 'utf8'),
     ).not.toContain('xcode ');
+  });
+
+  test('keeps the previous same-version IPA when stripping fails', () => {
+    const ipa = path.join(directory, 'zhihu-minus-minus-v1.2.3-unsigned.ipa');
+    fs.writeFileSync(ipa, 'previous same-version build');
+
+    expect(run({ IPA_TEST_STRIP_EXIT: '1' }).status).not.toBe(0);
+    expect(fs.readFileSync(ipa, 'utf8')).toBe('previous same-version build');
+    expect(fs.readdirSync(path.join(directory, 'build'))).toEqual([
+      'Release-iphoneos',
+    ]);
   });
 
   test('keeps builds without upload credentials offline', () => {

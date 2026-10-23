@@ -7,7 +7,7 @@
 ## 技术基线
 
 - Node.js 24.x、npm；`.nvmrc`、CI 和发布工作流统一使用 Node.js 24。
-- Python 3：用于从 IPA 生成 AltStore/SideStore 订阅源及对应元数据测试，仅使用标准库。
+- Python 3：用于未签名 iOS 包的符号裁剪校验、AltStore/SideStore 订阅源及对应测试，仅使用标准库；实际裁剪调用 Xcode 的 `strip`。
 - Expo SDK 58、React Native 0.88、React 19.3、严格模式 TypeScript 6。
 - Android：JDK 17、Android SDK、ADB 或模拟器；Android API、Build Tools、NDK 与 Gradle 版本以 SDK 58 prebuild 生成的工程配置为准，不能复用旧 SDK 的固定版本。
 - iOS：macOS、Xcode 26.4 或更高版本、CocoaPods；最低部署版本为 iOS 16.4。
@@ -83,9 +83,13 @@ npx expo run:ios --configuration Debug --device
 
 只生成本地未签名 IPA 可运行 `bash scripts/build-unsigned-ipa.sh`。脚本每次执行干净 iOS prebuild（`--clean --no-install`）后安装 Pods，自动发现唯一 workspace 和 scheme，并把当前版本 IPA 写入项目根目录。未导出 `SENTRY_AUTH_TOKEN` 时跳过上传；导出 Token 后默认上传 source map，等待服务端处理，上传失败会终止构建。显式设置 `SENTRY_DISABLE_AUTO_UPLOAD=true` 或 `SENTRY_NO_UPLOAD=1` 仍可跳过上传。脚本在干净 prebuild 前备份 `.xcode.env.local`，随后恢复其内容和权限，prebuild 失败时也会尝试恢复。脚本不会删除其他版本产物；已有同版本 IPA 在构建和打包成功后替换。旧 `.xcode.env.local` 中若残留禁用上传设置，需自行移除后再验证上传。产物已被 Git 忽略，仍需另行签名才能安装。
 
+本地和 CI 的 IPA 包装都会先复制 `.app` 到临时 `Payload`，再运行 [`scripts/strip-ios-app.py`](../scripts/strip-ios-app.py) 去除 arm64 Mach-O 的局部符号。脚本拒绝已有签名，验证 UUID、导出/外部符号、动态绑定信息和代码/数据段不变后才替换副本；失败不会发布新 IPA。原始构建和 dSYM 保留，Sentry 上传在包装前完成。没有匹配 dSYM 的离线原生栈会减少函数名，因此正式构建必须保留并按现有流程上传匹配 dSYM；JS bundle、错误栈和 source map 不受此步骤影响。测量与边界见 [SDK 58 体积分析](./EXPO58_SIZE_ANALYSIS.md)。
+
 SDK 58 的原生模板已经提供 Scene 生命周期，直接由 Expo 管理 AppDelegate 和 SceneDelegate；旧的 `withIosSceneLifecycle` 和 `ZhihuSceneDelegate.swift` 适配已移除。升级时必须重新生成工程，避免残留旧的窗口启动代码。冷/热链接与前后台切换仍需在原生包中验证；平台依据见 [Apple 迁移说明](https://developer.apple.com/documentation/uikit/transitioning-to-the-uikit-scene-based-life-cycle) 与 [Expo Scene 说明](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md)。
 
 Firebase 26 继续通过 CocoaPods 链接，`withIosFirebaseCocoaPods` 保留禁用 Firebase SPM 的配置，并把 Pods 最低部署版本统一提升到 16.4。[Firebase app 补丁](../patches/@react-native-firebase+app+26.4.0.patch) 回植上游 Scene 模板锚点适配，让初始化注入 SDK 58 的 AppDelegate。开启 telemetry 时需确认 Firebase 初始化只执行一次；分别检查开启和关闭 telemetry 的干净 iOS prebuild，不复用已迁移的 `ios/` 代替验证。
+
+iOS 原生 tab 自动收起使用 [Screens 补丁](../patches/react-native-screens+4.30.0.patch)，按祖先裁切后的可见面积选择当前竖向列表，忽略隐藏、禁用及横向滚动容器。首页左右切页时监听外层横向容器的几何变化，主动更新 UIKit 底边滚动绑定；Fabric 惰性挂载、布局和返回页面也会刷新，离页移除监听。不能缓存首次找到的列表，否则已访问的离屏页仍可能控制 tab 收起。`bash scripts/test-ios-tab-scroll-binding.sh` 在临时 iOS 模拟器中直接测试生产 finder/tracker 的 UIKit 行为，退出时删除测试模拟器。仍需在原生应用中检查首次打开各列表、连续左右滑动、取消半途切页、切换底部 tab 和从详情返回后的收起/展开。
 
 ### Web
 
@@ -111,6 +115,8 @@ Web 适合检查路由和不依赖原生模块的页面，不代表 Android/iOS 
 图标按家族路径导入，例如 `import Ionicons from '@expo/vector-icons/Ionicons'`，避免包根入口把其他家族的字体和 glyph map 一起带入 Metro 依赖图。当前仅使用 Ionicons 图标字体；收藏的空心和实心星形由 `CollectionStarIcon` 内联 SVG 绘制，卡片、悬浮操作栏和菜单共用，不再依赖 FontAwesome6 及其 regular、solid、brands 三份字体。
 
 SDK 58 升级后移除旧版 `expo-symbols` 的字体导入补丁，使用 SDK 配套包的资源处理。可用 `npx expo export --platform android --dump-assetmap --output-dir /tmp/zhihu-android-export` 检查生产资源清单，确认业务未使用的 FontAwesome6 字体没有被带入。字体清单验证后仍需在真机检查菜单、收藏和导航图标；最终 APK 大小以同一构建环境的 Release 产物为准。
+
+SDK 55 与 58 的实际 CI 包、ZIP 条目和相同 JS 的 Hermes 编译对比见 [SDK 58 包体积分析](./EXPO58_SIZE_ANALYSIS.md)。不要用 `node_modules` 大小、Gradle 堆配置或单个新增依赖推断最终安装包增量。
 
 ## 验证命令
 
@@ -162,7 +168,7 @@ Biome 2.6 使用 `linter.rules.preset: "recommended"`；Markdown 格式化保持
 - 关注更新：头像接口返回缺失、null 或非数组的 `data` 时应隐藏头像栏并关闭该区域的手势；数组中的畸形用户条目应丢弃，正常条目仍可显示、进入最近发布和标记已读，后续正常响应能恢复显示。头像栏原生触摸期间锁定首页 PagerView，检查从头像上横滑、滑到首尾、纵向滚动、取消手势及返回后首页横滑恢复。“最近发布”固定进入时的头像顺序，左右切换或按钮切换用户，保留已访问页的列表与刷新状态；相邻用户仅预加载，实际选中才标记已读。检查从中间用户进入、单用户/缺失缓存入口、后台头像刷新后顺序不跳动、每页独立未读分界和分页，以及已读请求失败回滚不覆盖新更新。回归见 `recentMoments`、`nestedHorizontalGesture`、`recentMomentStream`、`recentMomentRead` 和 `userStreamScreen`；Android/iOS 均需真机检查嵌套横滑与页面边缘返回手势。
 - 回答、文章、想法和评论：分别验证首次失败、分页失败、排序切换、多行输入和图片输入栏。文章与想法的根评论、回复统一使用 Comment V5 发布接口，分别验证文字和图片评论发布成功后刷新列表、失败后保留草稿。评论列表和回复详情共用 `useCommentKeyboardLayout`，按页面底边与键盘顶边的实际重叠量定位输入栏，弹起时保持 12px 间距，收起后恢复设备底部安全区。Android 在 edge-to-edge 根视图中使用 `measure` 的 `pageY`，不能直接把已扣系统导航栏的键盘 `height` 当作上移量，也不能重复补偿窗口已经缩小的部分；`keyboardDidShow` 后立即定位。iOS 使用窗口坐标测量，并跟随键盘事件时长和 frame 变化。回归见 `commentKeyboardLayout`；真机需覆盖 Android 手势/三键导航、窗口缩放、有/无底部安全区、多行输入与图片附件，以及 iOS 键盘弹起、收起和高度切换。评论提交期间不得重复发送或清空新编辑；移除图片、重新选择同图及离页后，旧上传结果不得回填。想法多选投票应遵守选择上限、一次提交完整选项，提交及刷新期间不可重复发送。
 - 问题与回答顶部：页顶导航透明，问题页显示返回与右侧更多按钮，回答页顶部保留返回，完整问题标题在正文中；接近折叠边界的最后 48px 随滚动逐渐显示背景、紧凑标题与作者，背景高度与信息位置同步变化。回答导航保留作者小头像和姓名，其顶部更多操作问题、正文底栏更多操作当前回答；横向切页按回答 ID 直接恢复展开/折叠及渐显进度，取消横滑、列表重排、离屏页滚动及旧回调不得污染当前页，切换问题或排序时清空本次导航状态。右侧自绘滚动条只作位置提示，不拦截手势，需检查短文隐藏、长文顶部/底部、弹性过滚、旋转及大字体后比例与导航间距；重新打开内容时应从顶部开始且不出现恢复提示。回归见 `answer-pager-transition`、`detailNavigationHeader`、`detailHeaderAppearance`、`readingProgress`、`readingProgressDisabled` 和 `scrollIndicator`。
-- 回答相邻预加载：前台回答详情立即预取前后各一条完整回答，数据就绪后提前挂载正文；预加载本身不触发收藏查询或阅读进度恢复。切页时保留提升为当前页或仍在相邻窗口中的请求，只取消离开窗口且没有活跃查询的请求。未阅读的预热正文移出窗口后卸载，再次进入需重新确认原生布局就绪。列表异步插入或重排时按回答 ID 保持当前页；Pager 9 可能在原生子页尚未插入时丢弃定位命令，因此待定位期间还根据有效布局与位置事件各补偿一次，旧列表回调不得改变当前焦点，新手势接管后停止补偿。真机需检查慢网下提前请求、请求未完成时快速左右切换、推荐入口首屏列表晚到、列表追加/重排及三种正文排版；回归见 `answerPrefetchResources`、`answerNeighborRendering` 和 `answer-pager-transition`。
+- 回答相邻预加载：前台回答详情立即预取前后各一条完整回答，数据就绪后提前挂载正文；预加载本身不触发收藏查询或阅读进度恢复。切页时保留提升为当前页或仍在相邻窗口中的请求，只取消离开窗口且没有活跃查询的请求。未阅读的预热正文移出窗口后卸载，再次进入需重新确认原生布局就绪。列表异步插入或重排时按回答 ID 保持当前页；[Pager 9 Android 补丁](../patches/react-native-pager-view+9.0.7.patch) 避免用零宽高初始化 Compose Pager，并在本次原生挂载事务之后校验和执行最新定位命令，取消被手势或重置取代的命令。页面容器按 React child ID 保持身份，Fabric 移动子页时保留必要的 detach，并在重新插入时显式恢复既有 Compose 容器中的子视图。JS 仍保留有效布局与位置事件补偿，旧列表回调不得改变当前焦点，新手势接管后停止补偿。真机需检查慢网下提前请求、请求未完成时快速左右切换、推荐入口首屏列表晚到、列表追加/重排，以及首次回答长按、选区拖柄、双击和返回后再进入；回归见 `answerPrefetchResources`、`answerNeighborRendering` 和 `answer-pager-transition`。原生命令队列回归使用 `cd android && ./gradlew :react-native-pager-view:testDebugUnitTest`；这些测试不替代真机触摸验证。
 - 阅读反馈协议：`src/api/zhihu/lastRead.ts` 使用 Web `POST https://www.zhihu.com/lastread/touch`，以 FormData 的 `items` 字段批量发送 `[类型, 字符串 ID, 动作]`；multipart boundary 由运行时生成。`touchAnswersRead` 发送回答 `touch`，`readContents` 发送问题/回答 `read`，均去除空 ID 和重复条目，保留大整数 ID 字符串。仅登录会话发送，旧会话请求不能转发到新账号；40352 验证失败不弹出全局验证码。此反馈独立于浏览历史、本地曝光去重和可选 telemetry 开关，不接入知乎分析埋点，也不承诺服务端去重。
 - 首页列表批量触达：推荐、关注和同城共用 `useFeedPageReadTouch`。在前台活动列表开始加载下一页时，一次性 `touch` 上一页原始接口响应中的全部回答 ID；取值在卡片解析、本地过滤、折叠、去重之前，不要求点开或实际曝光。触底、自动补页、分页重试和手动继续加载共用入口；首屏加载、下拉刷新、后台重验证、终页和重复游标不单独触发。成功或进行中的同批次不重复发送，失败不阻塞分页，重试同一页时可重试反馈；新响应即使 ID 相同也属于新批次。批次绑定原请求认证会话，只有截断卡片的磁盘启动缓存没有完整批次，不合成上报；内存查询批次不写入持久缓存。回归见 `feedPageReadTouch`、`lastReadApi` 和 `apiClientSession`。
 - 详情阅读反馈：回答详情保留当前页选中、数据可用、原生排版就绪及路由聚焦/应用前台条件；同次阅读中首次打开某问题的回答，合并发送 `[["question", "问题 ID", "read"], ["answer", "回答 ID", "read"]]`，同题后续回答仅发送回答 `read`，切到新问题首次再带上问题。直接进入问题页，待当前会话的问题数据可用后发送问题 `read`。按阅读视图、认证会话和内容 ID 去重，失败在后续阅读机会重试，相邻预取和离屏预渲染不触发。回答预览列表保留 `useAnswerReadTouch`，仅触达可见且已展开的普通或结构化正文；未展开摘要不触发。相关 hook、`answerNeighborRendering` 和 `answerPreviewList` 覆盖触发门槛；真机需验证 Android/iOS multipart 序列化与接口响应、列表翻页请求顺序、同题切页、慢网、前后台和账号切换。
