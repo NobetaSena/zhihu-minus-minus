@@ -1,13 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useMemo } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors } from '@/constants/designTokens';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useSettingsStore } from '@/store/useSettingsStore';
-import { contrastingText } from '@/utils/colorContrast';
 import { getCachedImageSource } from '@/utils/imageSource';
 import { BouncyButton } from './BouncyButton';
 import { Text, useRuntimeThemeColors } from './Themed';
@@ -30,26 +28,38 @@ export interface HotItem {
   } | null;
 }
 
-const HotCardComponent = ({ item }: { item: HotItem }) => {
+/** Where a row sits in the hot list; rows join into one rounded surface. */
+export type HotCardPosition = 'first' | 'middle' | 'last' | 'only';
+
+export function getHotCardPosition(
+  index: number,
+  count: number,
+): HotCardPosition {
+  if (count <= 1) return 'only';
+  if (index === 0) return 'first';
+  return index === count - 1 ? 'last' : 'middle';
+}
+
+const RANK_COLORS = [
+  colors.light.hotRankFirst,
+  colors.light.hotRankSecond,
+  colors.light.hotRankThird,
+];
+
+const HotCardComponent = ({
+  item,
+  position = 'only',
+}: {
+  item: HotItem;
+  position?: HotCardPosition;
+}) => {
   const router = useRouter();
   const { cookies } = useAuthStore();
   const colorScheme = useColorScheme();
   const palette = useRuntimeThemeColors();
-  const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
-  const { fontScale } = useWindowDimensions();
   const isGuest = !cookies;
 
-  const rankBgColor =
-    item.rank === 1
-      ? colors.light.hotRankFirst
-      : item.rank === 2
-        ? colors.light.hotRankSecond
-        : item.rank === 3
-          ? colors.light.hotRankThird
-          : palette.backgroundTertiary;
-  const rankTextColor =
-    item.rank <= 3 ? contrastingText(rankBgColor) : palette.textSecondary;
-
+  const rankColor = RANK_COLORS[item.rank - 1] ?? palette.textTertiary;
   const labelColor =
     colorScheme === 'dark'
       ? item.labelArea?.night_color || colors.light.hotLabel
@@ -62,7 +72,14 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
     item.labelArea?.type === 'text' ? item.labelArea.text : undefined;
   const hasTrend = item.labelArea?.type === 'trend';
   const hasAnswerCount = (item.answerCount ?? 0) > 0;
-  const hasMetadata = labelText || hasTrend || item.hotValue || hasAnswerCount;
+  const metadata = [
+    item.hotValue,
+    hasAnswerCount ? `${item.answerCount} 个回答` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const isFirst = position === 'first' || position === 'only';
+  const isLast = position === 'last' || position === 'only';
 
   return (
     <BouncyButton
@@ -87,161 +104,128 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
           router.push(`/question/${item.questionId}`);
         }
       }}
-      style={[styles.card, { backgroundColor: palette.backgroundSecondary }]}
+      style={[
+        styles.row,
+        { backgroundColor: palette.backgroundSecondary },
+        isFirst && styles.firstRow,
+        isLast && styles.lastRow,
+      ]}
     >
-      <View style={styles.content}>
+      {!isFirst ? (
         <View
-          style={[
-            styles.textColumn,
-            // 窄屏或大字体时让配图换到下一行，保留标题的阅读宽度。
-            { flexBasis: 180 * fontSizeScale * fontScale },
-          ]}
-        >
-          <View style={styles.titleRow}>
-            <View style={[styles.rankBadge, { backgroundColor: rankBgColor }]}>
+          style={[styles.divider, { backgroundColor: palette.controlBorder }]}
+        />
+      ) : null}
+      <Text style={[styles.rank, { color: rankColor }]} numberOfLines={1}>
+        {item.rank}
+      </Text>
+      <View style={styles.textColumn}>
+        <Text style={styles.title} numberOfLines={2}>
+          {item.title}
+        </Text>
+        {labelText || hasTrend || metadata ? (
+          <View style={styles.metadata}>
+            {labelText ? (
+              <View
+                style={[styles.label, { backgroundColor: `${labelColor}15` }]}
+              >
+                <Text style={[styles.labelText, { color: labelColor }]}>
+                  {labelText}
+                </Text>
+              </View>
+            ) : null}
+            {hasTrend ? (
+              <View
+                accessibilityLabel="热度上升"
+                accessible
+                style={[styles.label, { backgroundColor: `${labelColor}15` }]}
+              >
+                <Ionicons name="trending-up" size={12} color={labelColor} />
+              </View>
+            ) : null}
+            {metadata ? (
               <Text
-                style={[styles.rankText, { color: rankTextColor }]}
+                type="secondary"
+                style={styles.metadataText}
                 numberOfLines={1}
               >
-                {item.rank}
+                {metadata}
               </Text>
-            </View>
-            <Text style={styles.title}>{item.title}</Text>
+            ) : null}
           </View>
-          {hasMetadata ? (
-            <View style={styles.metadata}>
-              {labelText ? (
-                <View
-                  style={[styles.label, { backgroundColor: `${labelColor}15` }]}
-                >
-                  <Text style={[styles.labelText, { color: labelColor }]}>
-                    {labelText}
-                  </Text>
-                </View>
-              ) : null}
-              {hasTrend ? (
-                <View
-                  accessibilityLabel="热度上升"
-                  accessible
-                  style={[styles.label, { backgroundColor: `${labelColor}15` }]}
-                >
-                  <Ionicons name="trending-up" size={12} color={labelColor} />
-                </View>
-              ) : null}
-              {item.hotValue ? (
-                <Text
-                  style={[
-                    styles.metadataText,
-                    { color: colors.light.hotLabel },
-                  ]}
-                >
-                  {item.hotValue}
-                </Text>
-              ) : null}
-              {hasAnswerCount ? (
-                <Text type="secondary" style={styles.metadataText}>
-                  {item.answerCount} 个回答
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-        {imageSource ? (
-          <Animated.Image
-            source={imageSource}
-            sharedTransitionTag={`image-${item.id}`}
-            style={styles.image}
-            resizeMode="cover"
-            accessible={false}
-          />
         ) : null}
       </View>
+      {imageSource ? (
+        <Animated.Image
+          source={imageSource}
+          sharedTransitionTag={`image-${item.id}`}
+          style={styles.image}
+          resizeMode="cover"
+          accessible={false}
+        />
+      ) : null}
     </BouncyButton>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    marginBottom: 12,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
     marginHorizontal: 12,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
-  content: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: 12,
+  firstRow: { borderTopLeftRadius: 14, borderTopRightRadius: 14 },
+  lastRow: {
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    marginBottom: 12,
   },
-  textColumn: {
-    flexGrow: 1,
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  rankBadge: {
-    // 序号随字体和行高增长，不用固定尺寸裁切两位数或大字体。
-    minWidth: 20,
-    minHeight: 20,
-    flexShrink: 0,
-    alignSelf: 'flex-start',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    marginTop: 2,
-    borderRadius: 4,
+  // 分割线从标题列开始，排名列下方不画线。
+  divider: {
+    position: 'absolute',
+    top: 0,
+    left: 52,
+    right: 14,
+    height: StyleSheet.hairlineWidth,
   },
   // 显式传给 Themed.Text，确保它按实际字号和行高应用阅读偏好。
-  rankText: {
-    fontSize: 11,
-    lineHeight: 16.5,
+  rank: {
+    width: 28,
+    textAlign: 'center',
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
+  textColumn: { flex: 1, minWidth: 0 },
   title: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: 17,
-    lineHeight: 25.5,
+    fontSize: 16,
+    lineHeight: 23,
     fontWeight: '700',
-  },
-  image: {
-    width: 85,
-    maxWidth: '100%',
-    aspectRatio: 10 / 9,
-    marginLeft: 'auto',
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.05)',
   },
   metadata: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
+    gap: 6,
+    marginTop: 6,
   },
   label: {
-    maxWidth: '100%',
-    flexShrink: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    flexShrink: 0,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     borderRadius: 4,
   },
-  labelText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  metadataText: {
-    maxWidth: '100%',
-    flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '500',
+  labelText: { fontSize: 11, fontWeight: '700' },
+  metadataText: { flexShrink: 1, fontSize: 12 },
+  image: {
+    width: 104,
+    aspectRatio: 3 / 2,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
 });
 
@@ -261,6 +245,7 @@ export const HotCard = React.memo(
     previous.item.labelArea?.trend === next.item.labelArea?.trend &&
     previous.item.labelArea?.normal_color ===
       next.item.labelArea?.normal_color &&
-    previous.item.labelArea?.night_color === next.item.labelArea?.night_color,
+    previous.item.labelArea?.night_color === next.item.labelArea?.night_color &&
+    previous.position === next.position,
 );
 HotCard.displayName = 'HotCard';

@@ -48,7 +48,11 @@ import { BouncyButton } from '@/components/BouncyButton';
 import { DailyList } from '@/components/DailyList';
 import { FeedCard } from '@/components/FeedCard';
 import { GuestBootstrap } from '@/components/GuestBootstrap';
-import { HotCard, type HotItem } from '@/components/HotCard';
+import {
+  getHotCardPosition,
+  HotCard,
+  type HotItem,
+} from '@/components/HotCard';
 import {
   getHomeNavigationMetrics,
   ScrollableNavigationRow,
@@ -1422,7 +1426,13 @@ const FeedList = React.forwardRef<
             paddingTop: insets.top + 70,
             paddingBottom: 120,
           }}
-          renderItem={({ item }: { item: FeedListItem }) => {
+          renderItem={({
+            item,
+            index,
+          }: {
+            item: FeedListItem;
+            index: number;
+          }) => {
             if (isCollapsedGroup(item)) {
               const expanded = expandedCollapsedKeys.has(item.groupKey);
               const showReason = filterMode === 'collapse' && filterShowReason;
@@ -1451,7 +1461,10 @@ const FeedList = React.forwardRef<
             return tab === 'hot' ? (
               // tab 在该 FeedList 实例生命周期内不变，是可靠的运行时判别：
               // hot tab 的 data 只含 HotItem，其余 tab 只含 FeedItem（折叠行已在上层排除）。
-              <HotCard item={item as HotItem} />
+              <HotCard
+                item={item as HotItem}
+                position={getHotCardPosition(index, flattenedData.length)}
+              />
             ) : (
               <FeedCard
                 item={item as FeedItem}
