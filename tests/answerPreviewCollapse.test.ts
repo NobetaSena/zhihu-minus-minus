@@ -1,6 +1,6 @@
 import type { FlashListRef } from '@shopify/flash-list';
 import { act, renderHook } from '@testing-library/react-native';
-import { useAnswerPreviewCollapse } from '../hooks/useAnswerPreviewCollapse';
+import { useAnswerPreviewCollapse } from '../src/hooks/useAnswerPreviewCollapse';
 
 type Layout = { x: number; y: number; width: number; height: number };
 

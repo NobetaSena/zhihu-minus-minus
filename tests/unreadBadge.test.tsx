@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react-native';
-import { UnreadBadge } from '../components/UnreadBadge';
-import { useSettingsStore } from '../store/useSettingsStore';
+import { UnreadBadge } from '../src/components/UnreadBadge';
+import { useSettingsStore } from '../src/store/useSettingsStore';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('../store/useSettingsStore', () => ({
+jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: jest.requireActual('zustand').create(() => ({
     primaryColor: null,
     readingBackground: 'default',
@@ -14,7 +14,7 @@ jest.mock('../store/useSettingsStore', () => ({
     unreadBadgeStyle: 'count',
   })),
 }));
-jest.mock('../components/useColorScheme', () => ({
+jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',
 }));
 
@@ -30,15 +30,15 @@ test.each([
   expect(screen.getByLabelText('99+ 条未读')).toBeTruthy();
 });
 
-test.each([
-  'corner',
-  'inline',
-] as const)('dot style keeps the unread signal without a number (%s)', async (placement) => {
-  useSettingsStore.setState({ unreadBadgeStyle: 'dot' });
-  await render(<UnreadBadge count={3} placement={placement} />);
-  expect(screen.queryByText('3')).toBeNull();
-  expect(screen.getByLabelText('3 条未读')).toBeTruthy();
-});
+test.each(['corner', 'inline'] as const)(
+  'dot style keeps the unread signal without a number (%s)',
+  async (placement) => {
+    useSettingsStore.setState({ unreadBadgeStyle: 'dot' });
+    await render(<UnreadBadge count={3} placement={placement} />);
+    expect(screen.queryByText('3')).toBeNull();
+    expect(screen.getByLabelText('3 条未读')).toBeTruthy();
+  },
+);
 
 test('hidden style and zero counts render nothing', async () => {
   useSettingsStore.setState({ unreadBadgeStyle: 'hidden' });

@@ -1,4 +1,4 @@
-import { formatCompactTime } from '../utils/date';
+import { formatCompactTime } from '../src/utils/date';
 
 const now = new Date(2026, 9, 21, 12, 0, 0).getTime();
 const seconds = (date: Date) => date.getTime() / 1000;

@@ -1,4 +1,4 @@
-import { formatFeedActionText } from '../utils/feedActionText';
+import { formatFeedActionText } from '../src/utils/feedActionText';
 
 const now = new Date(2026, 9, 21, 12, 0, 0).getTime();
 const eightMinutesAgo = now / 1000 - 8 * 60;
