@@ -2,7 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, View as RawView, ScrollView } from 'react-native';
+import {
+  ActivityIndicator,
+  View as RawView,
+  ScrollView,
+  type ScrollViewInstance,
+} from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { recordReadHistory } from '@/api/zhihu/history';
@@ -31,6 +36,7 @@ import Colors from '@/constants/Colors';
 import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
 import { useDoubleTapAction } from '@/hooks/useDoubleTapAction';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
+import { usePinActions } from '@/hooks/usePinActions';
 import { useReadingProgress } from '@/hooks/useReadingProgress';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import type { ZhihuPin } from '@/types/zhihu';
@@ -60,7 +66,7 @@ export default function PinDetailScreen() {
       opened === contentIdentity ? opened : null,
     );
   }, [contentIdentity]);
-  const scrollViewRef = React.useRef<ScrollView>(null);
+  const scrollViewRef = React.useRef<ScrollViewInstance>(null);
 
   const {
     data: pin,
@@ -76,6 +82,7 @@ export default function PinDetailScreen() {
     retry: shouldRetryQuery,
   });
   const isLoading = isQueryLoading || (isPending && isPaused);
+  const pinActions = usePinActions(pin);
 
   const readingProgress = useReadingProgress({
     contentKey: `pin:${String(id ?? '')}`,
@@ -193,6 +200,7 @@ export default function PinDetailScreen() {
         visible={menuVisible}
         onClose={() => setOpenMenuIdentity(null)}
         type="pin"
+        additionalOptions={pinActions}
         data={
           pin
             ? {

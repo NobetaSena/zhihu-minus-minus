@@ -132,27 +132,30 @@ test('downvote response count updates the capsule and its parent without a subsc
 test.each([
   [10, 9],
   [0, 0],
-])('switching from upvote to downvote without a response count changes %d to %d', async (initialCount, expectedCount) => {
-  const onVoteChange = jest.fn();
-  jest.mocked(voteContent).mockResolvedValueOnce({ voted: -1 });
-  const host = await render(
-    <QueryClientProvider client={createClient()}>
-      <SegmentedVoteCapsule
-        id="synthetic-answer"
-        count={initialCount}
-        voted={1}
-        onVoteChange={onVoteChange}
-      />
-    </QueryClientProvider>,
-  );
-  await fireEvent.press(host.getByRole('button', { name: '反对' }));
-  await waitFor(() => {
-    expect(host.getByText(String(expectedCount))).toBeTruthy();
-    expect(host.getAllByRole('button')[0]).not.toBeSelected();
-    expect(host.getByRole('button', { name: '取消反对' })).toBeSelected();
-    expect(onVoteChange).toHaveBeenCalledWith(-1, expectedCount);
-  });
-});
+])(
+  'switching from upvote to downvote without a response count changes %d to %d',
+  async (initialCount, expectedCount) => {
+    const onVoteChange = jest.fn();
+    jest.mocked(voteContent).mockResolvedValueOnce({ voted: -1 });
+    const host = await render(
+      <QueryClientProvider client={createClient()}>
+        <SegmentedVoteCapsule
+          id="synthetic-answer"
+          count={initialCount}
+          voted={1}
+          onVoteChange={onVoteChange}
+        />
+      </QueryClientProvider>,
+    );
+    await fireEvent.press(host.getByRole('button', { name: '反对' }));
+    await waitFor(() => {
+      expect(host.getByText(String(expectedCount))).toBeTruthy();
+      expect(host.getAllByRole('button')[0]).not.toBeSelected();
+      expect(host.getByRole('button', { name: '取消反对' })).toBeSelected();
+      expect(onVoteChange).toHaveBeenCalledWith(-1, expectedCount);
+    });
+  },
+);
 
 test('canceling downvote without a response count keeps the current upvote count', async () => {
   const onVoteChange = jest.fn();
@@ -210,30 +213,30 @@ test('a capsule subscribed to the content cache preserves the fallback count aft
   });
 });
 
-test.each([
-  '10',
-  '1万',
-])('a string count %s remains unchanged when the downvote response omits its count', async (count) => {
-  const onVoteChange = jest.fn();
-  jest.mocked(voteContent).mockResolvedValueOnce({ voted: -1 });
-  const host = await render(
-    <QueryClientProvider client={createClient()}>
-      <SegmentedVoteCapsule
-        id="synthetic-answer"
-        count={count}
-        voted={1}
-        onVoteChange={onVoteChange}
-      />
-    </QueryClientProvider>,
-  );
-  await fireEvent.press(host.getByRole('button', { name: '反对' }));
-  await waitFor(() => {
-    expect(host.getByRole('button', { name: '取消反对' })).toBeSelected();
-    expect(host.getAllByRole('button')[0]).not.toBeSelected();
-    expect(host.getByText(count)).toBeTruthy();
-  });
-  expect(onVoteChange).not.toHaveBeenCalled();
-});
+test.each(['10', '1万'])(
+  'a string count %s remains unchanged when the downvote response omits its count',
+  async (count) => {
+    const onVoteChange = jest.fn();
+    jest.mocked(voteContent).mockResolvedValueOnce({ voted: -1 });
+    const host = await render(
+      <QueryClientProvider client={createClient()}>
+        <SegmentedVoteCapsule
+          id="synthetic-answer"
+          count={count}
+          voted={1}
+          onVoteChange={onVoteChange}
+        />
+      </QueryClientProvider>,
+    );
+    await fireEvent.press(host.getByRole('button', { name: '反对' }));
+    await waitFor(() => {
+      expect(host.getByRole('button', { name: '取消反对' })).toBeSelected();
+      expect(host.getAllByRole('button')[0]).not.toBeSelected();
+      expect(host.getByText(count)).toBeTruthy();
+    });
+    expect(onVoteChange).not.toHaveBeenCalled();
+  },
+);
 
 test('a server count replaces a string count and reaches the external callback', async () => {
   const onVoteChange = jest.fn();

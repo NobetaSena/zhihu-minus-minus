@@ -10,7 +10,7 @@ jest.mock('../src/api/client', () => ({
 let mockFocused = true;
 let mockSessionVersion = 1;
 let mockCookies: string | null = 'synthetic-authentication';
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useIsFocused: () => mockFocused,
 }));
 jest.mock('../src/store/useAuthStore', () => ({

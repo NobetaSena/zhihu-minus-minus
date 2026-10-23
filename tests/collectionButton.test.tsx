@@ -113,57 +113,54 @@ afterEach(() => {
   for (const client of clients.splice(0)) client.clear();
 });
 
-test.each([
-  false,
-  true,
-])('known collection state %s toggles directly and stops card navigation', async (isCollected) => {
-  const host = await setup({
-    id: 42,
-    type: 'article',
-    isCollected,
-    count: 123,
-  });
-  expect(host.getByText('123')).toBeTruthy();
-  const stopPropagation = jest.fn();
-  await fireEvent.press(
-    host.getByRole('button', { name: isCollected ? '取消收藏' : '收藏' }),
-    { stopPropagation },
-  );
-  expect(stopPropagation).toHaveBeenCalledTimes(1);
-  expect(mockToggleCollect).toHaveBeenCalledWith(42, 'article', isCollected);
-  expect(getAllContentCollectionStatus).not.toHaveBeenCalled();
-});
+test.each([false, true])(
+  'known collection state %s toggles directly and stops card navigation',
+  async (isCollected) => {
+    const host = await setup({
+      id: 42,
+      type: 'article',
+      isCollected,
+      count: 123,
+    });
+    expect(host.getByText('123')).toBeTruthy();
+    const stopPropagation = jest.fn();
+    await fireEvent.press(
+      host.getByRole('button', { name: isCollected ? '取消收藏' : '收藏' }),
+      { stopPropagation },
+    );
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(mockToggleCollect).toHaveBeenCalledWith(42, 'article', isCollected);
+    expect(getAllContentCollectionStatus).not.toHaveBeenCalled();
+  },
+);
 
 test.each([
   { count: 0, visible: '0', accessible: '0 次收藏' },
   { count: 12345, visible: '1.2万', accessible: '12345 次收藏' },
   { count: 20000, visible: '2万', accessible: '20000 次收藏' },
-])('displays the supplied collection count $count and preserves its full accessible value', async ({
-  count,
-  visible,
-  accessible,
-}) => {
-  const host = await setup({ count, isCollected: false });
-  expect(host.getByText(visible)).toBeTruthy();
-  expect(host.getByRole('button', { name: '收藏' })).toHaveProp(
-    'accessibilityValue',
-    { text: accessible },
-  );
-  expect(getAllContentCollectionStatus).not.toHaveBeenCalled();
-});
+])(
+  'displays the supplied collection count $count and preserves its full accessible value',
+  async ({ count, visible, accessible }) => {
+    const host = await setup({ count, isCollected: false });
+    expect(host.getByText(visible)).toBeTruthy();
+    expect(host.getByRole('button', { name: '收藏' })).toHaveProp(
+      'accessibilityValue',
+      { text: accessible },
+    );
+    expect(getAllContentCollectionStatus).not.toHaveBeenCalled();
+  },
+);
 
-test.each([
-  undefined,
-  -1,
-  Number.NaN,
-  Number.POSITIVE_INFINITY,
-])('does not invent a visible or accessible quantity for invalid count %s', async (count) => {
-  const host = await setup({ count, isCollected: false });
-  expect(host.queryByText(/.*/)).toBeNull();
-  expect(
-    host.getByRole('button', { name: '收藏' }).props.accessibilityValue?.text,
-  ).toBeUndefined();
-});
+test.each([undefined, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+  'does not invent a visible or accessible quantity for invalid count %s',
+  async (count) => {
+    const host = await setup({ count, isCollected: false });
+    expect(host.queryByText(/.*/)).toBeNull();
+    expect(
+      host.getByRole('button', { name: '收藏' }).props.accessibilityValue?.text,
+    ).toBeUndefined();
+  },
+);
 
 test('fresh server counts replace previous quantities without reapplying local collection offsets', async () => {
   useCollectionStore.getState().updateCollectedCountOffset('answer-a', 1);
@@ -276,27 +273,27 @@ test('lookup failures leave the action available for retry', async () => {
   );
 });
 
-test.each([
-  false,
-  true,
-])('a recycled card ignores an old lookup even when returning to the same item: %s', async (returnToOriginal) => {
-  const resolve = deferStatus();
-  const host = await setup();
-  await fireEvent.press(host.getByRole('button', { name: '收藏' }));
-  await host.update({ id: 'answer-b', isCollected: false });
-  if (returnToOriginal)
-    await host.update({ id: 'answer-a', isCollected: false });
-  expect(host.getByRole('button', { name: '收藏' })).toBeEnabled();
-  await act(() => resolve(status(true)));
-  expect(mockToggleCollect).not.toHaveBeenCalled();
-  expect(useCollectionStore.getState().collectedStatusMap).toEqual({});
-  await fireEvent.press(host.getByRole('button', { name: '收藏' }));
-  expect(mockToggleCollect).toHaveBeenCalledWith(
-    returnToOriginal ? 'answer-a' : 'answer-b',
-    'answer',
-    false,
-  );
-});
+test.each([false, true])(
+  'a recycled card ignores an old lookup even when returning to the same item: %s',
+  async (returnToOriginal) => {
+    const resolve = deferStatus();
+    const host = await setup();
+    await fireEvent.press(host.getByRole('button', { name: '收藏' }));
+    await host.update({ id: 'answer-b', isCollected: false });
+    if (returnToOriginal)
+      await host.update({ id: 'answer-a', isCollected: false });
+    expect(host.getByRole('button', { name: '收藏' })).toBeEnabled();
+    await act(() => resolve(status(true)));
+    expect(mockToggleCollect).not.toHaveBeenCalled();
+    expect(useCollectionStore.getState().collectedStatusMap).toEqual({});
+    await fireEvent.press(host.getByRole('button', { name: '收藏' }));
+    expect(mockToggleCollect).toHaveBeenCalledWith(
+      returnToOriginal ? 'answer-a' : 'answer-b',
+      'answer',
+      false,
+    );
+  },
+);
 
 test('a late lookup cannot toggle or repopulate collection state after account switching', async () => {
   const resolve = deferStatus();
@@ -309,19 +306,19 @@ test('a late lookup cannot toggle or repopulate collection state after account s
   expect(showToast).not.toHaveBeenCalled();
 });
 
-test.each([
-  'disabled',
-  'unmounted',
-] as const)('a lookup does not apply after the button becomes %s', async (change) => {
-  const resolve = deferStatus();
-  const host = await setup();
-  await fireEvent.press(host.getByRole('button', { name: '收藏' }));
-  if (change === 'disabled') await host.update({ disabled: true });
-  else await host.unmount();
-  await act(() => resolve(status(true)));
-  expect(mockToggleCollect).not.toHaveBeenCalled();
-  expect(useCollectionStore.getState().collectedStatusMap).toEqual({});
-});
+test.each(['disabled', 'unmounted'] as const)(
+  'a lookup does not apply after the button becomes %s',
+  async (change) => {
+    const resolve = deferStatus();
+    const host = await setup();
+    await fireEvent.press(host.getByRole('button', { name: '收藏' }));
+    if (change === 'disabled') await host.update({ disabled: true });
+    else await host.unmount();
+    await act(() => resolve(status(true)));
+    expect(mockToggleCollect).not.toHaveBeenCalled();
+    expect(useCollectionStore.getState().collectedStatusMap).toEqual({});
+  },
+);
 
 test('synchronous duplicate presses schedule only one known-state mutation', async () => {
   await setup({ isCollected: false });

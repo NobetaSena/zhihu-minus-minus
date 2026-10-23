@@ -89,9 +89,12 @@ test.each([
   ],
   [{}, {}],
   [null, {}],
-])('normalizes collection metadata without guessing unknown values: %j', (input, expected) => {
-  expect(getContentCollectionMetadata(input)).toEqual(expected);
-});
+])(
+  'normalizes collection metadata without guessing unknown values: %j',
+  (input, expected) => {
+    expect(getContentCollectionMetadata(input)).toEqual(expected);
+  },
+);
 
 test('clicked normalized feed entries retain known and unknown collection metadata', () => {
   expect(

@@ -384,41 +384,41 @@ test('limits a request to one refresh even though Axios clones retry config', as
   expect(refreshAdapter).toHaveBeenCalledTimes(2);
 });
 
-test.each([
-  'guest',
-  'logout',
-] as const)('ignores an old response after switching to %s', async (change) => {
-  let finish: (() => void) | undefined;
-  let started: (() => void) | undefined;
-  const adapterStarted = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  apiClient.defaults.adapter = (config) => {
-    started?.();
-    return new Promise((resolve) => {
-      finish = () =>
-        resolve(
-          response(
-            config,
-            {},
-            {
-              'set-cookie': 'z_c0=test-old-response; Path=/',
-            },
-          ),
-        );
+test.each(['guest', 'logout'] as const)(
+  'ignores an old response after switching to %s',
+  async (change) => {
+    let finish: (() => void) | undefined;
+    let started: (() => void) | undefined;
+    const adapterStarted = new Promise<void>((resolve) => {
+      started = resolve;
     });
-  };
-  const pending = apiClient.get('/test-session');
-  const rejected = expect(pending).rejects.toMatchObject({
-    code: 'ERR_CANCELED',
-  });
-  await adapterStarted;
-  if (change === 'guest') useAuthStore.getState().switchAccount(-1);
-  else useAuthStore.getState().logout();
-  finish?.();
-  await rejected;
-  expect(useAuthStore.getState().cookies).toBeNull();
-});
+    apiClient.defaults.adapter = (config) => {
+      started?.();
+      return new Promise((resolve) => {
+        finish = () =>
+          resolve(
+            response(
+              config,
+              {},
+              {
+                'set-cookie': 'z_c0=test-old-response; Path=/',
+              },
+            ),
+          );
+      });
+    };
+    const pending = apiClient.get('/test-session');
+    const rejected = expect(pending).rejects.toMatchObject({
+      code: 'ERR_CANCELED',
+    });
+    await adapterStarted;
+    if (change === 'guest') useAuthStore.getState().switchAccount(-1);
+    else useAuthStore.getState().logout();
+    finish?.();
+    await rejected;
+    expect(useAuthStore.getState().cookies).toBeNull();
+  },
+);
 
 test('a new login cannot write its response cookies into a saved account', () => {
   useAuthStore.getState().setCookies(COOKIE_B);
@@ -502,27 +502,26 @@ test('honors cookie deletion attributes and rejects empty auth tokens', () => {
   ).toBe('z_c0=test-live');
 });
 
-test.each([
-  'guest',
-  'logout',
-  'new-login',
-] as const)('clears transient collection state on %s session changes', (change) => {
-  const collections = useCollectionStore.getState();
-  collections.setCollectedStatus('synthetic-content', true);
-  collections.updateCollectedCountOffset('synthetic-content', 1);
-  collections.showToast('synthetic-content', 'answer', 'test');
-  collections.openSelector('synthetic-content', 'answer');
-  if (change === 'guest') useAuthStore.getState().switchAccount(-1);
-  else if (change === 'logout') useAuthStore.getState().logout();
-  else useAuthStore.getState().setCookies(COOKIE_B);
-  expect(useCollectionStore.getState()).toMatchObject({
-    collectedStatusMap: {},
-    collectedCountOffsetMap: {},
-    toastVisible: false,
-    selectorVisible: false,
-    selectorContentId: null,
-  });
-});
+test.each(['guest', 'logout', 'new-login'] as const)(
+  'clears transient collection state on %s session changes',
+  (change) => {
+    const collections = useCollectionStore.getState();
+    collections.setCollectedStatus('synthetic-content', true);
+    collections.updateCollectedCountOffset('synthetic-content', 1);
+    collections.showToast('synthetic-content', 'answer', 'test');
+    collections.openSelector('synthetic-content', 'answer');
+    if (change === 'guest') useAuthStore.getState().switchAccount(-1);
+    else if (change === 'logout') useAuthStore.getState().logout();
+    else useAuthStore.getState().setCookies(COOKIE_B);
+    expect(useCollectionStore.getState()).toMatchObject({
+      collectedStatusMap: {},
+      collectedCountOffsetMap: {},
+      toastVisible: false,
+      selectorVisible: false,
+      selectorContentId: null,
+    });
+  },
+);
 
 test('anonymous response cookies do not convert a guest into an authenticated store session', async () => {
   useAuthStore.getState().switchAccount(-1);

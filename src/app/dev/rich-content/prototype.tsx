@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Switch,
   Text,
@@ -134,7 +135,7 @@ export default function RichContentPrototypeScreen() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageMenu, setImageMenu] = useState<string | null>(null);
   const [linkPreview, setLinkPreview] = useState<string | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const viewKey = `${caseId}:${renderer}`;
   const activeViewKey = useRef(viewKey);
   activeViewKey.current = viewKey;

@@ -364,41 +364,40 @@ describe('isolated structured-content renderer', () => {
       height: 140,
       collapsed: false,
     },
-  ])('uses measured height for $name instead of counting source segments', async ({
-    texts,
-    height,
-    collapsed,
-  }) => {
-    const source: ZhihuStructuredContent = {
-      paging: content().paging,
-      segments: texts.map((text, index) => ({
-        type: 'paragraph',
-        id: `synthetic:${index}`,
-        paragraph: { pid: `synthetic-pid:${index}`, text, marks: [] },
-      })),
-    };
-    await render(
-      <StructuredRenderer
-        content={source}
-        documentId="answer:height"
-        renderer="shared"
-        collapseMode="height"
-        footerContent={<Text>发布于 2026-10-18 · IP 属地天津</Text>}
-      />,
-    );
-    await fireEvent(
-      screen.getByTestId('collapsible-rich-content-body'),
-      'layout',
-      { nativeEvent: { layout: { width: 340, height } } },
-    );
-    expect(mockSharedInputs.at(-1)?.document?.blocks).toHaveLength(
-      texts.length,
-    );
-    expect(Boolean(screen.queryByTestId('structured-content-toggle'))).toBe(
-      collapsed,
-    );
-    expect(screen.getByText('发布于 2026-10-18 · IP 属地天津')).toBeVisible();
-  });
+  ])(
+    'uses measured height for $name instead of counting source segments',
+    async ({ texts, height, collapsed }) => {
+      const source: ZhihuStructuredContent = {
+        paging: content().paging,
+        segments: texts.map((text, index) => ({
+          type: 'paragraph',
+          id: `synthetic:${index}`,
+          paragraph: { pid: `synthetic-pid:${index}`, text, marks: [] },
+        })),
+      };
+      await render(
+        <StructuredRenderer
+          content={source}
+          documentId="answer:height"
+          renderer="shared"
+          collapseMode="height"
+          footerContent={<Text>发布于 2026-10-18 · IP 属地天津</Text>}
+        />,
+      );
+      await fireEvent(
+        screen.getByTestId('collapsible-rich-content-body'),
+        'layout',
+        { nativeEvent: { layout: { width: 340, height } } },
+      );
+      expect(mockSharedInputs.at(-1)?.document?.blocks).toHaveLength(
+        texts.length,
+      );
+      expect(Boolean(screen.queryByTestId('structured-content-toggle'))).toBe(
+        collapsed,
+      );
+      expect(screen.getByText('发布于 2026-10-18 · IP 属地天津')).toBeVisible();
+    },
+  );
 
   it('keeps short paged bodies expandable and retry controls outside the clipped body', async () => {
     const source: ZhihuStructuredContent = {
@@ -877,62 +876,62 @@ describe('isolated structured-content renderer', () => {
     expect(parseDocument).not.toHaveBeenCalled();
   });
 
-  it.each([
-    'blocks',
-    'native-v2',
-  ] as const)('keeps normal images full width and small images at source width (%s)', async (renderer) => {
-    const source = content();
-    const imageSegment = source.segments.find(
-      (segment) => segment.type === 'image',
-    );
-    if (imageSegment?.type !== 'image')
-      throw new Error('Missing synthetic image');
-    const images: ZhihuStructuredContent = {
-      paging: source.paging,
-      segments: [
-        {
-          ...imageSegment,
-          id: 'normal-image',
-          image: {
-            ...imageSegment.image,
-            layout: 'normal',
-            description: 'normal image',
-          },
-        },
-        {
-          ...imageSegment,
-          id: 'small-image',
-          image: {
-            ...imageSegment.image,
-            layout: 'small',
-            description: 'small image',
-          },
-        },
-      ],
-    };
-    await render(
-      <StructuredRenderer
-        content={images}
-        documentId={`case:image-layout:${renderer}`}
-        renderer={renderer}
-        resources={resources}
-      />,
-    );
-    if (renderer === 'native-v2') await measureCurrentDocument();
-    const imagesOnScreen = displayedImages();
-    expect(imagesOnScreen).toHaveLength(2);
-    const normal = StyleSheet.flatten(imagesOnScreen[0].props.style);
-    const small = StyleSheet.flatten(imagesOnScreen[1].props.style);
-    expect(normal.width).toBeGreaterThan(small.width);
-    expect(small.width).toBe(80);
-    expect(small.height).toBe(40);
-    if (renderer === 'native-v2') {
-      await fireEvent(imagesOnScreen[1], 'load', {
-        nativeEvent: { source: { width: 1024, height: 512 } },
-      });
-      expect(StyleSheet.flatten(displayedImages()[1].props.style).width).toBe(
-        80,
+  it.each(['blocks', 'native-v2'] as const)(
+    'keeps normal images full width and small images at source width (%s)',
+    async (renderer) => {
+      const source = content();
+      const imageSegment = source.segments.find(
+        (segment) => segment.type === 'image',
       );
-    }
-  });
+      if (imageSegment?.type !== 'image')
+        throw new Error('Missing synthetic image');
+      const images: ZhihuStructuredContent = {
+        paging: source.paging,
+        segments: [
+          {
+            ...imageSegment,
+            id: 'normal-image',
+            image: {
+              ...imageSegment.image,
+              layout: 'normal',
+              description: 'normal image',
+            },
+          },
+          {
+            ...imageSegment,
+            id: 'small-image',
+            image: {
+              ...imageSegment.image,
+              layout: 'small',
+              description: 'small image',
+            },
+          },
+        ],
+      };
+      await render(
+        <StructuredRenderer
+          content={images}
+          documentId={`case:image-layout:${renderer}`}
+          renderer={renderer}
+          resources={resources}
+        />,
+      );
+      if (renderer === 'native-v2') await measureCurrentDocument();
+      const imagesOnScreen = displayedImages();
+      expect(imagesOnScreen).toHaveLength(2);
+      const normal = StyleSheet.flatten(imagesOnScreen[0].props.style);
+      const small = StyleSheet.flatten(imagesOnScreen[1].props.style);
+      expect(normal.width).toBeGreaterThan(small.width);
+      expect(small.width).toBe(80);
+      expect(small.height).toBe(40);
+      if (renderer === 'native-v2') {
+        await fireEvent(imagesOnScreen[1], 'load', {
+          nativeEvent: { source: { width: 1024, height: 512 } },
+        });
+        expect(StyleSheet.flatten(displayedImages()[1].props.style).width).toBe(
+          80,
+        );
+      }
+    },
+  );
 });

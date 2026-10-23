@@ -10,9 +10,9 @@ import {
 import { showToast } from '@/utils/toast';
 
 // 动态安全加载 expo-media-library 原生模块，避免在 Expo Go 或未编译原生包时崩溃
-let MediaLibrary: typeof import('expo-media-library') | null = null;
+let MediaLibrary: typeof import('expo-media-library/legacy') | null = null;
 try {
-  MediaLibrary = require('expo-media-library');
+  MediaLibrary = require('expo-media-library/legacy');
 } catch (_e) {
   console.warn(
     '[saveImage] ExpoMediaLibrary 原生模块未就绪，将降级使用系统分享组件保存',

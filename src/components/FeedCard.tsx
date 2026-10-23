@@ -1,11 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View as RNView } from 'react-native';
+import { View as RNView, type ViewInstance } from 'react-native';
 import Animated, { SharedTransition } from 'react-native-reanimated';
 import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
 import { FeedCardActionRow } from '@/components/FeedCardActionRow';
+import type { ActionSheetOption } from '@/components/overlays/ActionSheet';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { useContentActions } from '@/hooks/useContentActions';
@@ -22,6 +23,7 @@ import {
 } from '@/utils/contentCache';
 import { ImpactFeedbackStyle, impactAsync } from '@/utils/haptics';
 import { getCachedImageSource } from '@/utils/imageSource';
+import { getRecommendFeedbackTarget } from '@/utils/recommendFeedback';
 import { showToast } from '@/utils/toast';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
 import { BouncyButton } from './BouncyButton';
@@ -37,6 +39,7 @@ interface FeedCardProps {
   item: FeedItem;
   tab?: string;
   answerContext?: AnswerReadingContext;
+  onUninterested?: (item: FeedItem) => Promise<void>;
 }
 
 function areFeedContentEqual(
@@ -79,6 +82,7 @@ function areFeedCardPropsEqual(
 ): boolean {
   if (
     previous.tab !== next.tab ||
+    previous.onUninterested !== next.onUninterested ||
     previous.answerContext?.scene !== next.answerContext?.scene ||
     previous.answerContext?.memberId !== next.answerContext?.memberId ||
     previous.answerContext?.memberSort !== next.answerContext?.memberSort
@@ -90,6 +94,7 @@ function areFeedCardPropsEqual(
 
   return (
     previousItem.id === nextItem.id &&
+    previousItem.isIdStable === nextItem.isIdStable &&
     previousItem.type === nextItem.type &&
     previousItem.videoSource === nextItem.videoSource &&
     previousItem.title === nextItem.title &&
@@ -117,7 +122,12 @@ function areFeedCardPropsEqual(
   );
 }
 
-const FeedCardComponent = ({ item, tab, answerContext }: FeedCardProps) => {
+const FeedCardComponent = ({
+  item,
+  tab,
+  answerContext,
+  onUninterested,
+}: FeedCardProps) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { cookies } = useAuthStore();
@@ -232,7 +242,7 @@ const FeedCardComponent = ({ item, tab, answerContext }: FeedCardProps) => {
   };
 
   const [previewVisible, setPreviewVisible] = useState(false);
-  const containerRef = useRef<RNView>(null);
+  const containerRef = useRef<ViewInstance>(null);
   const [originLayout, setOriginLayout] = useState<{
     x: number;
     y: number;
@@ -257,10 +267,24 @@ const FeedCardComponent = ({ item, tab, answerContext }: FeedCardProps) => {
     questionId: item.questionId,
     isCollected: storeCollected ?? item.isCollected,
   };
+  const feedbackOptions: ActionSheetOption[] =
+    isAuthenticated && onUninterested && getRecommendFeedbackTarget(item)
+      ? [
+          {
+            key: 'uninterested',
+            label: '不喜欢，减少相似内容',
+            icon: 'eye-off-outline',
+            onPress: () => onUninterested(item),
+          },
+        ]
+      : [];
   const { actions: contentActions } = useContentActions({
     type: shareType,
     data: shareData,
     enabled: previewVisible,
+    ...(feedbackOptions.length > 0 && {
+      additionalOptions: feedbackOptions,
+    }),
   });
 
   // Recycled cells must not retain another item's preview or share sheet.
@@ -516,6 +540,7 @@ const FeedCardComponent = ({ item, tab, answerContext }: FeedCardProps) => {
           onClose={() => setMenuVisible(false)}
           type={shareType}
           data={shareData}
+          additionalOptions={feedbackOptions}
         />
       </BouncyButton>
 

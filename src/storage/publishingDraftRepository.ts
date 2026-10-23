@@ -161,7 +161,19 @@ function normalizeDraft(
   }
   const document = normalizeDocument(draft.document);
   if (draft.document !== null && !document) return null;
+  if (
+    draft.pinDraftId !== undefined &&
+    (typeof draft.pinDraftId !== 'string' ||
+      !/^[1-9]\d*$/.test(draft.pinDraftId))
+  )
+    return null;
+  const pinSourceData = record(draft.pinSourceData);
+  if (draft.pinSourceData !== undefined && !pinSourceData) return null;
   return {
+    ...(typeof draft.pinDraftId === 'string'
+      ? { pinDraftId: draft.pinDraftId }
+      : {}),
+    ...(pinSourceData ? { pinSourceData } : {}),
     title: draft.title,
     content: draft.content,
     topics: draft.topics,
@@ -190,7 +202,7 @@ class PublishingDraftRepository {
       try {
         const envelope = record(JSON.parse(row.value_json));
         const value =
-          envelope?.version === 1
+          envelope?.version === 1 || envelope?.version === 2
             ? normalizeDraft(envelope.value, scope)
             : null;
         if (!value) throw new Error('草稿内容暂时无法读取');
@@ -217,7 +229,7 @@ class PublishingDraftRepository {
         [
           scope.accountKey,
           publishingDraftKey(scope),
-          JSON.stringify({ version: 1, value }),
+          JSON.stringify({ version: 2, value }),
           Date.now(),
         ],
       );

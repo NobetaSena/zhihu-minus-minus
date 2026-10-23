@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { getFeedContentKey } from '@/utils/feedIdentity';
 import { localDatabase } from './localDatabase';
 
 export const MAX_CACHED_LAUNCH_FEED_ITEMS = 10;
@@ -128,6 +129,50 @@ export class FeedCacheRepository {
       ],
     );
     await this.trim(database);
+  }
+
+  async removeFeedCacheItem(
+    context: FeedCacheContext,
+    contentKey: string,
+  ): Promise<void> {
+    if (!context.accountKey.trim() || !context.feedType.trim()) return;
+    await localDatabase.run(async (database) => {
+      await database.withTransactionAsync(async () => {
+        const row = await database.getFirstAsync<FeedCacheRow>(
+          'SELECT items_json, next_url, updated_at FROM feed_cache WHERE account_key = ? AND feed_type = ?',
+          [context.accountKey, context.feedType],
+        );
+        if (!row) return;
+        let remaining: unknown[] = [];
+        try {
+          const items: unknown = JSON.parse(row.items_json);
+          if (Array.isArray(items)) {
+            remaining = items.filter((item: unknown) => {
+              if (typeof item !== 'object' || item === null) return true;
+              const id = 'id' in item ? item.id : undefined;
+              const type = 'type' in item ? item.type : undefined;
+              if (
+                (typeof id !== 'string' && typeof id !== 'number') ||
+                typeof type !== 'string'
+              )
+                return true;
+              return getFeedContentKey({ id, type }) !== contentKey;
+            });
+          }
+        } catch {}
+        if (remaining.length === 0) {
+          await database.runAsync(
+            'DELETE FROM feed_cache WHERE account_key = ? AND feed_type = ?',
+            [context.accountKey, context.feedType],
+          );
+          return;
+        }
+        await database.runAsync(
+          'UPDATE feed_cache SET items_json = ? WHERE account_key = ? AND feed_type = ?',
+          [JSON.stringify(remaining), context.accountKey, context.feedType],
+        );
+      });
+    });
   }
 
   private async trim(database: SQLiteDatabase): Promise<void> {

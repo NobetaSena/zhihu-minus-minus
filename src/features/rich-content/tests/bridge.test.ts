@@ -54,17 +54,12 @@ test('projects known fields and preserves selected text whitespace', () => {
   );
 });
 
-test.each([
-  '',
-  '{',
-  'undefined',
-  'null',
-  '1',
-  '"message"',
-  '[]',
-])('rejects malformed JSON or non-object payload %s', (raw) => {
-  assert.equal(parseRichContentBridgeMessage(raw), null);
-});
+test.each(['', '{', 'undefined', 'null', '1', '"message"', '[]'])(
+  'rejects malformed JSON or non-object payload %s',
+  (raw) => {
+    assert.equal(parseRichContentBridgeMessage(raw), null);
+  },
+);
 
 test.each([
   {},

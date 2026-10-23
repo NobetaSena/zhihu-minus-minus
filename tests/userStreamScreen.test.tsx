@@ -297,18 +297,18 @@ test('page buttons ask the pager to navigate; only confirmed selection marks rea
   await host.unmount();
 });
 
-test.each([
-  undefined,
-  'recent-moments',
-])('direct entry or missing cache remains a single usable user page (source=%s)', async (source) => {
-  mockParams.source = source;
-  mockMoments = source ? undefined : [moment('unrelated')];
-  const host = await render(<UserStreamScreen />);
-  expect(host.getByText('合成用户 member-token')).toBeTruthy();
-  expect(host.getByTestId('recent-moment-pager').props.scrollEnabled).toBe(
-    false,
-  );
-  expect(host.queryByRole('button', { name: '下一位用户' })).toBeNull();
-  expect(mockMarkRead).not.toHaveBeenCalled();
-  await host.unmount();
-});
+test.each([undefined, 'recent-moments'])(
+  'direct entry or missing cache remains a single usable user page (source=%s)',
+  async (source) => {
+    mockParams.source = source;
+    mockMoments = source ? undefined : [moment('unrelated')];
+    const host = await render(<UserStreamScreen />);
+    expect(host.getByText('合成用户 member-token')).toBeTruthy();
+    expect(host.getByTestId('recent-moment-pager').props.scrollEnabled).toBe(
+      false,
+    );
+    expect(host.queryByRole('button', { name: '下一位用户' })).toBeNull();
+    expect(mockMarkRead).not.toHaveBeenCalled();
+    await host.unmount();
+  },
+);

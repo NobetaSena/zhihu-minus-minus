@@ -721,23 +721,26 @@ test.each<readonly [RichContentLoadingPhase, string]>([
   ['container-layout', '正在确认正文宽度…'],
   ['text-layout', '正在排版文字…'],
   ['content-layout', '正在布局正文内容…'],
-])('reports %s for a cached answer without claiming to fetch its body', async (phase, message) => {
-  mockContentLoadingPhase = phase;
-  const host = await renderAnswer({ isFocused: true });
+])(
+  'reports %s for a cached answer without claiming to fetch its body',
+  async (phase, message) => {
+    mockContentLoadingPhase = phase;
+    const host = await renderAnswer({ isFocused: true });
 
-  expect(host.queryByText(message)).toBeNull();
-  await waitFor(() => expect(host.getByText(message)).toBeTruthy());
-  expect(host.queryByText('正在获取回答…')).toBeNull();
-  expect(getAnswer).not.toHaveBeenCalled();
-  expect(host.queryByTestId('answer-body')).toBeNull();
+    expect(host.queryByText(message)).toBeNull();
+    await waitFor(() => expect(host.getByText(message)).toBeTruthy());
+    expect(host.queryByText('正在获取回答…')).toBeNull();
+    expect(getAnswer).not.toHaveBeenCalled();
+    expect(host.queryByTestId('answer-body')).toBeNull();
 
-  mockContentLoadingPhase = null;
-  await host.rerender(host.page(true, true));
+    mockContentLoadingPhase = null;
+    await host.rerender(host.page(true, true));
 
-  expect(host.getByTestId('answer-body')).toHaveTextContent(answer.content);
-  expect(host.queryByText(message)).toBeNull();
-  expect(host.queryByText('正在获取回答…')).toBeNull();
-});
+    expect(host.getByTestId('answer-body')).toHaveTextContent(answer.content);
+    expect(host.queryByText(message)).toBeNull();
+    expect(host.queryByText('正在获取回答…')).toBeNull();
+  },
+);
 
 test('keeps a cached answer in its layout phase during a background refresh', async () => {
   let finishRequest!: (value: AnswerDetail) => void;

@@ -16,8 +16,9 @@
 - **纯净浏览**：推荐、热榜、关注、同城和知乎日报，支持全站与用户内容搜索。
 - **舒适阅读**：支持回答详情与预览卡片列表，可选原生或网页排版；详情默认左右切换同题回答，明确用户来源时切换该用户的回答。
 - **自由定制**：调整主题色、深浅色模式、阅读背景与按压反馈，支持 RE2 正则屏蔽内容、去重推荐；推荐流广告与营销过滤默认开启，包含带平台投放标记的推广文章和回答。
-- **创作互动**：写回答、文章，发想法、提问题；支持本地草稿、图片评论和想法投票。
+- **创作互动**：写回答、文章，发想法、提问题；支持本地草稿、图片评论和想法投票；自己的想法可在详情菜单编辑或删除，编辑页支持保存和读取云端草稿。
 - **个人内容**：创作汇总、多收藏夹、浏览历史同步；回答和文章可在卡片底部或悬浮栏的评论左侧收藏，并展示接口提供的收藏状态和数量；用户主页可查看创建的专栏和你赞同过的该用户回答。
+- **阅读辅助**：评论展示作者、我关注的人及接口提供的其他身份提示；问题菜单可打开内嵌网页查看问题日志；登录后可在推荐回答、文章菜单中选择“不喜欢，减少相似内容”，成功后移除该条内容。
 - **视频播放**：正文和独立视频直接获取播放资源，在应用内使用原生播放器，支持暂停、拖动进度和全屏。
 - **图片复用**：头像、封面和普通配图优先使用已有缓存，减少重新进入页面时的重复加载；缓存由系统管理和淘汰。
 - **账号切换**：支持多账号，也可用游客模式免登录浏览。
@@ -87,7 +88,7 @@ Windows 无法运行 `eas build --local`，请使用 [Windows 本地构建指南
 本应用不会在 App Store 上架。
 [GitHub Releases](https://github.com/huamurui/zhihu-minus-minus/releases) 会提供未签名 IPA；需要用户自行处理签名和安装环境。
 
-- 当前原生配置的 iOS 最低版本为 **15.1**。Release 中的 IPA 未签名，不能直接当作可安装成品使用。
+- 当前原生配置的 iOS 最低版本为 **16.4**。Release 中的 IPA 未签名，不能直接当作可安装成品使用。
 
 使用 **SideStore 或 AltStore Classic** 时，可以添加以下订阅源，从源中安装并在侧载工具内更新应用：
 
@@ -115,13 +116,13 @@ npx expo run:ios --configuration Release --device
 
 完整的环境、原生重建、调试和测试说明见 [开发指南](./docs/DEVELOPMENT.md)，Windows 构建及其他专题见 [文档目录](./docs/README.md)。
 
-本项目涉及到一些原生库，推荐使用 **Development Build** 进行开发。
+本项目使用 Expo SDK 58、React Native 0.88、React 19.3，涉及到一些原生库，推荐使用 **Development Build** 进行开发。
 
 基础环境：
 
-- Node.js **22.x（推荐）**、npm；
+- Node.js **24.x**、npm（与 `.nvmrc`、CI 一致）；
 - Android：JDK 17、Android SDK、ADB 或模拟器；
-- iOS：macOS、Xcode、CocoaPods；
+- iOS：macOS、Xcode **26.4 或更高版本**、CocoaPods；
 - EAS CLI 仅在使用 EAS 构建时需要。
 
 1. **安装依赖**
@@ -136,7 +137,7 @@ npm ci
 npm run prebuild
 ```
 
-`android/` 与 `ios/` 是生成物且不会提交到仓库。修改原生依赖、config plugin、原生配置或 `app.json` 后需要重新运行 prebuild；只修改 TypeScript/样式时通常不需要。
+`android/` 与 `ios/` 是生成物且不会提交到仓库。修改原生依赖、config plugin、原生配置或 `app.json` 后需要重新运行 prebuild；只修改 TypeScript/样式时通常不需要。从 SDK 55 更新的本地工程需先保留必要的本机签名或环境配置，再执行 `npm run prebuild -- --clean`，重新编译并安装 Development Build；完整升级步骤见 [开发指南](./docs/DEVELOPMENT.md#sdk-58-升级与依赖边界)。
 
 3. **运行 Android**（需要 ADB 或模拟器环境）
 

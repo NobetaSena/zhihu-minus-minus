@@ -8,6 +8,7 @@ import {
   Keyboard,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type FeedItem, getMemberWithFallback } from '@/api/zhihu';
@@ -33,7 +34,7 @@ function ProfileSearchScreen({ id }: { id: string }) {
   const insets = useSafeAreaInsets();
   const colors = useRuntimeThemeColors();
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const paginationPending = useRef(false);
   const refreshPending = useRef(false);
   const memberQuery = useQuery({

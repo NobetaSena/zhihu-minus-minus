@@ -9,7 +9,7 @@
  */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo } from 'react';
+import { type ComponentProps, useMemo } from 'react';
 import {
   Text as DefaultText,
   View as DefaultView,
@@ -28,8 +28,8 @@ type ThemeProps = {
   darkColor?: string;
 };
 
-export type TextProps = ThemeProps & DefaultText['props'];
-export type ViewProps = ThemeProps & DefaultView['props'];
+export type TextProps = ThemeProps & ComponentProps<typeof DefaultText>;
+export type ViewProps = ThemeProps & ComponentProps<typeof DefaultView>;
 
 export function useRuntimeThemeColors() {
   const theme = useColorScheme();
@@ -130,11 +130,12 @@ export function Text(
     color: flattenedStyle.color || color,
     fontSize: currentFontSize * fontSizeScale,
     lineHeight: (currentLineHeight * fontSizeScale * lineHeightScale) / 1.5,
+    ...((flattenedStyle.fontWeight ||
+      type === 'title' ||
+      type === 'subtitle') && {
+      fontWeight: flattenedStyle.fontWeight || defaultFontWeight,
+    }),
   };
-
-  if (flattenedStyle.fontWeight || type === 'title' || type === 'subtitle') {
-    finalStyle.fontWeight = flattenedStyle.fontWeight || defaultFontWeight;
-  }
 
   return <DefaultText style={finalStyle} {...otherProps} />;
 }

@@ -110,7 +110,7 @@ Rich Text IR的初步布局输入已定义于 `richText.ts`，包含：
 
 Tiqian可参考Zhihu++的正文实践，但已有Kotlin应用的能力不能直接证明RN/Expo宿主集成成立。系统TextView已经展示V2初步能力，后续优先验证并完善此链路及iOS TextKit adapter。
 
-本仓库当前为 Expo SDK 55 / RN 0.83。Issue 提醒 Tiqian 工具链与后续 RN/Expo 基座的关系，正式接入前应对照本仓锁文件和所选上游版本要求逐项核验 Kotlin、AGP、Compose、JDK 与最低系统版本。该讨论不构成本仓已兼容或需要立即升级 SDK 的结论。
+本仓库当前为 Expo SDK 58 / RN 0.88。Issue 提醒 Tiqian 工具链与后续 RN/Expo 基座的关系，正式接入前应对照本仓锁文件和所选上游版本要求逐项核验 Kotlin、AGP、Compose、JDK 与最低系统版本。该讨论不构成本仓已兼容或需要立即升级 SDK 的结论。
 
 若评估 WebView，保留每个详情页至多一个、必要资源离线打包和清洗/导航边界的约束；多段/多公式 WebView，以及持续高度测量的自动增高结构，不能作为已验收的 V2 backend。
 

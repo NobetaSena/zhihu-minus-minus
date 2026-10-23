@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Gesture, type NativeGesture } from 'react-native-gesture-handler';
+import { Gesture } from 'react-native-gesture-handler';
 
 /** Keep a parent pager locked for the whole native child touch sequence. */
 export function useNestedHorizontalGesture(
   onInteractionChange?: (interacting: boolean) => void,
   enabled = true,
-  parentGesture?: NativeGesture,
+  parentGesture?: ReturnType<typeof Gesture.Native>,
 ) {
   const interactingRef = useRef(false);
   const setInteracting = useCallback(

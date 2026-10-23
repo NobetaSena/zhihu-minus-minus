@@ -120,18 +120,17 @@ test('marks a valid cached actor among malformed entries and rolls back on failu
   expect(cachedItems()).toEqual([item]);
 });
 
-test.each([
-  null,
-  {},
-  'invalid',
-])('ignores a malformed cached array while marking a previous entry read: %j', async (data) => {
-  queryClient.setQueryData<unknown>(queryKey, { data });
-  const hook = await renderHook(useMarkRecentMomentRead, { wrapper });
+test.each([null, {}, 'invalid'])(
+  'ignores a malformed cached array while marking a previous entry read: %j',
+  async (data) => {
+    queryClient.setQueryData<unknown>(queryKey, { data });
+    const hook = await renderHook(useMarkRecentMomentRead, { wrapper });
 
-  await act(() => hook.result.current(moment()));
+    await act(() => hook.result.current(moment()));
 
-  expect(markRecentMomentsRead).not.toHaveBeenCalled();
-});
+    expect(markRecentMomentsRead).not.toHaveBeenCalled();
+  },
+);
 
 test('deduplicates repeated selection across hook instances and in-flight refreshes', async () => {
   const item = moment();

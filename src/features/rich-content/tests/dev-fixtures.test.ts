@@ -101,26 +101,27 @@ test.each([
   { segIds: undefined },
   { segIds: [] },
   { segIds: ['segment-one', 'segment-two'] },
-])('retains the existing array or omitted segment ID form $segIds', ({
-  segIds,
-}) => {
-  const segmentInfo = segment();
-  const mark = segmentInfo.marks[0];
-  const fixture = decodeRichContentDevFixture(summary(), {
-    type: 'answer',
-    content,
-    segment_infos: [
-      {
-        ...segmentInfo,
-        marks: [{ ...mark, seg_info: { ...mark.seg_info, seg_ids: segIds } }],
-      },
-    ],
-  });
-  assert.deepEqual(
-    fixture.segmentInfos?.[0].marks[0].seg_info?.seg_ids,
-    segIds,
-  );
-});
+])(
+  'retains the existing array or omitted segment ID form $segIds',
+  ({ segIds }) => {
+    const segmentInfo = segment();
+    const mark = segmentInfo.marks[0];
+    const fixture = decodeRichContentDevFixture(summary(), {
+      type: 'answer',
+      content,
+      segment_infos: [
+        {
+          ...segmentInfo,
+          marks: [{ ...mark, seg_info: { ...mark.seg_info, seg_ids: segIds } }],
+        },
+      ],
+    });
+    assert.deepEqual(
+      fixture.segmentInfos?.[0].marks[0].seg_info?.seg_ids,
+      segIds,
+    );
+  },
+);
 
 test.each([
   { segIds: '' },

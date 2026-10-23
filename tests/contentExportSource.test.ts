@@ -187,18 +187,21 @@ test('retains downloaded segments and labels a failed continuation as partial', 
 test.each([
   'https://[invalid',
   '/next-content-render?url_token=123&content_type=answer&version_id=1&offset=20',
-])('retains downloaded segments when continuation URL is invalid: %s', async (next) => {
-  mockAnswer({
-    ...detail,
-    content_need_truncated: true,
-    structured_content: body('已加载正文', next),
-  });
-  const source = await resolveExportSource(target, context);
-  expect(source.completeness).toBe('partial');
-  expect(sourceText(source)).toBe('已加载正文');
-  expect(source.warnings.join('')).toContain('续页');
-  expect(getNextContentRender).not.toHaveBeenCalled();
-});
+])(
+  'retains downloaded segments when continuation URL is invalid: %s',
+  async (next) => {
+    mockAnswer({
+      ...detail,
+      content_need_truncated: true,
+      structured_content: body('已加载正文', next),
+    });
+    const source = await resolveExportSource(target, context);
+    expect(source.completeness).toBe('partial');
+    expect(sourceText(source)).toBe('已加载正文');
+    expect(source.warnings.join('')).toContain('续页');
+    expect(getNextContentRender).not.toHaveBeenCalled();
+  },
+);
 
 test('stops repeated pagination even when query parameters are reordered', async () => {
   const duplicate =
@@ -219,16 +222,19 @@ test('stops repeated pagination even when query parameters are reordered', async
 test.each([
   nextUrl(20, '999'),
   'https://example.invalid/next-content-render?url_token=123&content_type=answer',
-])('rejects a continuation belonging to another source or origin: %s', async (next) => {
-  mockAnswer({
-    ...detail,
-    content_need_truncated: true,
-    structured_content: body('首段', next),
-  });
-  const source = await resolveExportSource(target, context);
-  expect(source.completeness).toBe('partial');
-  expect(getNextContentRender).not.toHaveBeenCalled();
-});
+])(
+  'rejects a continuation belonging to another source or origin: %s',
+  async (next) => {
+    mockAnswer({
+      ...detail,
+      content_need_truncated: true,
+      structured_content: body('首段', next),
+    });
+    const source = await resolveExportSource(target, context);
+    expect(source.completeness).toBe('partial');
+    expect(getNextContentRender).not.toHaveBeenCalled();
+  },
+);
 
 test('does not combine separate revisions while following body pages', async () => {
   mockAnswer({

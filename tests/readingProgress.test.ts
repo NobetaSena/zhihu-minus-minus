@@ -176,31 +176,31 @@ describe('source-paired actual Native reading measurements', () => {
     });
   });
 
-  it.each([
-    'before',
-    'after',
-  ] as const)('pairs a verified actual measurement whose callback completes %s ready commits', async (timing) => {
-    const scrollTo = jest.fn();
-    const scrollRef = { current: { scrollTo } };
-    const progress = await renderHook(
-      ({ ready }: { ready: boolean }) =>
-        useReadingProgress({
-          contentKey,
-          layoutSource: sourceA,
-          ready,
-          scrollRef,
-        }),
-      { initialProps: { ready: false } },
-    );
-    await act(() => progress.result.current.onLayout(viewport));
-    const complete = progress.result.current.beginContentMeasurement();
-    expect(complete).not.toBeNull();
-    if (timing === 'before') await act(() => complete?.(320, 3800));
-    await progress.rerender({ ready: true });
-    if (timing === 'after') await act(() => complete?.(320, 3800));
-    await act(() => jest.advanceTimersByTime(180));
-    expect(scrollTo).toHaveBeenLastCalledWith({ y: 1200, animated: false });
-  });
+  it.each(['before', 'after'] as const)(
+    'pairs a verified actual measurement whose callback completes %s ready commits',
+    async (timing) => {
+      const scrollTo = jest.fn();
+      const scrollRef = { current: { scrollTo } };
+      const progress = await renderHook(
+        ({ ready }: { ready: boolean }) =>
+          useReadingProgress({
+            contentKey,
+            layoutSource: sourceA,
+            ready,
+            scrollRef,
+          }),
+        { initialProps: { ready: false } },
+      );
+      await act(() => progress.result.current.onLayout(viewport));
+      const complete = progress.result.current.beginContentMeasurement();
+      expect(complete).not.toBeNull();
+      if (timing === 'before') await act(() => complete?.(320, 3800));
+      await progress.rerender({ ready: true });
+      if (timing === 'after') await act(() => complete?.(320, 3800));
+      await act(() => jest.advanceTimersByTime(180));
+      expect(scrollTo).toHaveBeenLastCalledWith({ y: 1200, animated: false });
+    },
+  );
 
   it('rejects a late callback from a replaced content source', async () => {
     const host = await renderHost({

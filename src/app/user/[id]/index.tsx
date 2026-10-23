@@ -11,6 +11,7 @@ import {
   Alert,
   View as NativeView,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
 } from 'react-native';
 import PagerView, {
@@ -205,7 +206,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
   const [profileTabViewportWidth, setProfileTabViewportWidth] = useState(0);
   const [tabLayoutVersion, setTabLayoutVersion] = useState(0);
   const pagerRef = useRef<PagerView>(null);
-  const profileTabsScrollRef = useRef<ScrollView>(null);
+  const profileTabsScrollRef = useRef<ScrollViewInstance>(null);
   const profileTabLayoutsRef = useRef<
     Array<{ x: number; width: number } | undefined>
   >([]);

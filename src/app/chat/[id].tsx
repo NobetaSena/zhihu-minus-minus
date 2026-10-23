@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  type FlatListInstance,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -43,7 +44,7 @@ export default function ChatScreen() {
   );
 
   const [inputText, setInputText] = useState('');
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatListInstance>(null);
 
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = Colors[colorScheme].border;

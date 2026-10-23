@@ -9,7 +9,7 @@ import {
   Alert,
   View as NativeView,
   StyleSheet,
-  type TextInput,
+  type TextInputInstance,
   useWindowDimensions,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
@@ -34,6 +34,7 @@ import {
   type CommentDraft,
 } from '@/components/CommentComposer';
 import { CommentContent } from '@/components/CommentContent';
+import { CommentIdentityBadges } from '@/components/CommentIdentityBadges';
 import { LikeButton } from '@/components/LikeButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
@@ -42,6 +43,8 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { useCommentKeyboardLayout } from '@/hooks/useCommentKeyboardLayout';
 import { useCommentListQuery } from '@/hooks/useCommentQueries';
+import { getAuthSessionVersion } from '@/store/useAuthStore';
+import { serializeParentComment } from '@/utils/commentRoute';
 import { formatDate } from '@/utils/date';
 import { buildZhihuContent, buildZhihuImageHtml } from '@/utils/zhihuContent';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -59,6 +62,7 @@ export default function CommentScreen() {
       endOffset?: string;
     }>();
   const router = useRouter();
+  const parentSessionVersion = React.useRef(getAuthSessionVersion()).current;
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(
     null,
@@ -69,7 +73,7 @@ export default function CommentScreen() {
     authorName: string;
     canDelete: boolean;
   } | null>(null);
-  const inputRef = React.useRef<TextInput>(null);
+  const inputRef = React.useRef<TextInputInstance>(null);
   const queryClient = useQueryClient();
   const _insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -246,6 +250,7 @@ export default function CommentScreen() {
             >
               <Text className="font-semibold text-sm mb-1">
                 {item.author.member.name}
+                <CommentIdentityBadges comment={item} />
               </Text>
             </BouncyButton>
             <View className="mt-2 bg-transparent">
@@ -321,7 +326,7 @@ export default function CommentScreen() {
                 onPress={() =>
                   router.push(
                     `/comments/replies/${item.id}?parent=${encodeURIComponent(
-                      JSON.stringify(item),
+                      serializeParentComment(item, parentSessionVersion),
                     )}&resourceId=${encodeURIComponent(
                       String(id),
                     )}&resourceType=${encodeURIComponent(commentResourceType)}`,
@@ -340,8 +345,22 @@ export default function CommentScreen() {
                         className="w-[18px] h-[18px] rounded-full mr-2"
                       />
                       <View className="flex-1 bg-transparent">
+                        <Text className="text-xs">
+                          <Text
+                            onPress={() =>
+                              goToProfile(
+                                child.author.member.url_token ||
+                                  child.author.member.id,
+                              )
+                            }
+                            style={{ color: tintColor }}
+                          >
+                            {child.author.member.name}
+                          </Text>
+                          <CommentIdentityBadges comment={child} />
+                        </Text>
                         <CommentContent
-                          htmlContent={`<a href="/user/${child.author?.member?.url_token || child.author?.member?.id}">${child.author?.member?.name}</a>：${child.content}`}
+                          htmlContent={child.content}
                           width={contentWidth - 26}
                         />
                       </View>

@@ -161,67 +161,64 @@ describe('Native V2 renderer staging transitions', () => {
     expect(onLayoutReady).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    '<hr/>',
-    '',
-  ])('reports content layout for a document without top-level text: %s', async (content) => {
-    const onLayoutReady = jest.fn();
-    await render(
-      <ZhihuNativeContent
-        content={content}
-        objectId="block-loading-phases"
-        type="answer"
-        renderFallback={() => null}
-        renderPlaceholder={(phase) => <Text>{phase}</Text>}
-        onLayoutReady={onLayoutReady}
-      />,
-    );
-    expect(screen.getByText('container-layout')).toBeVisible();
-    await containerLayout(320);
-    expect(screen.getByText('content-layout')).toBeVisible();
-    expect(currentViews()).toHaveLength(0);
-    await bodyLayout(288);
-    expect(screen.getByText('content-layout')).toBeVisible();
-    expect(onLayoutReady).not.toHaveBeenCalled();
+  it.each(['<hr/>', ''])(
+    'reports content layout for a document without top-level text: %s',
+    async (content) => {
+      const onLayoutReady = jest.fn();
+      await render(
+        <ZhihuNativeContent
+          content={content}
+          objectId="block-loading-phases"
+          type="answer"
+          renderFallback={() => null}
+          renderPlaceholder={(phase) => <Text>{phase}</Text>}
+          onLayoutReady={onLayoutReady}
+        />,
+      );
+      expect(screen.getByText('container-layout')).toBeVisible();
+      await containerLayout(320);
+      expect(screen.getByText('content-layout')).toBeVisible();
+      expect(currentViews()).toHaveLength(0);
+      await bodyLayout(288);
+      expect(screen.getByText('content-layout')).toBeVisible();
+      expect(onLayoutReady).not.toHaveBeenCalled();
 
-    await bodyLayout(320);
-    expect(screen.queryByText('content-layout')).toBeNull();
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-  });
+      await bodyLayout(320);
+      expect(screen.queryByText('content-layout')).toBeNull();
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+    },
+  );
 
-  it.each([
-    undefined,
-    0,
-    -10,
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-  ])('waits for a valid container width instead of mounting a guessed layout (hint %s)', async (initialContentWidth) => {
-    const onLayoutReady = jest.fn();
-    await render(
-      <ZhihuNativeContent
-        content="<p>等待实际宽度的正文</p>"
-        objectId="measured-width"
-        type="answer"
-        initialContentWidth={initialContentWidth}
-        renderFallback={() => null}
-        onLayoutReady={onLayoutReady}
-      />,
-    );
-    expect(currentViews()).toHaveLength(0);
-    expect(screen.getByTestId('native-content-placeholder')).toBeVisible();
-    for (const width of [0, -10, Number.NaN, Number.POSITIVE_INFINITY])
-      await containerLayout(width);
-    expect(currentViews()).toHaveLength(0);
-    expect(onLayoutReady).not.toHaveBeenCalled();
+  it.each([undefined, 0, -10, Number.NaN, Number.POSITIVE_INFINITY])(
+    'waits for a valid container width instead of mounting a guessed layout (hint %s)',
+    async (initialContentWidth) => {
+      const onLayoutReady = jest.fn();
+      await render(
+        <ZhihuNativeContent
+          content="<p>等待实际宽度的正文</p>"
+          objectId="measured-width"
+          type="answer"
+          initialContentWidth={initialContentWidth}
+          renderFallback={() => null}
+          onLayoutReady={onLayoutReady}
+        />,
+      );
+      expect(currentViews()).toHaveLength(0);
+      expect(screen.getByTestId('native-content-placeholder')).toBeVisible();
+      for (const width of [0, -10, Number.NaN, Number.POSITIVE_INFINITY])
+        await containerLayout(width);
+      expect(currentViews()).toHaveLength(0);
+      expect(onLayoutReady).not.toHaveBeenCalled();
 
-    await containerLayout(288);
-    expect(currentViews()).toHaveLength(1);
-    expect(screen.getByTestId('native-content-placeholder')).toBeVisible();
-    await heightEvent(currentViews()[0]);
-    expect(screen.getByText('等待实际宽度的正文')).toBeVisible();
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-    expect([...new Set(mockNativeWidths)]).toEqual([288]);
-  });
+      await containerLayout(288);
+      expect(currentViews()).toHaveLength(1);
+      expect(screen.getByTestId('native-content-placeholder')).toBeVisible();
+      await heightEvent(currentViews()[0]);
+      expect(screen.getByText('等待实际宽度的正文')).toBeVisible();
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+      expect([...new Set(mockNativeWidths)]).toEqual([288]);
+    },
+  );
 
   it('corrects an outdated host width and rejects its old height event', async () => {
     const onLayoutReady = jest.fn();
@@ -474,45 +471,45 @@ describe('Native V2 renderer staging transitions', () => {
     expect(onLayoutReady).toHaveBeenCalledTimes(2);
   });
 
-  it.each([
-    '<hr>',
-    '',
-  ])('waits for the mounted body layout for block-only or empty content (%s)', async (content) => {
-    const onLayoutReady = jest.fn();
-    const props = {
-      content,
-      objectId: 'staging-blocks',
-      type: 'answer' as const,
-      renderFallback: () => <Text>经典排版回退</Text>,
-      onLayoutReady,
-    };
-    const renderer = await render(<ZhihuNativeContent {...props} />);
-    expect(currentViews()).toHaveLength(0);
-    expect(onLayoutReady).not.toHaveBeenCalled();
-    await containerLayout(320);
-    expect(onLayoutReady).not.toHaveBeenCalled();
-    expect(screen.getByTestId('native-content-placeholder')).toBeVisible();
-    await bodyLayout();
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-    const staleLayout = screen.getByTestId('native-content-layout').props
-      .onLayout as (event: LayoutChangeEvent) => void;
-    await containerLayout(320);
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-    await renderer.rerender(
-      <ZhihuNativeContent {...props} content="<hr><hr>" />,
-    );
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-    await act(() =>
-      staleLayout({
-        nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 0 } },
-      } as LayoutChangeEvent),
-    );
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-    await containerLayout(320);
-    expect(onLayoutReady).toHaveBeenCalledTimes(1);
-    await bodyLayout();
-    expect(onLayoutReady).toHaveBeenCalledTimes(2);
-  });
+  it.each(['<hr>', ''])(
+    'waits for the mounted body layout for block-only or empty content (%s)',
+    async (content) => {
+      const onLayoutReady = jest.fn();
+      const props = {
+        content,
+        objectId: 'staging-blocks',
+        type: 'answer' as const,
+        renderFallback: () => <Text>经典排版回退</Text>,
+        onLayoutReady,
+      };
+      const renderer = await render(<ZhihuNativeContent {...props} />);
+      expect(currentViews()).toHaveLength(0);
+      expect(onLayoutReady).not.toHaveBeenCalled();
+      await containerLayout(320);
+      expect(onLayoutReady).not.toHaveBeenCalled();
+      expect(screen.getByTestId('native-content-placeholder')).toBeVisible();
+      await bodyLayout();
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+      const staleLayout = screen.getByTestId('native-content-layout').props
+        .onLayout as (event: LayoutChangeEvent) => void;
+      await containerLayout(320);
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+      await renderer.rerender(
+        <ZhihuNativeContent {...props} content="<hr><hr>" />,
+      );
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+      await act(() =>
+        staleLayout({
+          nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 0 } },
+        } as LayoutChangeEvent),
+      );
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+      await containerLayout(320);
+      expect(onLayoutReady).toHaveBeenCalledTimes(1);
+      await bodyLayout();
+      expect(onLayoutReady).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it('reuses its measured host width for a replacement without guessing or remounting the prepared flow', async () => {
     const props = {

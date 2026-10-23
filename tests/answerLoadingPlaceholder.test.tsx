@@ -23,21 +23,24 @@ test.each<readonly [RichContentLoadingPhase, string]>([
   ['container-layout', '正在确认正文宽度…'],
   ['text-layout', '正在排版文字…'],
   ['content-layout', '正在布局正文内容…'],
-])('delays the %s indicator and accessibility announcement until 120 ms', async (phase, message) => {
-  const host = await render(<AnswerLoadingPlaceholder phase={phase} />);
+])(
+  'delays the %s indicator and accessibility announcement until 120 ms',
+  async (phase, message) => {
+    const host = await render(<AnswerLoadingPlaceholder phase={phase} />);
 
-  expect(host.toJSON()).toMatchObject({ children: [] });
-  expect(host.queryByText(message)).toBeNull();
-  expect(host.queryByRole('progressbar')).toBeNull();
-  await act(() => jest.advanceTimersByTimeAsync(119));
-  expect(host.queryByText(message)).toBeNull();
-  expect(host.queryByRole('progressbar')).toBeNull();
-  expect(host.toJSON()).toMatchObject({ children: [] });
+    expect(host.toJSON()).toMatchObject({ children: [] });
+    expect(host.queryByText(message)).toBeNull();
+    expect(host.queryByRole('progressbar')).toBeNull();
+    await act(() => jest.advanceTimersByTimeAsync(119));
+    expect(host.queryByText(message)).toBeNull();
+    expect(host.queryByRole('progressbar')).toBeNull();
+    expect(host.toJSON()).toMatchObject({ children: [] });
 
-  await act(() => jest.advanceTimersByTimeAsync(1));
-  expect(host.getByText(message)).toBeTruthy();
-  expect(host.getByRole('progressbar', { name: message })).toBeTruthy();
-});
+    await act(() => jest.advanceTimersByTimeAsync(1));
+    expect(host.getByText(message)).toBeTruthy();
+    expect(host.getByRole('progressbar', { name: message })).toBeTruthy();
+  },
+);
 
 test('keeps one delay across native layout phases and shows the latest phase', async () => {
   const host = await render(

@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react-native';
 import type {
   NativeScrollEvent,
   NativeSyntheticEvent,
-  View,
+  ViewInstance,
 } from 'react-native';
 import type {
   ZhihuAnswerPreviewItem,
@@ -50,7 +50,7 @@ function scroll(y: number): NativeSyntheticEvent<NativeScrollEvent> {
   } as NativeSyntheticEvent<NativeScrollEvent>;
 }
 
-type MeasureCallback = Parameters<View['measureInWindow']>[0];
+type MeasureCallback = Parameters<ViewInstance['measureInWindow']>[0];
 
 test('uses the current answer and rejects old scope, recycled footer and superseded measurements', async () => {
   let now = 1000;

@@ -197,18 +197,43 @@ function resolveHtmlHighlight(
   const reaction = metadata?.reaction;
   if (
     metadata?.isSpan === true ||
-    metadata?.target?.contentType !== 'answer' ||
-    metadata.target.contentId !== context.objectId ||
-    !hasSegmentIds(metadata.segmentIds) ||
-    !location ||
-    location.paragraphId !== paragraph.pid ||
-    location.range.start !== action.start ||
-    location.range.end !== action.end ||
+    (metadata?.target &&
+      (metadata.target.contentType !== 'answer' ||
+        metadata.target.contentId !== context.objectId)) ||
+    (location &&
+      (location.paragraphId !== paragraph.pid ||
+        location.range.start !== action.start ||
+        location.range.end !== action.end)) ||
     annotation.start !== action.start ||
     annotation.end !== action.end ||
     paragraph.text.slice(action.start, action.end) !== action.text ||
     bisectsSurrogate(paragraph.text, action.start) ||
-    bisectsSurrogate(paragraph.text, action.end) ||
+    bisectsSurrogate(paragraph.text, action.end)
+  )
+    return null;
+
+  // HTML can nest a visual highlight inside the API mark. iOS may hit that
+  // inner decoration first; its missing HTML attributes must not hide the
+  // current API reaction. Only reuse the exact verified source range, never a
+  // neighboring mark or the HTML display text/IDs.
+  const apiParagraphs = context.segmentInfos?.filter(
+    (item) => item.pid === paragraph.pid,
+  );
+  if (
+    apiParagraphs?.some((item) =>
+      item.marks.some(
+        (mark) =>
+          mark.start_index === action.start && mark.end_index === action.end,
+      ),
+    )
+  )
+    return resolveApiAnswerSegment(action, context);
+
+  if (
+    metadata?.target?.contentType !== 'answer' ||
+    metadata.target.contentId !== context.objectId ||
+    !hasSegmentIds(metadata.segmentIds) ||
+    !location ||
     !reaction ||
     typeof reaction.isLiked !== 'boolean' ||
     !isCount(reaction.likeCount) ||
@@ -238,8 +263,9 @@ function resolveHtmlHighlight(
  * Resolve only the clicked API mark. A visual highlight, a neighboring liked
  * mark, or a renderer node ID cannot supply an answer-reaction target.
  *
- * A complete single-paragraph HTML highlight may use its own IDs and verified
- * source location. Partial/cross-paragraph highlights retain only local actions.
+ * An HTML highlight may reuse an exact current API mark, or use its own complete
+ * IDs and verified source location. Unresolved/cross-paragraph highlights retain
+ * only local actions.
  */
 export function resolveNativeAnswerSegment(
   action: ZhihuNativeSegmentAction,
@@ -268,6 +294,14 @@ export function resolveNativeAnswerSegment(
   )
     return null;
 
+  return resolveApiAnswerSegment(action, context);
+}
+
+/** Resolve the exact current API mark regardless of the clicked visual wrapper. */
+function resolveApiAnswerSegment(
+  action: ZhihuNativeSegmentAction,
+  context: NativeAnswerSegmentContext,
+): NativeAnswerSegmentInteraction | null {
   const paragraphs =
     context.segmentInfos?.filter(
       (segment) => segment.pid === action.paragraphId,

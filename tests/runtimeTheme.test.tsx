@@ -160,41 +160,44 @@ test('text keeps proportional leading when font and line height preferences chan
 });
 
 describe.each(['light', 'dark'] as const)('%s runtime palette', (scheme) => {
-  test.each(
-    presets,
-  )('%s keeps text and filled controls readable across all preferences', (readingBackground) => {
-    for (const textContrast of ['standard', 'high'] as const) {
-      for (const surfaceStyle of ['layered', 'flat'] as const) {
-        for (const primaryColor of seeds) {
-          const palette = resolveThemeColors(scheme, {
-            primaryColor,
-            readingBackground,
-            textContrast,
-            surfaceStyle,
-          });
-          expect(palette.primary).toMatch(/^#[\da-f]{6}$/i);
-          if (primaryColor !== 'invalid')
-            expect(palette.primary).toBe(primaryColor ?? colors.light.primary);
-          for (const background of neutralSurfaces) {
-            expect(palette[background]).toMatch(/^#[\da-f]{6}$/i);
-            for (const foreground of textRoles) {
+  test.each(presets)(
+    '%s keeps text and filled controls readable across all preferences',
+    (readingBackground) => {
+      for (const textContrast of ['standard', 'high'] as const) {
+        for (const surfaceStyle of ['layered', 'flat'] as const) {
+          for (const primaryColor of seeds) {
+            const palette = resolveThemeColors(scheme, {
+              primaryColor,
+              readingBackground,
+              textContrast,
+              surfaceStyle,
+            });
+            expect(palette.primary).toMatch(/^#[\da-f]{6}$/i);
+            if (primaryColor !== 'invalid')
+              expect(palette.primary).toBe(
+                primaryColor ?? colors.light.primary,
+              );
+            for (const background of neutralSurfaces) {
+              expect(palette[background]).toMatch(/^#[\da-f]{6}$/i);
+              for (const foreground of textRoles) {
+                expect(
+                  contrastRatio(palette[foreground], palette[background]),
+                ).toBeGreaterThanOrEqual(
+                  textContrast === 'high' && foreground === 'text' ? 7 : 4.5,
+                );
+              }
+            }
+            for (const [foreground, background] of filledPairs) {
+              expect(palette[foreground]).toMatch(/^#[\da-f]{6}$/i);
               expect(
                 contrastRatio(palette[foreground], palette[background]),
-              ).toBeGreaterThanOrEqual(
-                textContrast === 'high' && foreground === 'text' ? 7 : 4.5,
-              );
+              ).toBeGreaterThanOrEqual(foreground === 'onPrimary' ? 3 : 4.5);
             }
-          }
-          for (const [foreground, background] of filledPairs) {
-            expect(palette[foreground]).toMatch(/^#[\da-f]{6}$/i);
-            expect(
-              contrastRatio(palette[foreground], palette[background]),
-            ).toBeGreaterThanOrEqual(foreground === 'onPrimary' ? 3 : 4.5);
           }
         }
       }
-    }
-  });
+    },
+  );
 
   test('preference updates keep hooks, legacy colors and every NativeWind variable synchronized', async () => {
     mockColorScheme = scheme;

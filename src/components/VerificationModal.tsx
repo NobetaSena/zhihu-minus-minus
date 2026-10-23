@@ -43,7 +43,7 @@ export const VerificationModal = () => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.surface }]}
       >
-        <StatusBar style="auto" backgroundColor={colors.surface} />
+        <StatusBar style="auto" />
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.text }]}>安全验证</Text>
           <BouncyButton onPress={hide} style={styles.closeButton}>

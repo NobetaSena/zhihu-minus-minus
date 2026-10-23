@@ -1,14 +1,14 @@
 import { FlashList } from '@shopify/flash-list';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   View as NativeView,
   StyleSheet,
-  type TextInput,
+  type TextInputInstance,
   useWindowDimensions,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
@@ -19,7 +19,6 @@ import {
   createCommentReply,
   createCommentV5,
   deleteComment,
-  getComment,
 } from '@/api/zhihu';
 import { BouncyButton } from '@/components/BouncyButton';
 import { CommentActionSheet } from '@/components/CommentActionSheet';
@@ -28,6 +27,7 @@ import {
   type CommentDraft,
 } from '@/components/CommentComposer';
 import { CommentContent } from '@/components/CommentContent';
+import { CommentIdentityBadges } from '@/components/CommentIdentityBadges';
 import { LikeButton } from '@/components/LikeButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
@@ -36,7 +36,8 @@ import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { useCommentKeyboardLayout } from '@/hooks/useCommentKeyboardLayout';
 import { useCommentRepliesQuery } from '@/hooks/useCommentQueries';
-import { parseParentComment } from '@/utils/commentRoute';
+import { useParentComment } from '@/hooks/useParentComment';
+import { getAuthSessionVersion } from '@/store/useAuthStore';
 import { formatDate } from '@/utils/date';
 import { buildZhihuContent, buildZhihuImageHtml } from '@/utils/zhihuContent';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
@@ -58,8 +59,9 @@ export default function ReplyDetailScreen() {
     authorName: string;
     canDelete: boolean;
     returnToParent: boolean;
+    sessionVersion: number;
   } | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
   const _insets = useSafeAreaInsets();
@@ -84,18 +86,9 @@ export default function ReplyDetailScreen() {
 
   const [inputBarHeight, setInputBarHeight] = useState(80 + insets.bottom);
 
-  const initialParentComment = useMemo(
-    () => parseParentComment(parent, id),
-    [parent, id],
-  );
-
-  const { data: parentCommentFromApi } = useQuery({
-    queryKey: ['parent-comment', id],
-    queryFn: () => getComment(id as string),
-    enabled: !initialParentComment && !!id,
-  });
-
-  const parentComment = initialParentComment || parentCommentFromApi;
+  const { parentComment, sessionVersion } = useParentComment(id, parent);
+  const activeCommentAction =
+    commentAction?.sessionVersion === sessionVersion ? commentAction : null;
 
   const {
     data: repliesData,
@@ -186,12 +179,16 @@ export default function ReplyDetailScreen() {
     commentId: string | number,
     returnToParent = false,
   ) => {
+    if (sessionVersion !== getAuthSessionVersion()) return;
     Alert.alert('确认删除', '确定要删除这条评论吗？此操作不可撤销喵。', [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
         style: 'destructive',
-        onPress: () => deleteMutation.mutate({ commentId, returnToParent }),
+        onPress: () => {
+          if (sessionVersion !== getAuthSessionVersion()) return;
+          deleteMutation.mutate({ commentId, returnToParent });
+        },
       },
     ]);
   };
@@ -206,6 +203,7 @@ export default function ReplyDetailScreen() {
       authorName: item.author.member.name,
       canDelete: canDeleteComment(item),
       returnToParent,
+      sessionVersion,
     });
   };
 
@@ -243,6 +241,7 @@ export default function ReplyDetailScreen() {
                 }
               >
                 {item.author.member.name}
+                <CommentIdentityBadges comment={item} />
               </Text>
               {item.reply_to_author && (
                 <Text type="secondary">
@@ -259,6 +258,7 @@ export default function ReplyDetailScreen() {
                     }
                   >
                     {item.reply_to_author?.member.name}
+                    <CommentIdentityBadges comment={item} target="reply" />
                   </Text>
                 </Text>
               )}
@@ -331,6 +331,7 @@ export default function ReplyDetailScreen() {
     if (!parentComment) return null;
     return (
       <View
+        key={sessionVersion}
         style={{
           borderBottomWidth: 8,
           borderBottomColor: colorScheme === 'dark' ? '#1A1A1A' : '#F5F5F5',
@@ -369,6 +370,7 @@ export default function ReplyDetailScreen() {
                 }
               >
                 {parentComment.author.member.name}
+                <CommentIdentityBadges comment={parentComment} />
               </Text>
             </View>
             <View className="mt-1 bg-transparent">
@@ -555,13 +557,16 @@ export default function ReplyDetailScreen() {
       </Reanimated.View>
 
       <CommentActionSheet
-        visible={commentAction !== null}
-        htmlContent={commentAction?.htmlContent ?? null}
-        authorName={commentAction?.authorName ?? null}
-        canDelete={commentAction?.canDelete ?? false}
+        visible={activeCommentAction !== null}
+        htmlContent={activeCommentAction?.htmlContent ?? null}
+        authorName={activeCommentAction?.authorName ?? null}
+        canDelete={activeCommentAction?.canDelete ?? false}
         onDelete={() => {
-          if (commentAction) {
-            requestDelete(commentAction.id, commentAction.returnToParent);
+          if (activeCommentAction) {
+            requestDelete(
+              activeCommentAction.id,
+              activeCommentAction.returnToParent,
+            );
           }
         }}
         onClose={() => setCommentAction(null)}

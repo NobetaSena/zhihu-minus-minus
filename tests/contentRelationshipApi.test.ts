@@ -24,20 +24,22 @@ function response(data: unknown): AxiosResponse<unknown> {
 
 beforeEach(() => get.mockReset());
 
-test.each([
-  'answers',
-  'pins',
-] as const)('fetches the %s relationship using the existing authenticated client', async (contentType) => {
-  get.mockResolvedValue(response({ text: '34 人赞同了该内容' }));
-  const signal = new AbortController().signal;
-  expect(await getContentRelationship(contentType, '42', { signal })).toEqual({
-    text: '34 人赞同了该内容',
-  });
-  expect(get).toHaveBeenCalledWith(
-    `/${contentType}/42/relationship?desktop=true`,
-    { signal },
-  );
-});
+test.each(['answers', 'pins'] as const)(
+  'fetches the %s relationship using the existing authenticated client',
+  async (contentType) => {
+    get.mockResolvedValue(response({ text: '34 人赞同了该内容' }));
+    const signal = new AbortController().signal;
+    expect(await getContentRelationship(contentType, '42', { signal })).toEqual(
+      {
+        text: '34 人赞同了该内容',
+      },
+    );
+    expect(get).toHaveBeenCalledWith(
+      `/${contentType}/42/relationship?desktop=true`,
+      { signal },
+    );
+  },
+);
 
 test('normalizes the tip and projects only recognized response fields', () => {
   const actionUrl =

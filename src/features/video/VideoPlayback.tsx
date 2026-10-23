@@ -1,5 +1,5 @@
-import { useIsFocused } from '@react-navigation/native';
 import { useEvent } from 'expo';
+import { useIsFocused } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet } from 'react-native';
@@ -91,7 +91,7 @@ export function VideoPlayback({ sources, onRetry }: VideoPlaybackProps) {
 const styles = StyleSheet.create({
   player: { flex: 1, width: '100%', backgroundColor: '#000000' },
   loading: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',

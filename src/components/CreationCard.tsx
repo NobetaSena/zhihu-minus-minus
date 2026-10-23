@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { View as NativeView } from 'react-native';
+import { View as NativeView, type ViewInstance } from 'react-native';
 import Animated from 'react-native-reanimated';
 import {
   getContentCollectionMetadata,
@@ -94,7 +94,7 @@ export const CreationCard = React.forwardRef<
     const secondaryColor = useThemeColor({}, 'textSecondary');
     const cardBackground = useThemeColor({}, 'backgroundSecondary');
     const [menuVisible, setMenuVisible] = React.useState(false);
-    const footerRef = React.useRef<NativeView>(null);
+    const footerRef = React.useRef<ViewInstance>(null);
 
     const voteContentType: VoteContentType | null =
       type === 'article'

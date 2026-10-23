@@ -42,7 +42,7 @@ export function PublishingDraftNotice({
       {draft.hasConflict && (
         <View className="bg-transparent">
           <Text type="secondary" className="text-xs">
-            线上回答已变化，请先选择要继续编辑的版本
+            线上内容已变化，请先选择要继续编辑的版本
           </Text>
           <BouncyButton onPress={draft.restoreConflict}>
             <Text type="primary">恢复旧草稿</Text>

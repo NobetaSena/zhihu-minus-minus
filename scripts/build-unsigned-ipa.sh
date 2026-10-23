@@ -7,9 +7,41 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# SDK 58 原生模板需要完整重新生成；仅保留本机 Node/Xcode 环境配置。
+NATIVE_BUILD_TEMP_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/zhihu-ios-build.XXXXXX")"
+XCODE_ENVIRONMENT_BACKUP_READY=false
+PACKAGE_DIRECTORY=""
+restore_xcode_environment() {
+  if [ "$XCODE_ENVIRONMENT_BACKUP_READY" = true ]; then
+    mkdir -p "$PROJECT_ROOT/ios" || return
+    cp -p "$NATIVE_BUILD_TEMP_DIRECTORY/.xcode.env.local" "$PROJECT_ROOT/ios/.xcode.env.local" || return
+    rm "$NATIVE_BUILD_TEMP_DIRECTORY/.xcode.env.local" || return
+    XCODE_ENVIRONMENT_BACKUP_READY=false
+  fi
+}
+cleanup() {
+  local status=$?
+  if restore_xcode_environment; then
+    rm -rf "$NATIVE_BUILD_TEMP_DIRECTORY"
+  else
+    echo "无法恢复本地 Xcode 环境配置，备份保留于 $NATIVE_BUILD_TEMP_DIRECTORY。" >&2
+    status=1
+  fi
+  if [ -n "$PACKAGE_DIRECTORY" ]; then
+    rm -rf "$PACKAGE_DIRECTORY"
+  fi
+  exit "$status"
+}
+trap cleanup EXIT
+if [ -f ios/.xcode.env.local ]; then
+  cp -p ios/.xcode.env.local "$NATIVE_BUILD_TEMP_DIRECTORY/.xcode.env.local"
+  XCODE_ENVIRONMENT_BACKUP_READY=true
+fi
+
 echo "🚀 [1/3] 开始生成 iOS 原生工程 (Expo Prebuild)..."
 # 每次同步配置和本地模块，避免旧生成工程继续链接已移除的依赖。
-npx expo prebuild --platform ios --no-install
+npx expo prebuild --clean --platform ios --no-install
+restore_xcode_environment
 (cd ios && pod install)
 
 shopt -s nullglob
@@ -60,9 +92,9 @@ fi
 
 # 只清理本次临时目录；不删除其他版本 IPA 或用户已有的 Payload。
 PACKAGE_DIRECTORY="$(mktemp -d "$PROJECT_ROOT/build/ipa.XXXXXX")"
-trap 'rm -rf "$PACKAGE_DIRECTORY"' EXIT
 mkdir -p "$PACKAGE_DIRECTORY/Payload"
 cp -R "${APPS[0]}" "$PACKAGE_DIRECTORY/Payload/"
+python3 "$PROJECT_ROOT/scripts/strip-ios-app.py" "$PACKAGE_DIRECTORY/Payload/$(basename "${APPS[0]}")"
 (cd "$PACKAGE_DIRECTORY" && zip -qr "$IPA_NAME" Payload)
 mv "$PACKAGE_DIRECTORY/$IPA_NAME" "$PROJECT_ROOT/$IPA_NAME"
 

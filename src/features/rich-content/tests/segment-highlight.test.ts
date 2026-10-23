@@ -56,9 +56,12 @@ test.each([
   { class: 'prefix-highlight-wrap' },
   { class: 'HIGHLIGHT-WRAP' },
   { class: 'other\u00a0highlight-wrap' },
-])('rejects non-object inputs and non-matching class tokens %j', (attributes) => {
-  assert.equal(parseZhihuSegmentHighlight(attributes), null);
-});
+])(
+  'rejects non-object inputs and non-matching class tokens %j',
+  (attributes) => {
+    assert.equal(parseZhihuSegmentHighlight(attributes), null);
+  },
+);
 
 test('recognizes an exact class token separated by HTML whitespace', () => {
   assert.deepEqual(
@@ -156,24 +159,19 @@ test.each([
   );
 });
 
-test.each([
-  '',
-  'yes',
-  'TRUE',
-  'False',
-  ' true ',
-  '01',
-  '2',
-])('omits invalid boolean spellings %s', (value) => {
-  assert.deepEqual(
-    parseZhihuSegmentHighlight({
-      class: 'highlight-wrap',
-      'data-highlight-is-span': value,
-      'data-highlight-is-like': value,
-    }),
-    {},
-  );
-});
+test.each(['', 'yes', 'TRUE', 'False', ' true ', '01', '2'])(
+  'omits invalid boolean spellings %s',
+  (value) => {
+    assert.deepEqual(
+      parseZhihuSegmentHighlight({
+        class: 'highlight-wrap',
+        'data-highlight-is-span': value,
+        'data-highlight-is-like': value,
+      }),
+      {},
+    );
+  },
+);
 
 test.each([
   '',

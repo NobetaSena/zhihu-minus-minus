@@ -8,6 +8,7 @@ import {
   Image,
   StyleSheet,
   TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import {
   type LocalImageAsset,
@@ -34,7 +35,7 @@ interface SelectedImage {
 interface CommentComposerProps {
   colorScheme: 'light' | 'dark';
   borderColor: string;
-  inputRef: React.RefObject<TextInput | null>;
+  inputRef: React.RefObject<TextInputInstance | null>;
   inputText: string;
   isSubmitting: boolean;
   onChangeText: (text: string) => void;
@@ -256,7 +257,7 @@ export function CommentComposer({
                 {image.status !== 'uploaded' && (
                   <View
                     style={{
-                      ...StyleSheet.absoluteFillObject,
+                      ...StyleSheet.absoluteFill,
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderRadius: 6,

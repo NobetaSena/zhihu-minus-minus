@@ -16,7 +16,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   consumeAppClipboardText('');
   jest.mocked(Clipboard.setStringAsync).mockResolvedValue(true);
-  share.mockResolvedValue({ action: Share.sharedAction });
+  share.mockResolvedValue({
+    action: Share.sharedAction,
+    activityType: undefined,
+  });
 });
 
 test('marks only successfully copied text and consumes its marker once', async () => {

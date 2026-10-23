@@ -22,7 +22,9 @@ const imageDimensions = new Map<string, { width: number; height: number }>();
 function renderCachedImage(props: ImageProps) {
   const { source, onLoad, ...rest } = props;
   const uriSource =
-    typeof source === 'object' && !Array.isArray(source) ? source : undefined;
+    typeof source === 'object' && source !== null && 'uri' in source
+      ? source
+      : undefined;
   const uri = uriSource?.uri;
   let cachedSource = getCachedImageSource(uri);
   if (

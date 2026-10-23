@@ -166,19 +166,19 @@ test('reset restores the static default after selecting a different primary', as
   expect(host.getByRole('radio', { name: '玫瑰红' })).not.toBeChecked();
 });
 
-test.each([
-  'light',
-  'dark',
-] as const)('%s reading background options select the existing stored key', async (scheme) => {
-  mockColorScheme = scheme;
-  const host = await render(<AppearanceSettings />);
-  for (const option of READING_BACKGROUND_OPTIONS) {
-    const swatch = host.getByRole('radio', { name: option.label });
-    await fireEvent.press(swatch);
-    expect(useSettingsStore.getState().readingBackground).toBe(option.value);
-    expect(swatch).toBeChecked();
-  }
-});
+test.each(['light', 'dark'] as const)(
+  '%s reading background options select the existing stored key',
+  async (scheme) => {
+    mockColorScheme = scheme;
+    const host = await render(<AppearanceSettings />);
+    for (const option of READING_BACKGROUND_OPTIONS) {
+      const swatch = host.getByRole('radio', { name: option.label });
+      await fireEvent.press(swatch);
+      expect(useSettingsStore.getState().readingBackground).toBe(option.value);
+      expect(swatch).toBeChecked();
+    }
+  },
+);
 
 async function openColorPicker() {
   const host = await render(<AppearanceSettings />);
@@ -219,54 +219,60 @@ test.each([
   ['hue', 0],
   ['saturation', 1],
   ['lightness', 2],
-] as const)('%s previews while dragging and applies the theme once on release', async (_name, index) => {
-  const host = await openColorPicker();
-  const initialPreview = previewColor(host);
-  const pan = mockPanGestures[index];
-  await gestureEvent(pan, 'begin', 100);
-  await gestureEvent(pan, 'start', 50);
-  await gestureEvent(pan, 'update', 50);
-  const nextPreview = previewColor(host);
-  expect(nextPreview).not.toBe(initialPreview);
-  expect(host.getByLabelText('自定义主题色').props.value).toBe(nextPreview);
-  expect(useSettingsStore.getState().primaryColor).toBe(colors.light.primary);
-  expect(useSettingsStore.getState().updateSettings).not.toHaveBeenCalled();
+] as const)(
+  '%s previews while dragging and applies the theme once on release',
+  async (_name, index) => {
+    const host = await openColorPicker();
+    const initialPreview = previewColor(host);
+    const pan = mockPanGestures[index];
+    await gestureEvent(pan, 'begin', 100);
+    await gestureEvent(pan, 'start', 50);
+    await gestureEvent(pan, 'update', 50);
+    const nextPreview = previewColor(host);
+    expect(nextPreview).not.toBe(initialPreview);
+    expect(host.getByLabelText('自定义主题色').props.value).toBe(nextPreview);
+    expect(useSettingsStore.getState().primaryColor).toBe(colors.light.primary);
+    expect(useSettingsStore.getState().updateSettings).not.toHaveBeenCalled();
 
-  await gestureEvent(pan, 'end', 50);
-  await gestureEvent(pan, 'finalize', 50);
-  expect(useSettingsStore.getState().primaryColor).toBe(nextPreview);
-  expect(host.getByRole('radio', { name: '随主题' })).toHaveStyle({
-    borderColor: nextPreview,
-  });
-  expect(useSettingsStore.getState().updateSettings).toHaveBeenCalledTimes(1);
-});
+    await gestureEvent(pan, 'end', 50);
+    await gestureEvent(pan, 'finalize', 50);
+    expect(useSettingsStore.getState().primaryColor).toBe(nextPreview);
+    expect(host.getByRole('radio', { name: '随主题' })).toHaveStyle({
+      borderColor: nextPreview,
+    });
+    expect(useSettingsStore.getState().updateSettings).toHaveBeenCalledTimes(1);
+  },
+);
 
 test.each([
   [160, false],
   [164, true],
-] as const)('a tap ending at %i applies its color even when the failed pan finalizes afterward: %s', async (endX, panFinishesLast) => {
-  const host = await openColorPicker();
-  const initialPreview = previewColor(host);
-  const pan = mockPanGestures[0];
-  const tap = mockTapGestures[0];
-  await gestureEvent(pan, 'begin', 160);
-  expect(previewColor(host)).toBe(initialPreview);
-  await gestureEvent(tap, 'begin', 160);
-  if (!panFinishesLast) await gestureEvent(pan, 'finalize', endX, false);
-  await gestureEvent(tap, 'end', endX);
-  await gestureEvent(tap, 'finalize', endX);
-  if (panFinishesLast) await gestureEvent(pan, 'finalize', endX, false);
+] as const)(
+  'a tap ending at %i applies its color even when the failed pan finalizes afterward: %s',
+  async (endX, panFinishesLast) => {
+    const host = await openColorPicker();
+    const initialPreview = previewColor(host);
+    const pan = mockPanGestures[0];
+    const tap = mockTapGestures[0];
+    await gestureEvent(pan, 'begin', 160);
+    expect(previewColor(host)).toBe(initialPreview);
+    await gestureEvent(tap, 'begin', 160);
+    if (!panFinishesLast) await gestureEvent(pan, 'finalize', endX, false);
+    await gestureEvent(tap, 'end', endX);
+    await gestureEvent(tap, 'finalize', endX);
+    if (panFinishesLast) await gestureEvent(pan, 'finalize', endX, false);
 
-  const applied = useSettingsStore.getState().primaryColor;
-  if (applied === null) throw new Error('The tap did not commit a color');
-  expect(applied).not.toBe(colors.light.primary);
-  expect(previewColor(host)).toBe(applied);
-  expect(host.getByLabelText('自定义主题色').props.value).toBe(applied);
-  expect(host.getByRole('radio', { name: '随主题' })).toHaveStyle({
-    borderColor: applied,
-  });
-  expect(useSettingsStore.getState().updateSettings).toHaveBeenCalledTimes(1);
-});
+    const applied = useSettingsStore.getState().primaryColor;
+    if (applied === null) throw new Error('The tap did not commit a color');
+    expect(applied).not.toBe(colors.light.primary);
+    expect(previewColor(host)).toBe(applied);
+    expect(host.getByLabelText('自定义主题色').props.value).toBe(applied);
+    expect(host.getByRole('radio', { name: '随主题' })).toHaveStyle({
+      borderColor: applied,
+    });
+    expect(useSettingsStore.getState().updateSettings).toHaveBeenCalledTimes(1);
+  },
+);
 
 test('canceling an active drag restores its preview without applying a color', async () => {
   const host = await openColorPicker();

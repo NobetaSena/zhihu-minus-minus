@@ -282,39 +282,38 @@ describe('feed context-menu preview transitions', () => {
     await menu.unmount();
   });
 
-  it.each([
-    'identity',
-    'hidden',
-    'unmounted',
-  ] as const)('cancels a queued preview action when the original menu is %s', async (change) => {
-    const action = jest.fn();
-    const onClose = jest.fn();
-    const props = {
-      visible: true,
-      contentIdentity: 'answer:first',
-      onClose,
-      previewContent: React.createElement(Text, null, '预览正文'),
-      options: [
-        { key: 'copy', title: '复制链接', icon: 'copy', onPress: action },
-      ],
-    };
-    const menu = await render(React.createElement(CustomContextMenu, props));
-    await fireEvent.press(screen.getByRole('button', { name: '复制链接' }));
-    const completion = jest.mocked(withTiming).mock.calls.at(-1)?.[2];
-    if (change === 'unmounted') await menu.unmount();
-    else {
-      await menu.rerender(
-        React.createElement(CustomContextMenu, {
-          ...props,
-          ...(change === 'identity'
-            ? { contentIdentity: 'answer:next' }
-            : { visible: false }),
-        }),
-      );
-      await menu.rerender(React.createElement(CustomContextMenu, props));
-    }
-    await act(() => completion?.(true));
-    expect(action).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-  });
+  it.each(['identity', 'hidden', 'unmounted'] as const)(
+    'cancels a queued preview action when the original menu is %s',
+    async (change) => {
+      const action = jest.fn();
+      const onClose = jest.fn();
+      const props = {
+        visible: true,
+        contentIdentity: 'answer:first',
+        onClose,
+        previewContent: React.createElement(Text, null, '预览正文'),
+        options: [
+          { key: 'copy', title: '复制链接', icon: 'copy', onPress: action },
+        ],
+      };
+      const menu = await render(React.createElement(CustomContextMenu, props));
+      await fireEvent.press(screen.getByRole('button', { name: '复制链接' }));
+      const completion = jest.mocked(withTiming).mock.calls.at(-1)?.[2];
+      if (change === 'unmounted') await menu.unmount();
+      else {
+        await menu.rerender(
+          React.createElement(CustomContextMenu, {
+            ...props,
+            ...(change === 'identity'
+              ? { contentIdentity: 'answer:next' }
+              : { visible: false }),
+          }),
+        );
+        await menu.rerender(React.createElement(CustomContextMenu, props));
+      }
+      await act(() => completion?.(true));
+      expect(action).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -13,16 +13,17 @@ let mockAccount = { me: { id: 'A', url_token: 'a' }, cookies: 'synthetic' };
 let mockVersion = 0;
 let mockPrevent: {
   enabled: boolean;
-  callback: (event: { data: { action: object } }) => void;
+  callback: (event: { repeat: () => void }) => void;
 };
-const mockDispatch = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ dispatch: mockDispatch }),
+const mockRepeat = jest.fn();
+const mockDisablePrevention = jest.fn();
+jest.mock('expo-router', () => ({
   usePreventRemove: (
     enabled: boolean,
     callback: typeof mockPrevent.callback,
   ) => {
     mockPrevent = { enabled, callback };
+    return mockDisablePrevention;
   },
 }));
 jest.mock('../src/store/useAuthStore', () => ({
@@ -96,28 +97,61 @@ test('save failure prevents leaving, and a successful retry permits the original
     .mockRejectedValueOnce(new Error('synthetic disk failure'))
     .mockResolvedValueOnce(undefined);
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  const action = { type: 'GO_BACK' };
-  await act(() => mockPrevent.callback({ data: { action } }));
+  await act(() => mockPrevent.callback({ repeat: mockRepeat }));
   await act(async () => {
     alert.mock.calls[0][2]
       ?.find((button) => button.text === '保存并离开')
       ?.onPress?.();
   });
-  expect(mockDispatch).not.toHaveBeenCalled();
+  expect(mockRepeat).not.toHaveBeenCalled();
+  expect(mockPrevent.enabled).toBe(true);
   expect(host.result.current.status).toBe('failed');
-  await act(() => mockPrevent.callback({ data: { action } }));
+  await act(() => mockPrevent.callback({ repeat: mockRepeat }));
   await act(async () => {
     alert.mock.calls[1][2]
       ?.find((button) => button.text === '保存并离开')
       ?.onPress?.();
   });
-  expect(mockDispatch).toHaveBeenCalledWith(action);
+  expect(mockRepeat).toHaveBeenCalledTimes(1);
+  expect(mockPrevent.enabled).toBe(false);
   expect(publishingDraftRepository.save).toHaveBeenLastCalledWith(
     expect.objectContaining({ accountKey: 'id:A' }),
     expect.objectContaining({ title: '合成问题草稿' }),
   );
   alert.mockRestore();
   await host.unmount();
+});
+
+test('discard repeats the blocked navigation only after cleanup succeeds', async () => {
+  const host = await renderHook(() => usePublishingDraft('article', 'new'));
+  await waitFor(() => expect(host.result.current.ready).toBe(true));
+  await act(() =>
+    host.result.current.update({ content: '确认放弃的合成草稿' }),
+  );
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  let finishCleanup: () => void = () => {};
+  jest.mocked(publishingDraftRepository.remove).mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finishCleanup = resolve;
+      }),
+  );
+  await act(() => mockPrevent.callback({ repeat: mockRepeat }));
+  await act(() => {
+    alert.mock.calls[0][2]
+      ?.find((button) => button.text === '放弃草稿')
+      ?.onPress?.();
+  });
+  expect(mockPrevent.enabled).toBe(true);
+  expect(mockRepeat).not.toHaveBeenCalled();
+  await act(() => mockPrevent.callback({ repeat: mockRepeat }));
+  expect(mockRepeat).not.toHaveBeenCalled();
+  await act(() => finishCleanup());
+  expect(mockPrevent.enabled).toBe(false);
+  expect(mockRepeat).toHaveBeenCalledTimes(1);
+  alert.mockRestore();
+  await host.unmount();
+  expect(publishingDraftRepository.save).not.toHaveBeenCalled();
 });
 
 test('old base revision requires explicit restoration instead of silently replacing the current answer', async () => {
@@ -164,6 +198,8 @@ test('published submissions remain successful when local draft cleanup fails', a
     .mocked(publishingDraftRepository.remove)
     .mockRejectedValueOnce(new Error('synthetic disk failure'));
   await act(() => host.result.current.completePublished());
+  expect(mockDisablePrevention).toHaveBeenCalledTimes(1);
+  expect(mockPrevent.enabled).toBe(false);
   expect(showToast).toHaveBeenCalledWith(
     '发布已成功，但本地草稿清理失败，请勿重复发布',
   );
@@ -270,12 +306,10 @@ test('pending server submission blocks departure until the result has been confi
   );
   await waitFor(() => expect(host.result.current.ready).toBe(true));
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  await act(() =>
-    mockPrevent.callback({ data: { action: { type: 'GO_BACK' } } }),
-  );
+  await act(() => mockPrevent.callback({ repeat: mockRepeat }));
   expect(mockPrevent.enabled).toBe(true);
   expect(alert).toHaveBeenCalledWith('正在提交', expect.any(String));
-  expect(mockDispatch).not.toHaveBeenCalled();
+  expect(mockRepeat).not.toHaveBeenCalled();
   expect(publishingDraftRepository.remove).not.toHaveBeenCalled();
   await host.rerender({ submitting: false });
   expect(mockPrevent.enabled).toBe(false);
@@ -322,9 +356,7 @@ test('a previous account confirmation cannot discard a draft or navigate the new
   await waitFor(() => expect(host.result.current.ready).toBe(true));
   await act(() => host.result.current.update({ content: '账号 A 待确认草稿' }));
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  await act(() =>
-    mockPrevent.callback({ data: { action: { type: 'GO_BACK' } } }),
-  );
+  await act(() => mockPrevent.callback({ repeat: mockRepeat }));
   const discard = alert.mock.calls[0][2]?.find(
     (button) => button.text === '放弃草稿',
   );
@@ -334,7 +366,33 @@ test('a previous account confirmation cannot discard a draft or navigate the new
   await waitFor(() => expect(host.result.current.ready).toBe(true));
   await act(async () => discard?.onPress?.());
   expect(publishingDraftRepository.remove).not.toHaveBeenCalled();
-  expect(mockDispatch).not.toHaveBeenCalled();
+  expect(mockRepeat).not.toHaveBeenCalled();
   alert.mockRestore();
+  await host.unmount();
+});
+
+test('a previous account publication cannot disable the current draft departure guard', async () => {
+  const host = await renderHook(
+    (_props: { revision: number }) => usePublishingDraft('article', 'new'),
+    { initialProps: { revision: 0 } },
+  );
+  await waitFor(() => expect(host.result.current.ready).toBe(true));
+  const completePreviousPublication = host.result.current.completePublished;
+  mockAccount = { me: { id: 'B', url_token: 'b' }, cookies: 'synthetic-next' };
+  mockVersion += 1;
+  await host.rerender({ revision: 1 });
+  await waitFor(() => expect(host.result.current.ready).toBe(true));
+  await act(() => host.result.current.update({ content: '账号 B 的新草稿' }));
+  await act(() => completePreviousPublication());
+  expect(mockPrevent.enabled).toBe(true);
+  expect(mockDisablePrevention).not.toHaveBeenCalled();
+  expect(publishingDraftRepository.remove).toHaveBeenCalledWith(
+    expect.objectContaining({ accountKey: 'id:A' }),
+  );
+  await act(() => host.result.current.save());
+  expect(publishingDraftRepository.save).toHaveBeenLastCalledWith(
+    expect.objectContaining({ accountKey: 'id:B' }),
+    expect.objectContaining({ content: '账号 B 的新草稿' }),
+  );
   await host.unmount();
 });

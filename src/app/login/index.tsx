@@ -276,7 +276,7 @@ export default function LoginScreen() {
           pointerEvents="none"
           className="justify-center items-center"
           style={{
-            ...StyleSheet.absoluteFillObject,
+            ...StyleSheet.absoluteFill,
             backgroundColor: 'rgba(0,0,0,0.3)',
           }}
         >

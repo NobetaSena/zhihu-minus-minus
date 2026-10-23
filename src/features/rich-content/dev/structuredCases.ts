@@ -34,6 +34,9 @@ for (const [name, asset] of [
   ['sunset', sunset],
   ['aurora', aurora],
 ] as const) {
+  if (!asset) {
+    throw new Error('Structured content fixture image is unavailable.');
+  }
   const url = `https://example.invalid/images/${name}.png`;
   resources[url] = {
     mediaType: 'image',

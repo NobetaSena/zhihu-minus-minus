@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useIsFocused } from '@react-navigation/native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import {
   type InfiniteData,
@@ -8,7 +7,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import React, {
   useCallback,
   useEffect,
@@ -22,11 +21,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import {
-  Gesture,
-  GestureDetector,
-  type NativeGesture,
-} from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import PagerView, {
   type PagerViewOnPageScrollEvent,
 } from 'react-native-pager-view';
@@ -69,6 +64,7 @@ import { hasReusableAnswerDetail } from '@/features/rich-content';
 import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
+import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
 import { useScopedAsyncValue } from '@/hooks/useScopedAsyncValue';
 import {
   type FeedCacheContext,
@@ -126,7 +122,7 @@ type TabType = (typeof TABS)[number];
 type FeedTabType = keyof typeof FEED_URLS;
 type FeedListItem = FeedItem | HotItem | CollapsedGroup;
 interface FeedPage {
-  items: FeedListItem[];
+  items: Array<FeedItem | HotItem>;
   nextUrl: string | null;
   readTouchBatch: FeedReadTouchBatch | null;
 }
@@ -832,7 +828,7 @@ const FeedList = React.forwardRef<
     isActive: boolean;
     insets: EdgeInsets;
     guestCookieReady: boolean;
-    pagerGesture: NativeGesture;
+    pagerGesture: ReturnType<typeof Gesture.Native>;
     onRecentMomentsInteractionChange?: (interacting: boolean) => void;
     topNavOffset: SharedValue<number>;
     bottomNavOffset: SharedValue<number>;
@@ -894,6 +890,9 @@ const FeedList = React.forwardRef<
       [cookies, me],
     );
     const queryAccountKey = localAccountKey ?? 'authenticated-pending';
+    const { markUninterested, filterRecommendations } = useRecommendFeedback(
+      tab === 'recommend' && cookies ? localAccountKey : null,
+    );
     const localDedupEnabled =
       enableLocalFeedDedup &&
       supportsLocalFeedDedup(tab) &&
@@ -983,8 +982,9 @@ const FeedList = React.forwardRef<
         context: FeedCacheContext,
       ): Promise<InfiniteData<FeedPage, string> | null> => {
         try {
-          const cached =
-            await feedCacheRepository.getFeedCache<FeedListItem>(context);
+          const cached = await feedCacheRepository.getFeedCache<
+            FeedItem | HotItem
+          >(context);
           return cached && cached.items.length > 0
             ? {
                 // Disk cache contains truncated parsed cards, not an API batch.
@@ -1096,6 +1096,8 @@ const FeedList = React.forwardRef<
         );
         const isInitialUrl = pageParam === FEED_URLS[tab];
         const data = await getFeed(requestUrl, { signal });
+        if (sessionVersion !== getAuthSessionVersion())
+          throw new Error('登录状态已改变');
         const rawItems = data.data || [];
         seedAnswerDetailsFromFeed(queryClient, rawItems);
         let items: Array<FeedItem | HotItem>;
@@ -1113,6 +1115,7 @@ const FeedList = React.forwardRef<
           );
 
         const nextUrl = getFeedNextUrl(data.paging);
+        if (tab === 'recommend') items = filterRecommendations(items);
 
         if (launchCacheContext && isInitialUrl && items.length > 0) {
           void feedCacheRepository
@@ -1134,7 +1137,15 @@ const FeedList = React.forwardRef<
       // keep an empty screen loading for up to a minute (2 endpoints x 3 runs).
       retry: isGuestRecommend ? false : shouldRetryQuery,
       retryOnMount: !isGuestRecommend,
-      initialData: initialFeedCache ?? undefined,
+      initialData: initialFeedCache
+        ? () => ({
+            ...initialFeedCache,
+            pages: initialFeedCache.pages.map((page) => ({
+              ...page,
+              items: filterRecommendations(page.items),
+            })),
+          })
+        : undefined,
       staleTime: launchCacheContext && initialFeedCache ? 5 * 60 * 1000 : 0,
       enabled:
         (!!cookies || guestCookieReady) &&
@@ -1396,7 +1407,15 @@ const FeedList = React.forwardRef<
               // hot tab 的 data 只含 HotItem，其余 tab 只含 FeedItem（折叠行已在上层排除）。
               <HotCard item={item as HotItem} />
             ) : (
-              <FeedCard item={item as FeedItem} tab={tab} />
+              <FeedCard
+                item={item as FeedItem}
+                tab={tab}
+                onUninterested={
+                  tab === 'recommend' && cookies && localAccountKey
+                    ? markUninterested
+                    : undefined
+                }
+              />
             );
           }}
           ListHeaderComponent={

@@ -133,64 +133,67 @@ describe('prototype HTML to ZhihuDocument normalization', () => {
     ).toBe(latex);
   });
 
-  it.each([
-    '/equation?tex=x',
-    '//www.zhihu.com/equation?tex=x',
-  ])('normalizes a relative equation image URL without losing surrounding text (%s)', (url) => {
-    const { document, diagnostics } = normalize(
-      `<p>前<img src="${url}">后</p>`,
-    );
-    expect(document.blocks).toHaveLength(1);
-    expect([...walkZhihuDocument(document)]).toContainEqual(
-      expect.objectContaining({
-        type: 'inlineFormula',
-        formula: {
-          latex: 'x',
-          image: {
-            mediaType: 'image',
-            url: 'https://www.zhihu.com/equation?tex=x',
+  it.each(['/equation?tex=x', '//www.zhihu.com/equation?tex=x'])(
+    'normalizes a relative equation image URL without losing surrounding text (%s)',
+    (url) => {
+      const { document, diagnostics } = normalize(
+        `<p>前<img src="${url}">后</p>`,
+      );
+      expect(document.blocks).toHaveLength(1);
+      expect([...walkZhihuDocument(document)]).toContainEqual(
+        expect.objectContaining({
+          type: 'inlineFormula',
+          formula: {
+            latex: 'x',
+            image: {
+              mediaType: 'image',
+              url: 'https://www.zhihu.com/equation?tex=x',
+            },
           },
-        },
-      }),
-    );
-    const part = compileZhihuDocument(document, {
-      fontSize: 17,
-      lineHeight: 25.5,
-    }).parts[0];
-    expect(part.type === 'flow' && part.flow.text).toBe('前\uFFFC后');
-    expect(diagnostics).toEqual([]);
-  });
+        }),
+      );
+      const part = compileZhihuDocument(document, {
+        fontSize: 17,
+        lineHeight: 25.5,
+      }).parts[0];
+      expect(part.type === 'flow' && part.flow.text).toBe('前\uFFFC后');
+      expect(diagnostics).toEqual([]);
+    },
+  );
 
   it.each([
     'https://[broken/equation?tex=x',
     'https://%zz/equation?tex=x',
     'equation?tex=x',
     'javascript:equation?tex=x',
-  ])('keeps visible formula fallbacks for invalid resource URLs (%s)', (url) => {
-    const { document, diagnostics } = normalize(
-      `<p>前<img eeimg="1" src="${url}" alt="x">后</p><img eeimg="2" src="${url}">`,
-    );
-    const nodes = [...walkZhihuDocument(document)];
-    expect(nodes.filter((node) => node.type === 'unsupported')).toEqual([
-      expect.objectContaining({ fallbackText: '[图片：x]' }),
-      expect.objectContaining({ fallbackText: '[图片不可用]' }),
-    ]);
-    const parts = compileZhihuDocument(document, {
-      fontSize: 17,
-      lineHeight: 25.5,
-    }).parts;
-    expect(parts[0].type === 'flow' && parts[0].flow.text).toBe(
-      '前[图片：x]后',
-    );
-    expect(parts[1]).toMatchObject({
-      type: 'block',
-      block: { type: 'unsupported', fallbackText: '[图片不可用]' },
-    });
-    expect(diagnostics).toEqual([
-      { kind: 'unsafe-url', sourceType: 'img' },
-      { kind: 'unsafe-url', sourceType: 'img' },
-    ]);
-  });
+  ])(
+    'keeps visible formula fallbacks for invalid resource URLs (%s)',
+    (url) => {
+      const { document, diagnostics } = normalize(
+        `<p>前<img eeimg="1" src="${url}" alt="x">后</p><img eeimg="2" src="${url}">`,
+      );
+      const nodes = [...walkZhihuDocument(document)];
+      expect(nodes.filter((node) => node.type === 'unsupported')).toEqual([
+        expect.objectContaining({ fallbackText: '[图片：x]' }),
+        expect.objectContaining({ fallbackText: '[图片不可用]' }),
+      ]);
+      const parts = compileZhihuDocument(document, {
+        fontSize: 17,
+        lineHeight: 25.5,
+      }).parts;
+      expect(parts[0].type === 'flow' && parts[0].flow.text).toBe(
+        '前[图片：x]后',
+      );
+      expect(parts[1]).toMatchObject({
+        type: 'block',
+        block: { type: 'unsupported', fallbackText: '[图片不可用]' },
+      });
+      expect(diagnostics).toEqual([
+        { kind: 'unsafe-url', sourceType: 'img' },
+        { kind: 'unsafe-url', sourceType: 'img' },
+      ]);
+    },
+  );
 
   it('promotes only synthetic MathJax display constructs while preserving matrix, grouped and commented row separators', () => {
     const display = [
@@ -226,54 +229,58 @@ describe('prototype HTML to ZhihuDocument normalization', () => {
     }
   });
 
-  it.each([
-    '',
-    'eeimg="1"',
-    'emimg="2"',
-  ])('keeps a short formula inline in its own paragraph or at the document root (%s)', (attributes) => {
-    for (const html of [
-      `<p><strong><span><img ${attributes} src="/equation?tex=x"></span></strong></p>`,
-      `<img ${attributes} src="/equation?tex=x">`,
-    ]) {
-      const { document } = normalize(html);
-      expect(document.blocks.map((block) => block.type)).toEqual(['paragraph']);
-      expect(
-        [...walkZhihuDocument(document)].filter(
-          (node) => node.type === 'inlineFormula',
-        ),
-      ).toHaveLength(1);
-    }
-  });
+  it.each(['', 'eeimg="1"', 'emimg="2"'])(
+    'keeps a short formula inline in its own paragraph or at the document root (%s)',
+    (attributes) => {
+      for (const html of [
+        `<p><strong><span><img ${attributes} src="/equation?tex=x"></span></strong></p>`,
+        `<img ${attributes} src="/equation?tex=x">`,
+      ]) {
+        const { document } = normalize(html);
+        expect(document.blocks.map((block) => block.type)).toEqual([
+          'paragraph',
+        ]);
+        expect(
+          [...walkZhihuDocument(document)].filter(
+            (node) => node.type === 'inlineFormula',
+          ),
+        ).toHaveLength(1);
+      }
+    },
+  );
 
   it.each([
     ['<ul><li>', '</li></ul>'],
     ['<blockquote>', '</blockquote>'],
     ['<div>', '</div>'],
     ['', ''],
-  ])('keeps bare-container short formulas in the surrounding sentence (%s)', (opening, closing) => {
-    const { document } = normalize(
-      `${opening}矩阵 <img eeimg="1" src="/equation?tex=A"> 的幂 <img src="/equation?tex=A%5En"> 仍在原句${closing}`,
-    );
-    const paragraphs = [...walkZhihuDocument(document)].filter(
-      (node) => node.type === 'paragraph',
-    );
-    expect(paragraphs).toHaveLength(1);
-    expect(paragraphs[0].children.map((node) => node.type)).toEqual([
-      'text',
-      'inlineFormula',
-      'text',
-      'inlineFormula',
-      'text',
-    ]);
-    const parts = compileZhihuDocument(document, {
-      fontSize: 17,
-      lineHeight: 25.5,
-    }).parts;
-    expect(parts).toHaveLength(1);
-    expect(parts[0].type === 'flow' && parts[0].flow.text).toBe(
-      `${opening.includes('<li>') ? '• ' : ''}矩阵 \uFFFC 的幂 \uFFFC 仍在原句`,
-    );
-  });
+  ])(
+    'keeps bare-container short formulas in the surrounding sentence (%s)',
+    (opening, closing) => {
+      const { document } = normalize(
+        `${opening}矩阵 <img eeimg="1" src="/equation?tex=A"> 的幂 <img src="/equation?tex=A%5En"> 仍在原句${closing}`,
+      );
+      const paragraphs = [...walkZhihuDocument(document)].filter(
+        (node) => node.type === 'paragraph',
+      );
+      expect(paragraphs).toHaveLength(1);
+      expect(paragraphs[0].children.map((node) => node.type)).toEqual([
+        'text',
+        'inlineFormula',
+        'text',
+        'inlineFormula',
+        'text',
+      ]);
+      const parts = compileZhihuDocument(document, {
+        fontSize: 17,
+        lineHeight: 25.5,
+      }).parts;
+      expect(parts).toHaveLength(1);
+      expect(parts[0].type === 'flow' && parts[0].flow.text).toBe(
+        `${opening.includes('<li>') ? '• ' : ''}矩阵 \uFFFC 的幂 \uFFFC 仍在原句`,
+      );
+    },
+  );
 
   it('still lifts actual display formulas and ordinary block pictures from bare list items', () => {
     const { document } = normalize(
@@ -409,16 +416,19 @@ describe('prototype HTML to ZhihuDocument normalization', () => {
   it.each([
     '<span><img data-original-src="https://example.com/nested-cover.png"></span>',
     '<span><img data-actualsrc="javascript:alert(1)" src="https://example.com/nested-cover.png"></span>',
-  ])('keeps nested lazy video covers and skips unsafe candidates: %s', (image) => {
-    const { document } = normalize(
-      `<a class="video-box" data-lens-id="101">${image}</a>`,
-    );
-    expect(document.blocks[0]).toMatchObject({
-      type: 'video',
-      lensId: '101',
-      poster: { url: 'https://example.com/nested-cover.png' },
-    });
-  });
+  ])(
+    'keeps nested lazy video covers and skips unsafe candidates: %s',
+    (image) => {
+      const { document } = normalize(
+        `<a class="video-box" data-lens-id="101">${image}</a>`,
+      );
+      expect(document.blocks[0]).toMatchObject({
+        type: 'video',
+        lensId: '101',
+        poster: { url: 'https://example.com/nested-cover.png' },
+      });
+    },
+  );
 
   it('uses a video-box thumbnail before its child placeholder', () => {
     const { document } = normalize(

@@ -94,13 +94,16 @@ describe('feed regex matching', () => {
   test.each([
     [50, true],
     [51, false],
-  ])('matches the requested short-answer boundary at %i characters', (length, matches) => {
-    expect(
-      matchesFeedRegex(item({ content: `<p>${'字'.repeat(length)}</p>` }), [
-        SHORT_BODY_PATTERN,
-      ]),
-    ).toBe(matches);
-  });
+  ])(
+    'matches the requested short-answer boundary at %i characters',
+    (length, matches) => {
+      expect(
+        matchesFeedRegex(item({ content: `<p>${'字'.repeat(length)}</p>` }), [
+          SHORT_BODY_PATTERN,
+        ]),
+      ).toBe(matches);
+    },
+  );
 
   test('matches the complete body without adding the title or short excerpt', () => {
     expect(
@@ -258,18 +261,21 @@ describe('feed filter rule integration', () => {
   test.each<Partial<FeedItem>>([
     { isFollowingAuthor: true },
     { upvotedByFollowee: true },
-  ])('keeps followed content ahead of ad, regex and quality rules: %j', (relationship) => {
-    expect(
-      evaluateFeedItem(
-        item({ answerType: 'PAID', voteCount: 0, ...relationship }),
-        rules({
-          blockPaid: true,
-          regexPatterns: [SHORT_BODY_PATTERN],
-          enableQuality: true,
-        }),
-      ).reason,
-    ).toBeNull();
-  });
+  ])(
+    'keeps followed content ahead of ad, regex and quality rules: %j',
+    (relationship) => {
+      expect(
+        evaluateFeedItem(
+          item({ answerType: 'PAID', voteCount: 0, ...relationship }),
+          rules({
+            blockPaid: true,
+            regexPatterns: [SHORT_BODY_PATTERN],
+            enableQuality: true,
+          }),
+        ).reason,
+      ).toBeNull();
+    },
+  );
 
   test('allows an exemption to be turned off and preserves ad priority', () => {
     expect(
@@ -376,16 +382,19 @@ describe('bounded RE2 feed rules', () => {
     '(?<word>广告)\\k<word>',
     String.raw`\u{1F600}`,
     String.raw`\u4E2D`,
-  ])('rejects unsupported syntax instead of falling back or changing its meaning: %s', (pattern) => {
-    expect(normalizeFeedRegexPatterns([pattern])).toEqual([]);
-    expect(parseFeedRegexInput(pattern)).toEqual({
-      patterns: [],
-      invalidLines: [1],
-    });
-    expect(
-      matchesFeedRegex(item({ content: '广告推广广告😀中' }), [pattern]),
-    ).toBe(false);
-  });
+  ])(
+    'rejects unsupported syntax instead of falling back or changing its meaning: %s',
+    (pattern) => {
+      expect(normalizeFeedRegexPatterns([pattern])).toEqual([]);
+      expect(parseFeedRegexInput(pattern)).toEqual({
+        patterns: [],
+        invalidLines: [1],
+      });
+      expect(
+        matchesFeedRegex(item({ content: '广告推广广告😀中' }), [pattern]),
+      ).toBe(false);
+    },
+  );
 
   test('accepts RE2 Unicode classes and hexadecimal code-point escapes', () => {
     const han = String.raw`^\p{Han}+$`;

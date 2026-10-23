@@ -88,24 +88,24 @@ test('retains an actionable cause, build, location and fixed context without run
   if (safe) expect(sanitizeSentryEvent(safe, build)).toEqual(safe);
 });
 
-test.each([
-  'android',
-  'ios',
-] as const)('%s events use the release and dist of the native upload instead of incoming metadata', (platform) => {
-  const safe = sanitizeSentryEvent<Event>(
-    { release: 'synthetic-private-value', dist: 'synthetic-private-value' },
-    { ...build, platform },
-  );
-  expect(safe).toMatchObject({
-    release: 'com.example.zhihu@0.9.2+37',
-    dist: '37',
-  });
-  expect(JSON.stringify(safe)).not.toContain('synthetic-private-value');
-  expect(getSentryBuildIdentity({ ...build, platform })).toEqual({
-    release: safe?.release,
-    dist: safe?.dist,
-  });
-});
+test.each(['android', 'ios'] as const)(
+  '%s events use the release and dist of the native upload instead of incoming metadata',
+  (platform) => {
+    const safe = sanitizeSentryEvent<Event>(
+      { release: 'synthetic-private-value', dist: 'synthetic-private-value' },
+      { ...build, platform },
+    );
+    expect(safe).toMatchObject({
+      release: 'com.example.zhihu@0.9.2+37',
+      dist: '37',
+    });
+    expect(JSON.stringify(safe)).not.toContain('synthetic-private-value');
+    expect(getSentryBuildIdentity({ ...build, platform })).toEqual({
+      release: safe?.release,
+      dist: safe?.dist,
+    });
+  },
+);
 
 test.each([
   { applicationId: 'https://private.invalid/session' },

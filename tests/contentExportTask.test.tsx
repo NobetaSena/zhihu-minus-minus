@@ -181,40 +181,40 @@ test('late source details cannot replace the selected content after reopening', 
   expect(host.result.current.source?.target.id).toBe('456');
 });
 
-test.each([
-  'html',
-  'markdown',
-] as const)('embeds partial-body and missing-image warnings after explicit %s continuation', async (format) => {
-  jest.mocked(resolveExportSource).mockResolvedValue({
-    ...source(),
-    completeness: 'partial',
-    warnings: ['正文尚未完整获取'],
-  });
-  jest.mocked(prepareExportAssets).mockResolvedValue({
-    ...assets,
-    offline: false,
-    warnings: ['1 个图片资源未能获取'],
-  });
-  const host = await setup();
-  await act(async () => {
-    await host.result.current.generate(format, options);
-  });
-  expect(host.result.current.missing).toEqual(['1 个图片资源未能获取']);
-  expect(writeTextExport).not.toHaveBeenCalled();
-  await act(async () => {
-    host.result.current.continueWithoutImages();
-  });
-  await waitFor(() => expect(host.result.current.result).not.toBeNull());
-  const request = jest.mocked(writeTextExport).mock.calls[0][0];
-  expect(JSON.parse(request.content)).toMatchObject({
-    completeness: 'partial',
-    warnings: ['正文尚未完整获取', '1 个图片资源未能获取'],
-  });
-  expect(request.warnings).toEqual([
-    '正文尚未完整获取',
-    '1 个图片资源未能获取',
-  ]);
-});
+test.each(['html', 'markdown'] as const)(
+  'embeds partial-body and missing-image warnings after explicit %s continuation',
+  async (format) => {
+    jest.mocked(resolveExportSource).mockResolvedValue({
+      ...source(),
+      completeness: 'partial',
+      warnings: ['正文尚未完整获取'],
+    });
+    jest.mocked(prepareExportAssets).mockResolvedValue({
+      ...assets,
+      offline: false,
+      warnings: ['1 个图片资源未能获取'],
+    });
+    const host = await setup();
+    await act(async () => {
+      await host.result.current.generate(format, options);
+    });
+    expect(host.result.current.missing).toEqual(['1 个图片资源未能获取']);
+    expect(writeTextExport).not.toHaveBeenCalled();
+    await act(async () => {
+      host.result.current.continueWithoutImages();
+    });
+    await waitFor(() => expect(host.result.current.result).not.toBeNull());
+    const request = jest.mocked(writeTextExport).mock.calls[0][0];
+    expect(JSON.parse(request.content)).toMatchObject({
+      completeness: 'partial',
+      warnings: ['正文尚未完整获取', '1 个图片资源未能获取'],
+    });
+    expect(request.warnings).toEqual([
+      '正文尚未完整获取',
+      '1 个图片资源未能获取',
+    ]);
+  },
+);
 
 test('a finished result context becomes unusable on account change and after closing and reopening', async () => {
   const host = await setup();

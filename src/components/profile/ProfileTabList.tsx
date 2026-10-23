@@ -8,7 +8,10 @@ import {
   useLayoutEffect,
   useRef,
 } from 'react';
-import { ActivityIndicator, type View as NativeView } from 'react-native';
+import {
+  ActivityIndicator,
+  type ViewInstance as NativeView,
+} from 'react-native';
 import Reanimated, {
   runOnJS,
   type SharedValue,

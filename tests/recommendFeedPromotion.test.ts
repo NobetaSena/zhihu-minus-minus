@@ -79,21 +79,21 @@ describe('recommendation promotion metadata', () => {
     { type: 'article', encoding: 'object', extra: promotion },
     { type: 'answer', encoding: 'JSON', extra: JSON.stringify(promotion) },
     { type: 'answer', encoding: 'object', extra: promotion },
-  ])('filters an unlabeled $type with $encoding promotion metadata', ({
-    type,
-    extra,
-  }) => {
-    const item = parsedItem(extra, { type });
+  ])(
+    'filters an unlabeled $type with $encoding promotion metadata',
+    ({ type, extra }) => {
+      const item = parsedItem(extra, { type });
 
-    expect(item).toMatchObject({
-      isAdPromotion: true,
-      isLabeled: false,
-      isAdvertiser: false,
-      isFollowingAuthor: false,
-    });
-    expect(item).not.toHaveProperty('promotion_extra');
-    expect(evaluateFeedItem(item, rules())).toEqual(promotionVerdict);
-  });
+      expect(item).toMatchObject({
+        isAdPromotion: true,
+        isLabeled: false,
+        isAdvertiser: false,
+        isFollowingAuthor: false,
+      });
+      expect(item).not.toHaveProperty('promotion_extra');
+      expect(evaluateFeedItem(item, rules())).toEqual(promotionVerdict);
+    },
+  );
 
   test.each<[string, unknown]>([
     ['missing', undefined],
