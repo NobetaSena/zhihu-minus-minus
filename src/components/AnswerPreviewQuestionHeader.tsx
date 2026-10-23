@@ -11,7 +11,11 @@ import {
   unfollowQuestion,
   type ZhihuQuestionDetail,
 } from '@/api/zhihu/question';
-import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
+import {
+  QUESTION_DETAIL_TEXT_STYLE,
+  QuestionDetailContent,
+} from '@/components/QuestionDetailContent';
+import { RICH_CONTENT_STALE_TIME } from '@/features/rich-content';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { formatCount } from '@/utils/formatCount';
@@ -126,16 +130,15 @@ export function AnswerPreviewQuestionHeader({
           {question?.detail || question?.excerpt ? (
             <View className="mt-3 bg-transparent">
               {expanded && question.detail ? (
-                <ZhihuContent
+                <QuestionDetailContent
                   content={question.detail}
-                  objectId={id}
-                  type="question"
+                  questionId={id}
                 />
               ) : (
                 <Text
                   type="secondary"
                   numberOfLines={3}
-                  style={{ fontSize: 14, lineHeight: 22 }}
+                  style={QUESTION_DETAIL_TEXT_STYLE}
                 >
                   {(question.excerpt || question.detail || '').replace(
                     /<[^>]+>/g,

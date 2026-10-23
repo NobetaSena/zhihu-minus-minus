@@ -46,12 +46,16 @@ import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { MoreActionsButton } from '@/components/MoreActionsButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
+import {
+  QUESTION_DETAIL_TEXT_STYLE,
+  QuestionDetailContent,
+} from '@/components/QuestionDetailContent';
 import { ShareMenu } from '@/components/ShareMenu';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
-import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
+import { RICH_CONTENT_STALE_TIME } from '@/features/rich-content';
 import { useDetailHeaderState } from '@/hooks/useDetailHeaderState';
 import { useGestureScrollView } from '@/hooks/useGestureScrollView';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
@@ -527,10 +531,9 @@ export default function QuestionDetail() {
                 <View className="mt-3 rounded-2xl overflow-hidden">
                   {detailExpanded ? (
                     <>
-                      <ZhihuContent
+                      <QuestionDetailContent
                         content={question.detail}
-                        objectId={id as string}
-                        type="question"
+                        questionId={id as string}
                       />
                       <BouncyButton
                         accessibilityRole="button"
@@ -563,7 +566,7 @@ export default function QuestionDetail() {
                       <Text
                         type="secondary"
                         numberOfLines={3}
-                        style={{ fontSize: 14, lineHeight: 22 }}
+                        style={QUESTION_DETAIL_TEXT_STYLE}
                       >
                         {question.excerpt?.replace(/<[^>]+>/g, '') || ''}
                       </Text>
@@ -591,7 +594,7 @@ export default function QuestionDetail() {
                   type="secondary"
                   className="mt-3"
                   numberOfLines={3}
-                  style={{ fontSize: 14, lineHeight: 22 }}
+                  style={QUESTION_DETAIL_TEXT_STYLE}
                 >
                   {question.excerpt.replace(/<[^>]+>/g, '')}
                 </Text>
