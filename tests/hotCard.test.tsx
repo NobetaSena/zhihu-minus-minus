@@ -50,18 +50,19 @@ test.each([
   expect(getHotCardPosition(index, count)).toBe(position);
 });
 
-test('a row caps the title at two lines and shows heat and answers on one line', async () => {
+test('a row shows the whole title with only its heat underneath', async () => {
   const host = await render(<HotCard item={item(1)} position="first" />);
-  expect(host.getByText('合成热榜问题 1').props.numberOfLines).toBe(2);
-  expect(host.getByText('893 万热度 · 188 个回答')).toBeTruthy();
+  expect(host.getByText('合成热榜问题 1').props.numberOfLines).toBeUndefined();
+  expect(host.getByText('893 万热度')).toBeTruthy();
+  expect(host.queryByText(/个回答/)).toBeNull();
 });
 
-test.each([
-  [1, colors.light.hotRankFirst],
-  [2, colors.light.hotRankSecond],
-  [3, colors.light.hotRankThird],
-  [4, '#999999'],
-])('rank %i is drawn in %s', async (rank, color) => {
+test.each([1, 2, 3])('rank %i sits on a ribbon in white', async (rank) => {
   const host = await render(<HotCard item={item(rank)} position="middle" />);
-  expect(host.getByText(String(rank))).toHaveStyle({ color });
+  expect(host.getByText(String(rank))).toHaveStyle({ color: '#ffffff' });
+});
+
+test('ranks after the top three are orange numbers', async () => {
+  const host = await render(<HotCard item={item(4)} position="middle" />);
+  expect(host.getByText('4')).toHaveStyle({ color: colors.light.hotLabel });
 });

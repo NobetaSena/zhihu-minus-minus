@@ -40,7 +40,8 @@ export function getHotCardPosition(
   return index === count - 1 ? 'last' : 'middle';
 }
 
-const RANK_COLORS = [
+/** 前三名用丝带角标，颜色由深到浅；之后的排名是橙色数字。 */
+const RIBBON_COLORS = [
   colors.light.hotRankFirst,
   colors.light.hotRankSecond,
   colors.light.hotRankThird,
@@ -59,7 +60,7 @@ const HotCardComponent = ({
   const palette = useRuntimeThemeColors();
   const isGuest = !cookies;
 
-  const rankColor = RANK_COLORS[item.rank - 1] ?? palette.textTertiary;
+  const ribbonColor = RIBBON_COLORS[item.rank - 1];
   const labelColor =
     colorScheme === 'dark'
       ? item.labelArea?.night_color || colors.light.hotLabel
@@ -71,13 +72,6 @@ const HotCardComponent = ({
   const labelText =
     item.labelArea?.type === 'text' ? item.labelArea.text : undefined;
   const hasTrend = item.labelArea?.type === 'trend';
-  const hasAnswerCount = (item.answerCount ?? 0) > 0;
-  const metadata = [
-    item.hotValue,
-    hasAnswerCount ? `${item.answerCount} 个回答` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
   const isFirst = position === 'first' || position === 'only';
   const isLast = position === 'last' || position === 'only';
 
@@ -116,43 +110,41 @@ const HotCardComponent = ({
           style={[styles.divider, { backgroundColor: palette.controlBorder }]}
         />
       ) : null}
-      <Text style={[styles.rank, { color: rankColor }]} numberOfLines={1}>
-        {item.rank}
-      </Text>
-      <View style={styles.textColumn}>
-        <Text style={styles.title} numberOfLines={2}>
-          {item.title}
-        </Text>
-        {labelText || hasTrend || metadata ? (
-          <View style={styles.metadata}>
-            {labelText ? (
-              <View
-                style={[styles.label, { backgroundColor: `${labelColor}15` }]}
-              >
-                <Text style={[styles.labelText, { color: labelColor }]}>
-                  {labelText}
-                </Text>
-              </View>
-            ) : null}
-            {hasTrend ? (
-              <View
-                accessibilityLabel="热度上升"
-                accessible
-                style={[styles.label, { backgroundColor: `${labelColor}15` }]}
-              >
-                <Ionicons name="trending-up" size={12} color={labelColor} />
-              </View>
-            ) : null}
-            {metadata ? (
-              <Text
-                type="secondary"
-                style={styles.metadataText}
-                numberOfLines={1}
-              >
-                {metadata}
-              </Text>
-            ) : null}
+      <View style={styles.rankColumn}>
+        {ribbonColor ? (
+          <View style={styles.ribbon}>
+            <Ionicons name="bookmark" size={24} color={ribbonColor} />
+            <Text style={styles.ribbonText} numberOfLines={1}>
+              {item.rank}
+            </Text>
           </View>
+        ) : (
+          <Text
+            style={[styles.rank, { color: colors.light.hotLabel }]}
+            numberOfLines={1}
+          >
+            {item.rank}
+          </Text>
+        )}
+        {labelText ? (
+          <View style={[styles.label, { borderColor: labelColor }]}>
+            <Text style={[styles.labelText, { color: labelColor }]}>
+              {labelText}
+            </Text>
+          </View>
+        ) : null}
+        {hasTrend ? (
+          <View accessibilityLabel="热度上升" accessible style={styles.trend}>
+            <Ionicons name="trending-up" size={13} color={labelColor} />
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.textColumn}>
+        <Text style={styles.title}>{item.title}</Text>
+        {item.hotValue ? (
+          <Text type="secondary" style={styles.hotValue} numberOfLines={1}>
+            {item.hotValue}
+          </Text>
         ) : null}
       </View>
       {imageSource ? (
@@ -183,46 +175,57 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 14,
     marginBottom: 12,
   },
-  // 分割线从标题列开始，排名列下方不画线。
   divider: {
     position: 'absolute',
     top: 0,
-    left: 52,
+    left: 14,
     right: 14,
     height: StyleSheet.hairlineWidth,
   },
+  rankColumn: {
+    width: 24,
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 1,
+  },
+  ribbon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ribbonText: {
+    position: 'absolute',
+    top: 2,
+    color: '#ffffff',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+  },
   // 显式传给 Themed.Text，确保它按实际字号和行高应用阅读偏好。
   rank: {
-    width: 28,
-    textAlign: 'center',
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
+  label: {
+    paddingHorizontal: 2,
+    borderRadius: 3,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+  },
+  labelText: { fontSize: 10, lineHeight: 14, fontWeight: '700' },
+  trend: { alignItems: 'center' },
   textColumn: { flex: 1, minWidth: 0 },
   title: {
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 25,
     fontWeight: '700',
   },
-  metadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  label: {
-    flexShrink: 0,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  labelText: { fontSize: 11, fontWeight: '700' },
-  metadataText: { flexShrink: 1, fontSize: 12 },
+  hotValue: { marginTop: 6, fontSize: 13 },
   image: {
-    width: 104,
-    aspectRatio: 3 / 2,
+    width: 72,
+    height: 72,
     borderRadius: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(0,0,0,0.05)',
