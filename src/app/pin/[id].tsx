@@ -36,6 +36,7 @@ import Colors from '@/constants/Colors';
 import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
 import { useDoubleTapAction } from '@/hooks/useDoubleTapAction';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
+import { usePinActions } from '@/hooks/usePinActions';
 import { useReadingProgress } from '@/hooks/useReadingProgress';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import type { ZhihuPin } from '@/types/zhihu';
@@ -81,6 +82,7 @@ export default function PinDetailScreen() {
     retry: shouldRetryQuery,
   });
   const isLoading = isQueryLoading || (isPending && isPaused);
+  const pinActions = usePinActions(pin);
 
   const readingProgress = useReadingProgress({
     contentKey: `pin:${String(id ?? '')}`,
@@ -198,6 +200,7 @@ export default function PinDetailScreen() {
         visible={menuVisible}
         onClose={() => setOpenMenuIdentity(null)}
         type="pin"
+        additionalOptions={pinActions}
         data={
           pin
             ? {

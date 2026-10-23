@@ -19,6 +19,7 @@ interface MenuProps {
     questionId?: string | number;
     isCollected?: boolean;
   };
+  additionalOptions?: Array<{ key: string; onPress: () => unknown }>;
 }
 
 let mockShareMenuProps: MenuProps;
@@ -342,6 +343,48 @@ test('feed collection actions receive the current list state and refreshed count
       count: 12,
     }),
   );
+});
+
+test('recommendation feedback remains attached to the menu item and updates after recycling', async () => {
+  const onUninterested = jest.fn(async () => {});
+  const host = await render(
+    <FeedCard
+      item={baseItem}
+      tab="recommend"
+      onUninterested={onUninterested}
+    />,
+  );
+  const originalAction = mockShareMenuProps.additionalOptions?.find(
+    (option) => option.key === 'uninterested',
+  );
+  expect(originalAction).toBeDefined();
+  expect(mockUseContentActions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      additionalOptions: [expect.objectContaining({ key: 'uninterested' })],
+    }),
+  );
+  const nextItem = { ...baseItem, id: 'next', title: '合成下个推荐' };
+  await host.rerender(
+    <FeedCard
+      item={nextItem}
+      tab="recommend"
+      onUninterested={onUninterested}
+    />,
+  );
+  await originalAction?.onPress();
+  expect(onUninterested).toHaveBeenLastCalledWith(baseItem);
+  await mockShareMenuProps.additionalOptions
+    ?.find((option) => option.key === 'uninterested')
+    ?.onPress();
+  expect(onUninterested).toHaveBeenLastCalledWith(nextItem);
+  await host.rerender(
+    <FeedCard
+      item={{ ...nextItem, isIdStable: false }}
+      tab="recommend"
+      onUninterested={onUninterested}
+    />,
+  );
+  expect(mockShareMenuProps.additionalOptions).toEqual([]);
 });
 
 test('feed previews use the shared action builder with the current content identity', async () => {

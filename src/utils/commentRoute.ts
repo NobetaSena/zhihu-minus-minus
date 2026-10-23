@@ -1,4 +1,5 @@
 import type { CommentItem } from '@/api/zhihu/comment';
+import { normalizeCommentTags } from '@/utils/commentIdentity';
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -41,6 +42,7 @@ export function parseParentComment(
             typeof member.url_token === 'string' ? member.url_token : '',
           avatar_url:
             typeof member.avatar_url === 'string' ? member.avatar_url : '',
+          is_following: member.is_following === true,
         },
       },
       child_comment_count:
@@ -54,6 +56,9 @@ export function parseParentComment(
         typeof value.address_text === 'string' ? value.address_text : undefined,
       can_delete: value.can_delete === true,
       allow_delete: value.allow_delete === true,
+      is_author: value.is_author === true,
+      author_tag: normalizeCommentTags(value.author_tag),
+      comment_tag: normalizeCommentTags(value.comment_tag),
     };
   } catch {
     return null;

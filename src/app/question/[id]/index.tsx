@@ -741,27 +741,36 @@ export default function QuestionDetail() {
               }
         }
         additionalOptions={
-          selectedAnswer?.relationship?.is_author
+          !selectedAnswer
             ? [
                 {
-                  key: 'edit',
-                  icon: 'create-outline',
-                  label: '编辑回答',
-                  onPress: () =>
-                    router.push(
-                      `/question/write/${selectedAnswer.question?.id || id}`,
-                    ),
-                },
-                {
-                  key: 'delete',
-                  icon: 'trash-outline',
-                  label: '删除回答',
-                  destructive: true,
-                  disabled: deleteMutation.isPending,
-                  onPress: () => confirmDeleteAnswer(selectedAnswer.id),
+                  key: 'question-log',
+                  icon: 'time-outline',
+                  label: '查看问题日志',
+                  onPress: () => router.push(`/question/${id}/log`),
                 },
               ]
-            : []
+            : selectedAnswer.relationship?.is_author
+              ? [
+                  {
+                    key: 'edit',
+                    icon: 'create-outline',
+                    label: '编辑回答',
+                    onPress: () =>
+                      router.push(
+                        `/question/write/${selectedAnswer.question?.id || id}`,
+                      ),
+                  },
+                  {
+                    key: 'delete',
+                    icon: 'trash-outline',
+                    label: '删除回答',
+                    destructive: true,
+                    disabled: deleteMutation.isPending,
+                    onPress: () => confirmDeleteAnswer(selectedAnswer.id),
+                  },
+                ]
+              : []
         }
       />
 

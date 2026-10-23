@@ -1,3 +1,4 @@
+import { normalizeCommentTags } from '@/utils/commentIdentity';
 import apiClient from '../client';
 import type { ZhihuVoteResponse } from './voters';
 
@@ -39,6 +40,7 @@ export interface CommentMember {
   avatar_url: string;
   avatar_url_template?: string;
   is_org?: boolean;
+  is_following?: boolean;
   type?: string;
   url?: string;
   user_type?: string;
@@ -617,7 +619,7 @@ export const deleteComment = async (
 type CommentRecord = Record<string, unknown>;
 
 const isCommentRecord = (value: unknown): value is CommentRecord =>
-  typeof value === 'object' && value !== null;
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const normalizeAuthor = (value: unknown): CommentAuthor | undefined => {
   if (!isCommentRecord(value)) return undefined;
@@ -636,6 +638,10 @@ const normalizeComment = (comment: unknown): CommentItem => {
   if (!isCommentRecord(comment)) return comment as CommentItem;
 
   const normalized = { ...comment } as unknown as CommentItem;
+  normalized.is_author = comment.is_author === true;
+  normalized.author_tag = normalizeCommentTags(comment.author_tag);
+  normalized.reply_author_tag = normalizeCommentTags(comment.reply_author_tag);
+  normalized.comment_tag = normalizeCommentTags(comment.comment_tag);
 
   // 1. 处理作者结构 (V5 扁平化了)
   const author = normalizeAuthor(comment.author);

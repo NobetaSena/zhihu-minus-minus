@@ -10,10 +10,12 @@ export function PublishingDocumentEditor({
   document,
   onChange,
   disabled,
+  contentType = 'answer',
 }: {
   document: PublishingDocument;
   onChange: (document: PublishingDocument) => void;
   disabled?: boolean;
+  contentType?: 'answer' | 'pin';
 }) {
   const colors = Colors[useColorScheme()];
   return (
@@ -30,7 +32,9 @@ export function PublishingDocumentEditor({
           >
             {block.kind === 'markdown' ? (
               <TextInput
-                accessibilityLabel="原回答段落"
+                accessibilityLabel={
+                  contentType === 'pin' ? '原想法段落' : '原回答段落'
+                }
                 editable={!disabled}
                 multiline
                 value={block.value}
@@ -56,7 +60,7 @@ export function PublishingDocumentEditor({
               <>
                 <ZhihuContent
                   content={block.html}
-                  type="answer"
+                  type={contentType}
                   objectId={`publishing-${block.id}`}
                   useNative
                 />
@@ -70,7 +74,7 @@ export function PublishingDocumentEditor({
               onPress={() =>
                 Alert.alert(
                   '删除这段内容？',
-                  '保存回答后，这段内容也会从线上回答中删除。',
+                  `保存${contentType === 'pin' ? '想法' : '回答'}后，这段内容也会从线上内容中删除。`,
                   [
                     { text: '取消', style: 'cancel' },
                     {

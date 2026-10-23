@@ -107,6 +107,29 @@ test('returns fresh cached Feed data and removes it exactly at the TTL boundary'
   expect(count('feed_cache')).toBe(0);
 });
 
+test('feedback removes only its cached content without extending cache lifetime', async () => {
+  const repository = new FeedCacheRepository();
+  const items = [
+    { id: 'same-token', type: 'answers' },
+    { id: 'same-token', type: 'articles' },
+  ];
+  const otherContext = { ...context, accountKey: 'another-account' };
+  await repository.saveFeedCache(context, items, 'next-page');
+  await repository.saveFeedCache(otherContext, items, 'next-page');
+  now += 1;
+  await repository.removeFeedCacheItem(context, 'answer:same-token');
+  expect(await repository.getFeedCache(context)).toEqual({
+    items: [items[1]],
+    nextUrl: 'next-page',
+  });
+  expect(await repository.getFeedCache(otherContext)).toEqual({
+    items,
+    nextUrl: 'next-page',
+  });
+  now += FEED_CACHE_TTL_MS - 1;
+  expect(await repository.getFeedCache(context)).toBeNull();
+});
+
 test('retains only the newest cache contexts during one long session', async () => {
   const repository = new FeedCacheRepository();
   for (let index = 0; index <= MAX_FEED_CACHE_CONTEXTS; index += 1) {

@@ -34,6 +34,7 @@ import {
   type CommentDraft,
 } from '@/components/CommentComposer';
 import { CommentContent } from '@/components/CommentContent';
+import { CommentIdentityBadges } from '@/components/CommentIdentityBadges';
 import { LikeButton } from '@/components/LikeButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
@@ -246,6 +247,7 @@ export default function CommentScreen() {
             >
               <Text className="font-semibold text-sm mb-1">
                 {item.author.member.name}
+                <CommentIdentityBadges comment={item} />
               </Text>
             </BouncyButton>
             <View className="mt-2 bg-transparent">
@@ -340,8 +342,22 @@ export default function CommentScreen() {
                         className="w-[18px] h-[18px] rounded-full mr-2"
                       />
                       <View className="flex-1 bg-transparent">
+                        <Text className="text-xs">
+                          <Text
+                            onPress={() =>
+                              goToProfile(
+                                child.author.member.url_token ||
+                                  child.author.member.id,
+                              )
+                            }
+                            style={{ color: tintColor }}
+                          >
+                            {child.author.member.name}
+                          </Text>
+                          <CommentIdentityBadges comment={child} />
+                        </Text>
                         <CommentContent
-                          htmlContent={`<a href="/user/${child.author?.member?.url_token || child.author?.member?.id}">${child.author?.member?.name}</a>：${child.content}`}
+                          htmlContent={child.content}
                           width={contentWidth - 26}
                         />
                       </View>

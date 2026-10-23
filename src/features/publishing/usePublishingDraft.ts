@@ -268,7 +268,7 @@ export function usePublishingDraft(
     if (!conflict) return;
     Alert.alert(
       '恢复旧草稿？',
-      '线上回答已变化。恢复后再次保存会覆盖线上版本，请先核对所有内容。',
+      '线上内容已变化。恢复后再次保存会覆盖线上版本，请先核对所有内容。',
       [
         { text: '取消', style: 'cancel' },
         {

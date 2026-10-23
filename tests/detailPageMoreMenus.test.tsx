@@ -786,7 +786,11 @@ test('question and answer more entries target distinct content and preserve auth
   await pressButton(host.getByRole('button', { name: '问题更多操作' }));
   expect(host.getByText('menu:question:7')).toBeTruthy();
   expect(mockMenuProps.data?.url).toBe('https://www.zhihu.com/question/7');
-  expect(mockMenuProps.additionalOptions).toEqual([]);
+  expect(mockMenuProps.additionalOptions).toEqual([
+    expect.objectContaining({ key: 'question-log', label: '查看问题日志' }),
+  ]);
+  await pressButton(host.getByRole('button', { name: '查看问题日志' }));
+  expect(mockPush).toHaveBeenCalledWith('/question/7/log');
   await act(() => mockMenuProps.onClose());
 
   const answerButtons = host.getAllByRole('button', { name: '回答更多操作' });
@@ -831,7 +835,9 @@ test('changing questions clears an open answer selection before constructing the
     id: '8',
     url: 'https://www.zhihu.com/question/8',
   });
-  expect(mockMenuProps.additionalOptions).toEqual([]);
+  expect(mockMenuProps.additionalOptions).toEqual([
+    expect.objectContaining({ key: 'question-log', label: '查看问题日志' }),
+  ]);
 
   await pressButton(host.getByRole('button', { name: '问题更多操作' }));
   expect(host.getByText('menu:question:8')).toBeTruthy();

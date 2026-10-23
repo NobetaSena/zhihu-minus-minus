@@ -356,6 +356,29 @@ export interface FeedItem {
   followerCount?: number;
 }
 
+export interface RecommendFeedbackTarget {
+  id: string;
+  type: 'answers' | 'articles';
+}
+
+export async function markRecommendationUninterested(
+  target: RecommendFeedbackTarget,
+): Promise<void> {
+  const form = new URLSearchParams({
+    scene_code: 'RECOMMEND',
+    content_type: target.type === 'answers' ? '1' : '2',
+    content_token: target.id,
+    uninterested_type: 'less_similar',
+    feed_deliver_type: 'Normal',
+    desktop: 'true',
+  }).toString();
+  await apiClient.post<unknown>('/zrec-feedback/uninterested', form, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+    },
+  });
+}
+
 export interface RawFeedTarget {
   id: string | number;
   type: string;

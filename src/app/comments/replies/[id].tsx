@@ -28,6 +28,7 @@ import {
   type CommentDraft,
 } from '@/components/CommentComposer';
 import { CommentContent } from '@/components/CommentContent';
+import { CommentIdentityBadges } from '@/components/CommentIdentityBadges';
 import { LikeButton } from '@/components/LikeButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
@@ -243,6 +244,7 @@ export default function ReplyDetailScreen() {
                 }
               >
                 {item.author.member.name}
+                <CommentIdentityBadges comment={item} />
               </Text>
               {item.reply_to_author && (
                 <Text type="secondary">
@@ -259,6 +261,7 @@ export default function ReplyDetailScreen() {
                     }
                   >
                     {item.reply_to_author?.member.name}
+                    <CommentIdentityBadges comment={item} target="reply" />
                   </Text>
                 </Text>
               )}
@@ -369,6 +372,7 @@ export default function ReplyDetailScreen() {
                 }
               >
                 {parentComment.author.member.name}
+                <CommentIdentityBadges comment={parentComment} />
               </Text>
             </View>
             <View className="mt-1 bg-transparent">

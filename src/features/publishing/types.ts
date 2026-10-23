@@ -17,6 +17,8 @@ export interface PublishingMediaItem {
 }
 
 export interface PublishingDraftValue {
+  pinDraftId?: string;
+  pinSourceData?: Record<string, unknown>;
   title: string;
   content: string;
   topics: string;
