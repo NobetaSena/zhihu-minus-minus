@@ -2,9 +2,9 @@ import {
   fetchOffsetPages,
   predictRecommendUrls,
   recommendPageKey,
-} from '../utils/parallelPaging';
+} from '../src/utils/parallelPaging';
 
-jest.mock('../api/client', () => ({ __esModule: true, default: {} }));
+jest.mock('../src/api/client', () => ({ __esModule: true, default: {} }));
 
 type Item = { id: string; type: string };
 type Page = { data: Item[]; paging: { is_end: boolean; next: string } };

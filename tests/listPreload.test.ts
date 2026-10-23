@@ -4,8 +4,8 @@ import {
   PRELOAD_END_THRESHOLD,
   useListPreload,
   useLoadMoreNearEnd,
-} from '../hooks/useListPreload';
-import { useSettingsStore } from '../store/useSettingsStore';
+} from '../src/hooks/useListPreload';
+import { useSettingsStore } from '../src/store/useSettingsStore';
 
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async () => null),

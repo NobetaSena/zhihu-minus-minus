@@ -1,13 +1,13 @@
-import type { ZhihuListResponse } from '../api/zhihu/member';
-import type { ZhihuMemberRelation } from '../types/zhihu';
+import type { ZhihuListResponse } from '../src/api/zhihu/member';
+import type { ZhihuMemberRelation } from '../src/types/zhihu';
 import {
   type CreationKind,
   type FetchCreations,
   fetchMergedCreationsPage,
   INITIAL_CREATIONS_CURSOR,
-} from '../utils/mergedCreations';
+} from '../src/utils/mergedCreations';
 
-jest.mock('../api/client', () => ({ __esModule: true, default: {} }));
+jest.mock('../src/api/client', () => ({ __esModule: true, default: {} }));
 
 /** Each source lists its items newest first, two per page. */
 function sources(times: Record<CreationKind, number[]>) {

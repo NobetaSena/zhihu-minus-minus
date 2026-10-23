@@ -1,4 +1,4 @@
-import { PageQueue } from '../utils/pageQueue';
+import { PageQueue } from '../src/utils/pageQueue';
 
 /** Pages named p1, p2, …; each page names the next one. */
 const pageNumber = (url: string) => Number(url.slice(1));

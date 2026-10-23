@@ -72,9 +72,9 @@ import { hasReusableAnswerDetail } from '@/features/rich-content';
 import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
-import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
 import { useListPreload, useLoadMoreNearEnd } from '@/hooks/useListPreload';
 import { usePageQueue } from '@/hooks/usePageQueue';
+import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
 import { useScopedAsyncValue } from '@/hooks/useScopedAsyncValue';
 import {
   type FeedCacheContext,

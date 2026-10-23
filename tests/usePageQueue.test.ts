@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react-native';
-import { usePageQueue } from '../hooks/usePageQueue';
+import { usePageQueue } from '../src/hooks/usePageQueue';
 
 function setup() {
   const signals = new Map<string, AbortSignal>();

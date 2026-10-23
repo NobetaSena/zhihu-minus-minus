@@ -323,87 +323,86 @@ async function flushQueries(duration = 1) {
   });
 }
 
-test.each([
-  true,
-  false,
-])('the creation tab sits between activity and answers and loads for own profile: %s', async (ownProfile) => {
-  mockRoute.tab = 'answers';
-  mockAuthState.me = ownProfile
-    ? member
-    : { ...member, id: 'other-member', url_token: 'other-token' };
-  client.setQueryData(['me'], mockAuthState.me);
-  mockCreations({
-    articles: [
-      {
-        id: 'creation-article',
-        type: 'article',
-        title: '最近更新的创作',
-        created: 100,
-      },
-    ],
-  });
-  const host = await render(screen());
-  expect(
-    host.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel),
-  ).toEqual([
-    '动态',
-    '创作',
-    '回答',
-    '文章',
-    '专栏',
-    '提问',
-    '想法',
-    '我赞同过',
-  ]);
-  expect(host.getByTestId('profile-owner')).toHaveTextContent(
-    ownProfile ? '自己的主页' : '其他人的主页',
-  );
-  expect(mockPagerProps.initialPage).toBe(2);
-  expect(getMemberRelations).not.toHaveBeenCalledWith(
-    expect.anything(),
-    'pins',
-    expect.anything(),
-    expect.anything(),
-  );
-
-  await fireEvent.press(host.getByRole('tab', { name: '创作' }));
-  expect(mockSetPage).toHaveBeenLastCalledWith(1);
-  await act(() =>
-    mockPagerProps.onPageSelected({ nativeEvent: { position: 1 } }),
-  );
-  await flushQueries();
-  // 创作 merges the member's answers, articles and pins by publish time.
-  for (const kind of ['answers', 'articles', 'pins']) {
-    expect(getMemberRelations).toHaveBeenCalledWith(
-      member.url_token,
-      kind,
-      expect.objectContaining({ offset: 0 }),
-      expect.objectContaining({ signal: expect.anything() }),
+test.each([true, false])(
+  'the creation tab sits between activity and answers and loads for own profile: %s',
+  async (ownProfile) => {
+    mockRoute.tab = 'answers';
+    mockAuthState.me = ownProfile
+      ? member
+      : { ...member, id: 'other-member', url_token: 'other-token' };
+    client.setQueryData(['me'], mockAuthState.me);
+    mockCreations({
+      articles: [
+        {
+          id: 'creation-article',
+          type: 'article',
+          title: '最近更新的创作',
+          created: 100,
+        },
+      ],
+    });
+    const host = await render(screen());
+    expect(
+      host.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel),
+    ).toEqual([
+      '动态',
+      '创作',
+      '回答',
+      '文章',
+      '专栏',
+      '提问',
+      '想法',
+      '我赞同过',
+    ]);
+    expect(host.getByTestId('profile-owner')).toHaveTextContent(
+      ownProfile ? '自己的主页' : '其他人的主页',
     );
-  }
-  expect(getRecentMemberActivities).not.toHaveBeenCalled();
-  expect(host.getByRole('tab', { name: '创作' })).toBeSelected();
-  expect(mockListProps.get('创作')?.active).toBe(true);
-  expect(host.getByText('最近更新的创作')).toBeTruthy();
-  await host.unmount();
-});
+    expect(mockPagerProps.initialPage).toBe(2);
+    expect(getMemberRelations).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'pins',
+      expect.anything(),
+      expect.anything(),
+    );
 
-test.each([
-  undefined,
-  'invalid-tab',
-  'creations',
-])('a missing, invalid or creation tab opens creations immediately: %s', async (tab) => {
-  mockRoute.tab = tab;
-  client.setQueryData(['me'], member);
-  const host = await render(screen());
-  await flushQueries();
-  expect(mockPagerProps.initialPage).toBe(1);
-  expect(host.getByRole('tab', { name: '创作' })).toBeSelected();
-  expect(
-    jest.mocked(getMemberRelations).mock.calls.map(([, kind]) => kind),
-  ).toEqual(['answers', 'articles', 'pins']);
-  await host.unmount();
-});
+    await fireEvent.press(host.getByRole('tab', { name: '创作' }));
+    expect(mockSetPage).toHaveBeenLastCalledWith(1);
+    await act(() =>
+      mockPagerProps.onPageSelected({ nativeEvent: { position: 1 } }),
+    );
+    await flushQueries();
+    // 创作 merges the member's answers, articles and pins by publish time.
+    for (const kind of ['answers', 'articles', 'pins']) {
+      expect(getMemberRelations).toHaveBeenCalledWith(
+        member.url_token,
+        kind,
+        expect.objectContaining({ offset: 0 }),
+        expect.objectContaining({ signal: expect.anything() }),
+      );
+    }
+    expect(getRecentMemberActivities).not.toHaveBeenCalled();
+    expect(host.getByRole('tab', { name: '创作' })).toBeSelected();
+    expect(mockListProps.get('创作')?.active).toBe(true);
+    expect(host.getByText('最近更新的创作')).toBeTruthy();
+    await host.unmount();
+  },
+);
+
+test.each([undefined, 'invalid-tab', 'creations'])(
+  'a missing, invalid or creation tab opens creations immediately: %s',
+  async (tab) => {
+    mockRoute.tab = tab;
+    client.setQueryData(['me'], member);
+    const host = await render(screen());
+    await flushQueries();
+    expect(mockPagerProps.initialPage).toBe(1);
+    expect(host.getByRole('tab', { name: '创作' })).toBeSelected();
+    expect(
+      jest.mocked(getMemberRelations).mock.calls.map(([, kind]) => kind),
+    ).toEqual(['answers', 'articles', 'pins']);
+    await host.unmount();
+  },
+);
 
 test('columns load on first visit and unwrap the column for navigation', async () => {
   mockRoute.tab = 'answers';
@@ -556,8 +555,8 @@ test('a page swipe records the synced offsets so the header holds its place', as
 
 test('with 多页同时加载 on, the answers tab requests three offsets per load', async () => {
   const { useSettingsStore } = jest.requireMock<
-    typeof import('../store/useSettingsStore')
-  >('../store/useSettingsStore');
+    typeof import('../src/store/useSettingsStore')
+  >('../src/store/useSettingsStore');
   useSettingsStore.setState({ enableParallelPaging: true });
   mockRoute.tab = 'answers';
   const host = await render(screen());
