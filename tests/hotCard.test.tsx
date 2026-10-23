@@ -57,6 +57,14 @@ test('a row shows the whole title with only its heat underneath', async () => {
   expect(host.queryByText(/个回答/)).toBeNull();
 });
 
+test('titles use the official hot list size, a step below feed titles', async () => {
+  const host = await render(<HotCard item={item(1)} position="first" />);
+  expect(host.getByText('合成热榜问题 1')).toHaveStyle({
+    fontSize: 15,
+    lineHeight: 22,
+  });
+});
+
 test.each([1, 2, 3])('rank %i sits on a ribbon in white', async (rank) => {
   const host = await render(<HotCard item={item(rank)} position="middle" />);
   expect(host.getByText(String(rank))).toHaveStyle({ color: '#ffffff' });

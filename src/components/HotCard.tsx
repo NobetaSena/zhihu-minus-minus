@@ -113,7 +113,7 @@ const HotCardComponent = ({
       <View style={styles.rankColumn}>
         {ribbonColor ? (
           <View style={styles.ribbon}>
-            <Ionicons name="bookmark" size={24} color={ribbonColor} />
+            <Ionicons name="bookmark" size={22} color={ribbonColor} />
             <Text style={styles.ribbonText} numberOfLines={1}>
               {item.rank}
             </Text>
@@ -186,26 +186,25 @@ const styles = StyleSheet.create({
     width: 24,
     alignItems: 'center',
     gap: 4,
-    paddingTop: 1,
   },
   ribbon: {
     width: 24,
-    height: 24,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ribbonText: {
     position: 'absolute',
-    top: 2,
+    top: 1,
     color: '#ffffff',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '800',
   },
   // 显式传给 Themed.Text，确保它按实际字号和行高应用阅读偏好。
   rank: {
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
@@ -218,14 +217,14 @@ const styles = StyleSheet.create({
   trend: { alignItems: 'center' },
   textColumn: { flex: 1, minWidth: 0 },
   title: {
-    fontSize: 17,
-    lineHeight: 25,
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: '700',
   },
   hotValue: { marginTop: 6, fontSize: 13 },
   image: {
-    width: 72,
-    height: 72,
+    width: 60,
+    height: 60,
     borderRadius: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(0,0,0,0.05)',
