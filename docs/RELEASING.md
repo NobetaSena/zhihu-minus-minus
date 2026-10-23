@@ -31,13 +31,13 @@ Android job 需要全部 5 个 Secret：`EXPO_TOKEN` 加上 4 个 telemetry Secr
 ## 工作流做什么
 
 1. `quality` job 使用 Node.js 24 执行 `npm ci` 和 `npm run check`，包括 TypeScript、Biome、全部测试和富文本 fixture 分析。
-2. `build-android` 使用 EAS CLI 25.3.0 和 `preview` profile，在 Ubuntu 上执行 `assembleRelease` 生成四个单 ABI APK，并检查每个 APK 实际包含的 ABI。`preview` 是 EAS 构建配置名称，不再写入 APK 文件名。
+2. `build-android` 使用 EAS CLI 25.3.0 和 `preview` profile，在 Ubuntu 上执行 `assembleRelease` 生成四个单 ABI APK，并检查每个 APK 实际包含的 ABI。prebuild 通过 `withAndroidBuildMemory` 将 Gradle 最大堆设为 4 GB、worker 上限设为 2，并关闭跨项目并行，控制多 ABI 封装的内存峰值。`preview` 是 EAS 构建配置名称，不再写入 APK 文件名。
 3. `build-ios` 在 macOS 26 上使用 Xcode 26.4 或更高版本执行干净 iOS prebuild、CocoaPods 安装和无签名 `xcodebuild`（iOS 最低版本 16.4），再把 `.app` 打包为 IPA。
 4. 两个平台分别上传 artifact，临时 artifact 默认保留 7 天。
 5. `release` 模式下载全部产物，从真实 IPA 生成 `altstore-source.json` 和 `SHA256SUMS.txt`，先用 arm64-v8a APK 创建草稿 Release，再上传其余附件，确保旧版一键更新仍将 arm64-v8a 识别为第一个 APK。只有全部附件上传成功后，才按 `publish_release` 公开 Release。
 6. Release 的说明由 GitHub 结合 [`.github/release.yml`](../.github/release.yml) 和 PR label 自动生成；工作流额外注明 ABI、未签名 IPA 和校验文件信息。
 
-如果任一质量或平台构建 job 失败，Release job 不会运行。修复后可以在原 workflow run 中重跑失败 job，或重新触发工作流；重新触发 `release` 前仍须使用未占用的版本号/tag。
+如果任一质量或平台构建 job 失败，Release job 不会运行。代码或配置修复推送后，应在目标分支重新触发工作流；原 workflow run 的重跑仍使用原提交，仅适用于临时网络等无需改代码的问题。重新触发 `release` 前仍须使用未占用的版本号/tag。
 
 ## 发布产物
 

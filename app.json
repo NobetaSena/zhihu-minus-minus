@@ -243,6 +243,7 @@
       ],
       "./plugins/withAppIcons",
       "./plugins/withAndroidAbiSplits",
+      "./plugins/withAndroidBuildMemory",
       "./plugins/withIosFirebaseCocoaPods",
       "expo-secure-store",
       [

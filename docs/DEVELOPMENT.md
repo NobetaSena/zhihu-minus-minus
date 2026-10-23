@@ -61,6 +61,8 @@ npm run start -- --dev-client
 
 Windows 用户请先阅读 [`BUILD_WINDOWS.md`](./BUILD_WINDOWS.md)；其中还记录了命令行 SDK、Gradle 镜像、ABI 和 Sentry 本地构建的常见问题。
 
+Android 构建内存由 [`withAndroidBuildMemory`](../plugins/withAndroidBuildMemory.js) 在 prebuild 时写入：Gradle 最大堆 4 GB、Metaspace 1 GB，最多两个 worker，并关闭跨项目并行；Kotlin daemon 单独保持最大堆 2 GB、Metaspace 512 MB，避免跟随 Gradle 扩容。SDK 58 默认的 2 GB Gradle 堆曾在四 ABI 的 `packageRelease` 封装阶段出现 `Java heap space`。这类失败应检查构建 JVM 的 `org.gradle.jvmargs` 和 worker 数，不能只提高 Node 的 `NODE_OPTIONS` 或 Gradle 客户端的 `JAVA_OPTS`；参见 [Gradle 内存配置](https://docs.gradle.org/current/userguide/config_gradle.html)。已存在的本地 Android 工程运行 `npx expo prebuild --platform android --no-clean --no-install` 后生效，EAS managed 构建会自动应用。低内存机器可通过用户级 Gradle 配置将 `org.gradle.workers.max` 降为 `1`。
+
 ### iOS
 
 ```bash
