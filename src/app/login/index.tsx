@@ -254,17 +254,10 @@ export default function LoginScreen() {
             url === 'https://www.zhihu.com/' ||
             url === 'https://www.zhihu.com'
           ) {
-            console.log('🔄 检测到登录成功，正在进行反爬环境模拟...');
-            webViewRef.current?.injectJavaScript(
-              `window.location.href = 'https://www.zhihu.com/question/11474985081'; true;`,
-            );
-            return;
-          }
-          if (url.includes('question/11474985081')) {
-            console.log('🎯 已到达验证页面，等待获取 __zse_ck...');
             webViewRef.current?.injectJavaScript(
               `window.ReactNativeWebView.postMessage(document.cookie); true;`,
             );
+            return;
           }
         }}
         onLoadStart={() => setLoading(true)}
