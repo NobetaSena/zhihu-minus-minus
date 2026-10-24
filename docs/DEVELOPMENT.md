@@ -100,6 +100,18 @@ Firebase 26 继续通过 CocoaPods 链接，`withIosFirebaseCocoaPods` 保留禁
 
 iOS 原生 tab 自动收起使用 [Screens 补丁](../patches/react-native-screens+4.30.0.patch)，按祖先裁切后的可见面积选择当前竖向列表，忽略隐藏、禁用及横向滚动容器。首页左右切页时监听外层横向容器的几何变化，主动更新 UIKit 底边滚动绑定；Fabric 惰性挂载、布局和返回页面也会刷新，离页移除监听。不能缓存首次找到的列表，否则已访问的离屏页仍可能控制 tab 收起。`bash scripts/test-ios-tab-scroll-binding.sh` 在临时 iOS 模拟器中直接测试生产 finder/tracker 的 UIKit 行为，退出时删除测试模拟器。仍需在原生应用中检查首次打开各列表、连续左右滑动、取消半途切页、切换底部 tab 和从详情返回后的收起/展开。
 
+#### iOS 外链验证
+
+`app.json` 的顶层 `scheme: "zhihu--"` 与 `ios.scheme: "zhihu"` 会由 Expo 合并到生成的 `Info.plist` 的 `CFBundleURLTypes`。链接继续由 `src/app/+native-intent.tsx` 和 `src/utils/url.ts` 统一解析；不需要额外注册 `Linking` 导航处理器。修改协议配置后须重新 prebuild、编译并安装原生包，Fast Refresh 或 JavaScript 更新不会更新系统的协议注册。
+
+在临时源码副本中运行 `npm run prebuild -- --platform ios --no-install`，确认生成的 URL schemes 同时包含 `zhihu--` 和 `zhihu`。SDK 58 默认清理原生目录，不要用现有本机签名工程做无备份的配置验证。运行 `npm test -- tests/url.test.ts --runInBand` 和 `npm run check` 后，用重新安装的原生包验证：
+
+- 分别在应用未运行和后台运行时，从外部打开问题、回答、文章等受支持的 `zhihu://` 链接，确认进入正确内容；同时检查原有 `zhihu--://` 入口。
+- 在 Safari 与微信中分别点击实际分享页的“App 内打开”，确认按钮发出的 URL 能否交给本应用。`zhihu://hybrid?…` 等查询参数包装路径目前不在通用解析范围内，不应将某个直接内容链接成功视为所有分享链接均可用。
+- 分别检查仅安装知乎--和同时安装官方知乎的情况。多个应用注册同一个 scheme 时，iOS 的目标应用未定义，不能承诺优先打开知乎--，见 [Apple URL scheme 说明](https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app)。
+
+当前未配置 `ios.associatedDomains`。直接接收知乎 HTTPS Universal Links 需要知乎域名的 AASA 文件授权本应用，仅增加客户端域名配置不能实现；参见 [Apple Associated Domains 说明](https://developer.apple.com/documentation/xcode/supporting-associated-domains)。prebuild 与 JavaScript 测试只验证生成配置和路由，不能替代 Safari、微信及真机冷/热启动检查。
+
 ### Web
 
 ```bash

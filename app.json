@@ -8,6 +8,7 @@
     "scheme": "zhihu--",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "scheme": "zhihu",
       "icon": "./src/assets/images/app-icons/default.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.huamu013.ZhihuMinusMinus",
