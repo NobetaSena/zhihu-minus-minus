@@ -20,7 +20,7 @@ const synchronize = createNativeSessionSynchronizer({
       ? SecureStore.setItemAsync(LEGACY_COOKIE_STORAGE_KEY, cookies)
       : SecureStore.deleteItemAsync(LEGACY_COOKIE_STORAGE_KEY),
 });
-let pendingSynchronization: Promise<void> = Promise.resolve();
+let pendingSynchronization: Promise<boolean> = Promise.resolve(true);
 let synchronizationStartedAt = 0;
 export const NATIVE_SESSION_SYNC_TIMEOUT_MS = 5000;
 
@@ -28,12 +28,13 @@ export const NATIVE_SESSION_SYNC_TIMEOUT_MS = 5000;
 export async function waitForNativeSessionCookies(): Promise<boolean> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const settled = async () => {
-    let pending: Promise<void>;
+    let pending: Promise<boolean>;
+    let ready: boolean;
     do {
       pending = pendingSynchronization;
-      await pending;
+      ready = await pending;
     } while (pending !== pendingSynchronization);
-    return true;
+    return ready;
   };
   try {
     // Axios has not reached its transport timeout while this interceptor waits.
@@ -63,9 +64,12 @@ export function syncNativeSessionCookies(
   // The caller's snapshot may rotate while it awaits account persistence.
   // Always mirror the selected session, including its latest response cookies.
   const pending = synchronize(getAuthSessionVersion());
-  // The initiating UI reports failures. Reads can still use the selected
-  // in-memory session or continue without native credentials after a failure.
+  // The initiating UI receives the rejection. Readers retain a failure result
+  // and skip the stale native jar until a later synchronization succeeds.
   synchronizationStartedAt = Date.now();
-  pendingSynchronization = pending.catch(() => undefined);
+  pendingSynchronization = pending.then(
+    () => true,
+    () => false,
+  );
   return pending;
 }

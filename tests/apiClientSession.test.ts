@@ -737,6 +737,101 @@ test('a stalled native cleanup cannot keep a guest API request waiting beyond th
   }
 });
 
+test.each(['not-started', 'already-failed', 'fails-during-request'] as const)(
+  'first-install native cookie migration respects cleanup state: %s',
+  async (cleanupState) => {
+    const read = jest.mocked(readAtomically);
+    const previousRead = read.getMockImplementation();
+    read.mockResolvedValue(null);
+    const getCookies = jest.mocked(CookieManager.get);
+    getCookies.mockReset().mockResolvedValue({
+      z_c0: { name: 'z_c0', value: 'synthetic-legacy-account' },
+    });
+    let fresh:
+      | {
+          auth: typeof import('../src/store/useAuthStore');
+          session: typeof import('../src/utils/authSession');
+          api: typeof import('../src/api/client');
+        }
+      | undefined;
+    jest.isolateModules(() => {
+      fresh = {
+        auth: jest.requireActual('../src/store/useAuthStore'),
+        session: jest.requireActual('../src/utils/authSession'),
+        api: jest.requireActual('../src/api/client'),
+      };
+    });
+    try {
+      if (!fresh) throw new Error('隔离会话模块未加载');
+      const { auth, session, api } = fresh;
+      await auth.useAuthStore.persist.rehydrate();
+      expect(auth.shouldImportLegacySession()).toBe(true);
+      expect(auth.useAuthStore.getState().cookies).toBeNull();
+      const adapter = jest.fn(async (config: InternalAxiosRequestConfig) =>
+        response(config),
+      );
+      api.default.defaults.adapter = adapter;
+      let failCleanup = () => {};
+      let rejection: Promise<void> | undefined;
+      if (cleanupState !== 'not-started') {
+        jest.mocked(CookieManager.clearAllStores).mockImplementationOnce(
+          () =>
+            new Promise<boolean>((_resolve, reject) => {
+              failCleanup = () =>
+                reject(new Error('synthetic cleanup failure'));
+            }),
+        );
+        rejection = expect(
+          session.syncNativeSessionCookies(null),
+        ).rejects.toThrow('synthetic cleanup failure');
+        await Promise.resolve();
+        if (cleanupState === 'already-failed') {
+          failCleanup();
+          await rejection;
+        }
+      }
+      const request = api.default.get('/test-first-install-native-session');
+      if (cleanupState === 'fails-during-request') {
+        await Promise.resolve();
+        expect(adapter).not.toHaveBeenCalled();
+        failCleanup();
+        await rejection;
+      }
+      await request;
+      const sentCookie = adapter.mock.calls[0]?.[0].headers.get('Cookie');
+      if (cleanupState === 'not-started') {
+        expect(getCookies).toHaveBeenCalledTimes(1);
+        expect(sentCookie).toBe('z_c0=synthetic-legacy-account');
+        expect(auth.useAuthStore.getState().cookies).toBe(sentCookie);
+      } else {
+        expect(getCookies).not.toHaveBeenCalled();
+        expect(sentCookie).toBeUndefined();
+        expect(auth.useAuthStore.getState().cookies).toBeNull();
+        await expect(session.waitForNativeSessionCookies()).resolves.toBe(
+          false,
+        );
+
+        // The failed readiness result persists for later readers, but a new
+        // successful synchronization permits anonymous native cookies again.
+        getCookies.mockResolvedValue({
+          d_c0: { name: 'd_c0', value: 'synthetic-anonymous-device' },
+        });
+        await session.syncNativeSessionCookies(null);
+        await expect(session.waitForNativeSessionCookies()).resolves.toBe(true);
+        await api.default.get('/test-first-install-native-recovered');
+        expect(getCookies).toHaveBeenCalledTimes(1);
+        expect(adapter.mock.calls[1]?.[0].headers.get('Cookie')).toBe(
+          'd_c0=synthetic-anonymous-device',
+        );
+        expect(auth.useAuthStore.getState().cookies).toBeNull();
+      }
+    } finally {
+      if (previousRead) read.mockImplementation(previousRead);
+      getCookies.mockReset().mockResolvedValue({});
+    }
+  },
+);
+
 test('clears the active auth session when z_c0 is deleted but anonymous cookies remain', async () => {
   apiClient.defaults.adapter = async (config) =>
     response(
