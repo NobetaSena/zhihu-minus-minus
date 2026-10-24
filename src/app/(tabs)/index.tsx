@@ -1437,6 +1437,7 @@ const FeedList = React.forwardRef<
                 onRetry={() => void fetchNextPage()}
               />
             ) : (filterEnabled || localDedupEnabled) &&
+              !isError &&
               !isRefreshing &&
               !isRefetching &&
               !isLoading &&
