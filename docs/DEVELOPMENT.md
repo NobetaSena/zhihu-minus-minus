@@ -265,6 +265,8 @@ xcrun simctl openurl booted 'zhihu--:///dev/rich-content/prototype?caseId=attach
 
 首次游客初始化由 `useGuestBootstrap` / `GuestBootstrap` 管理：已有原生设备 Cookie 时立即放行，否则短暂等待隐藏 WebView；等待期间首页显示加载状态，网页错误或最多 5 秒后允许 API 继续尝试，不再无限等待 Cookie，也不在成功后固定再等 2 秒。失败后在本次游客会话的下一次联网恢复时最多补试一次，不能重新关闭已放行的 Feed；取得 Cookie 后只重启当前游客的活跃错误/无数据 Feed。异步读取、旧网页消息、定时器和换账号均按代次/会话隔离；匿名 Cookie 只用于请求，不写入认证 store，不通过网页消息传出其值。
 
+登录后切游客会立即登记原生 Cookie 同步，游客初始化与 API 读取原生 Cookie 前等待旧账号清理，不能在保存账号文件的等待间隙先创建游客 Cookie 再把它清空。含登录凭据的旧原生 Cookie 不用于游客 WebView。问题详情和回答列表查询均按会话隔离并拒绝旧响应；游客回答正文独立缓存并保留摘要/截断标记，详情与 Pager 不再请求登录态 Web 正文。相关回归覆盖 `guestBootstrap`、`profileSessionActions`、`apiClientSession`、`guestAnswerReading`、`answerPagerSource` 和 `answerNeighborRendering`；真机需验证首次游客、登录后切游客、重新登录，以及回答失败后的重试和左右切换。
+
 新增 `expo-network` 后必须重新编译原生应用，Fast Refresh 无法添加模块。运行 `npm ci`、`npx expo prebuild --platform android --no-install`、`npx expo prebuild --platform ios --no-install` 和 `npm run check`。回归包括 `queryConnectivity`、`queryRecovery`、`queryClient`、`queryRetry`、`feedFallback` 与 `guestBootstrap`；真机重点验证 Android 飞行模式恢复、Wi-Fi 切换流量、首屏/刷新/翻页中的断网、后台恢复，以及清除应用数据后在线和离线首次游客启动。原生连接状态不能保证知乎服务可达，路由器有连接但上游断网仍需通过请求超时/失败反馈处理；自动化测试不替代这类真机验证。
 
 视频使用 SDK 58 对应的 `expo-video`，正文保留视频封面和播放按钮，`data-lens-id` 和 `/video/` 链接经 Lens 获取实时资源，独立 `/zvideo/` 链接先读取 `/zvideos/{id}` 的媒体信息。两种 ID 不能混用；播放地址仅保存在运行时，打开或重试时重新获取，优先尝试 AVC playlist，再切换备用资源。原 WebView 视频页已移除，网页正文排版也通过应用内入口进入原生播放器；视频封面不进入图片预览和画廊。页面失焦或进入后台会暂停，播放器卸载时释放。
