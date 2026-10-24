@@ -53,6 +53,9 @@ jest.mock('expo-router', () => {
     useRouter: () => ({ push: jest.fn() }),
   };
 });
+jest.mock('../src/features/adaptive-layout/AdaptiveStack', () => ({
+  AdaptiveStack: jest.requireMock('expo-router').Stack,
+}));
 jest.mock('react-native-gesture-handler', () => ({
   GestureHandlerRootView: (props: ViewProps) => {
     const { View } = jest.requireActual('react-native');

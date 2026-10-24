@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { FollowButton } from '@/components/FollowButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { useRefreshAction } from '@/hooks/useRefreshAction';
 import { useZhihuInfiniteQuery } from '@/hooks/useZhihuInfiniteQuery';

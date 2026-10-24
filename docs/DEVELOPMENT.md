@@ -179,6 +179,40 @@ Biome 2.6 使用 `linter.rules.preset: "recommended"`；Markdown 格式化保持
 
 `expo-print` 与 `react-native-view-shot` 是原生依赖，新增或升级后分别运行 `npx expo prebuild --platform android --no-install` 和 `npx expo prebuild --platform ios --no-install`，重新编译 Development Build；生成目录不提交。导出当前仅支持 Android/iOS，Web 不能替代平台验收。真机需检查缺图重试、离线 HTML/公式、PDF 分页、长图边界与取消、SAF 保存、iOS“存储到文件”和多图相册权限；保存面板打开不能作为文件已保存的证据。完整测试矩阵和资源限制见模块 README。
 
+### 大屏双栏与导航状态
+
+入口为 [`src/features/adaptive-layout/AdaptiveStack.tsx`](../src/features/adaptive-layout/AdaptiveStack.tsx)，布局门槛、路由分类和可见页面选择集中在 [`layout.ts`](../src/features/adaptive-layout/layout.ts)。导航容器只在首次挂载时选择：Web、iPad 或屏幕最短边至少 600dp 的设备使用自适应容器，手机保留 Expo Router 原生 Stack。自适应容器内部同时满足内容区宽度至少 840dp、宽度大于高度、`enableLargeScreenLayout` 开启时显示双栏；旋转、窗口缩放和开关变化不会重新选择或挂载导航容器。
+
+两栏共用一个 Stack。布局从当前历史向前寻找最近的详情页，并在最近列表页处停止，分别显示在右、左侧；当前是列表页时右侧显示提示，不能显示该列表之前的旧详情，没有列表来源的详情深链接使用全屏。登录、编辑器、视频和其他未明确分类的路由使用全屏，并作为历史扫描的边界，避免显示不相关的旧页面。新增路由默认全屏，只有明确适合并列浏览时才加入 `getPaneRole` 的列表或详情分类。
+
+横竖屏切换只重新计算尺寸和可见性，不派发 push、replace、reset 或 pop，也不清理历史。页面保持原有 route key、params 与 React 状态，隐藏页停止接收触摸并从无障碍树中隐藏。宽屏列表选择通过 `usePaneRouter` 标记来源，`PaneStackRouter` 只替换该列表之后的详情分支，并同步浏览器历史；重复选择同一内容复用 route key 和页面状态。详情内部的普通链接仍加入历史，例如“问题 → 回答 → 评论”依次返回回答、问题，最后关闭右栏。窄屏、深链接与未标记的导航保留 Expo Router 的原有语义，不建立独立返回栈。尺寸变化与返回动作必须分开处理，不能为了恢复双栏重建路由或复制详情页。这里保留的是同一次运行中的页面状态，不增加跨进程的导航历史恢复。
+
+列表初始占可用宽度的 `1/3`，列表最小 320dp、详情最小 480dp，分隔线交互宽度为 16dp。拖动结束保存 `largeScreenListRatio`；设置 v19 为旧用户补充默认开启的 `enableLargeScreenLayout` 和默认比例，保留已保存的合法偏好，比例限制为 `0.2..0.6`，非有限数值回退为 `1/3`。开关位于“设置 → 外观与阅读 → 大屏布局”，关闭再开启仍保留上次调整的比例。正文、Pager 与弹层通过栏位上下文获取实际宽度和可见性，不能将整窗宽度当作详情栏宽度，也不能让隐藏页面的 Modal 继续覆盖当前内容。
+
+宽屏列表选择回答时显式传入 `readingMode: detail`，右栏只打开该回答。双栏中 Pager 禁止手势翻页，缩回单栏后恢复；尺寸变化不替换 Pager 或强制切换已经打开的阅读模式。新增列表内容入口应使用 `usePaneRouter`；详情正文链接继续使用普通路由。
+
+隐藏页面保留最后可见尺寸和 effects，不使用 `display: none` 或 React Activity，以免滚动容器归零、刷新卡住或标题状态被重新初始化。栏位可见性单独控制自动续页、弹层和活跃状态；嵌套原生 Tab 仍需处于选中状态，隐藏持有输入焦点的栏位时收起键盘。回答翻页与删除内容使用来源路由的参数更新或带目标栈的动作，不能误改另一栏当前页面。
+
+当前平板和 Web 自适应容器使用 JavaScript header，没有原生 Stack 转场动画和原生侧滑返回；可使用页面返回按钮，Android 还可使用系统返回。手机仍使用原生 Stack。平台手势、键盘、安全区以及原生正文重排须用 Development Build 验证，逻辑测试不能证明这些体验已经通过验收。
+
+使用 Node.js 24 运行以下定向回归，再运行完整质量门禁：
+
+```bash
+npm test -- tests/adaptiveNavigation.test.tsx tests/adaptiveLayoutSettings.test.ts tests/paneDimensions.test.tsx tests/paneOverlays.test.tsx tests/paneSelection.test.ts --runInBand
+npm run check
+```
+
+专项测试分别覆盖导航历史与旋转、偏好迁移与宽度持久化、栏内尺寸和隐藏页弹层。下表为需执行的验收矩阵，不代表已完成真机验证；Android 平板和 iPad 均须检查，窗口缩放另在支持分屏的设备或 Web 中检查，手机覆盖原有单栏行为。
+
+| 场景 | 操作 | 预期 |
+| --- | --- | --- |
+| 旋转与窗口缩放 | 滚动列表及长回答，横屏 → 竖屏 → 横屏，调整窗口跨越 840dp，并关闭再开启双栏 | 页面不重复挂载或重置，当前内容、列表状态与返回顺序保留；控件可见且可用 |
+| 拖动分隔线 | 连续拖动、拖至两端、取消拖动，旋转后再重启应用 | 两栏不低于最小宽度，正文、Pager 和操作栏随栏宽调整，已提交比例在重启后恢复 |
+| 嵌套导航与返回 | 列表 → 问题 → 回答 → 评论，详情内再打开用户主页或另一篇内容，交替操作左右栏 | 列表重选替换右栏，同条内容不重置；详情内部逐级返回，最后关闭右栏，无重复详情、丢失列表或跳回首页 |
+| 冷/热深链接 | 关闭应用及应用已打开时，分别打开问题、回答、文章和想法链接；进入后旋转并返回 | 内容与参数正确，有列表来源时展示双栏，无列表来源时详情可全屏使用，返回不制造虚构历史 |
+| 系统返回与全屏页面 | Android 返回键/手势与页面返回按钮分别返回，iPad 使用页面返回；进入登录、编辑器和视频后旋转及退出 | 一次返回只消费一次导航或弹层关闭操作，全屏页面不露出旧栏位，退出后恢复原有浏览上下文 |
+| 弹层、键盘与主题 | 在两栏打开评论输入、菜单、收藏和图片预览，隐藏所属页面再返回，配合旋转、亮暗主题切换 | 隐藏页不残留遮罩或拦截触摸；弹层尺寸、关闭操作、键盘避让和安全区正常，无内容被遮挡 |
+
 ### 主要界面回归场景
 
 主要界面的代码回归覆盖分页、搜索提交、评论上传与提交、历史选择、账号切换和公共菜单。修改这些流程后，除运行 `npm run check`，还应在 Android/iOS Development Build 上检查以下场景；自动化逻辑测试不能替代原生布局和手势验收：
@@ -238,7 +272,7 @@ xcrun simctl openurl booted 'zhihu--:///dev/rich-content/prototype?caseId=attach
 | `src/api/` | Axios 客户端、X-ZSE-96 签名及知乎接口适配；响应边界使用显式类型 |
 | `src/components/` | 跨页面 UI；业务专属渲染优先放进对应 feature |
 | `src/constants/` | 主题、设计 Token 和共享常量 |
-| `src/features/` | 独立业务能力，目前重点是 `rich-content/` 和 `publishing/` |
+| `src/features/` | 独立业务能力，包括 `adaptive-layout/`、`rich-content/` 和 `publishing/` |
 | `src/hooks/` | 可复用交互、查询和乐观更新逻辑 |
 | `src/storage/` | Expo SQLite、本地 Feed 缓存和曝光记录；schema 通过有序 migration 演进 |
 | `src/store/` | Zustand 全局状态与持久化迁移 |

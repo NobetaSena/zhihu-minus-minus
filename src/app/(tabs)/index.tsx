@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, {
   useCallback,
   useEffect,
@@ -15,12 +15,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import PagerView, {
   type PagerViewOnPageScrollEvent,
@@ -60,6 +55,10 @@ import { RecentMoments } from '@/components/RecentMoments';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import {
+  usePaneActive,
+  usePaneDimensions,
+} from '@/features/adaptive-layout/PaneContext';
 import { hasReusableAnswerDetail } from '@/features/rich-content';
 import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
@@ -163,11 +162,11 @@ const MAX_AUTO_FETCH_ROUNDS = 3;
 const MIN_REFRESH_INDICATOR_MS = 500;
 
 export default function HomeScreen() {
-  const { width: windowWidth } = useWindowDimensions();
-  const containerWidth = Math.min(windowWidth - 40, 500);
+  const { width: paneWidth } = usePaneDimensions();
+  const containerWidth = Math.min(paneWidth - 40, 500);
 
   const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
+  const isFocused = usePaneActive();
   const colorScheme = useColorScheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();

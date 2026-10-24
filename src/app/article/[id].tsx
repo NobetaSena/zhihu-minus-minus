@@ -11,7 +11,6 @@ import {
   View as RawView,
   type ScrollViewInstance,
   StyleSheet,
-  useWindowDimensions,
 } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,6 +46,7 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, ThemedIcon, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
 import { RICH_CONTENT_STALE_TIME, ZhihuContent } from '@/features/rich-content';
 import { useDoubleTapAction } from '@/hooks/useDoubleTapAction';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
@@ -61,7 +61,7 @@ import { shouldRetryQuery } from '@/utils/query';
 const ARTICLE_ACTION_BAR_OFFSET = 10;
 
 export default function ArticleDetail() {
-  const dimensions = useWindowDimensions();
+  const dimensions = usePaneDimensions();
   const colorScheme = useColorScheme();
   const primaryColor = useThemeColor({}, 'primary');
   const linkColor = useThemeColor({}, 'link');

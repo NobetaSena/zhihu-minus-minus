@@ -115,6 +115,7 @@ jest.mock('../src/api/zhihu/member', () => ({
   unfollowMember: jest.fn(),
 }));
 jest.mock('expo-router', () => ({
+  useNavigation: () => ({ setParams: jest.fn() }),
   Stack: { Screen: () => null },
   useLocalSearchParams: () => ({
     id: mockEntryAnswerId,

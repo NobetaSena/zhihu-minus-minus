@@ -15,6 +15,7 @@ export function NavigationInteractionSettings() {
     androidFeedbackType,
     defaultTab,
     enableHapticFeedback,
+    enableLargeScreenLayout,
     enablePressFeedback,
     localCityName,
     pressOpacity,
@@ -45,6 +46,26 @@ export function NavigationInteractionSettings() {
 
   return (
     <>
+      <Section title="大屏布局" colorScheme={colorScheme}>
+        <SettingItem
+          label="横屏双栏布局"
+          icon="grid-outline"
+          colorScheme={colorScheme}
+        >
+          <Switch
+            accessibilityLabel="横屏双栏布局"
+            value={enableLargeScreenLayout}
+            onValueChange={(value) =>
+              updateSettings({ enableLargeScreenLayout: value })
+            }
+            trackColor={{ true: tintColor }}
+          />
+        </SettingItem>
+        <Text type="secondary" style={styles.feedbackHint}>
+          平板和大窗口横屏时并排显示列表与详情。切换横竖屏或关闭双栏会保留当前页面与返回记录。
+        </Text>
+      </Section>
+
       <Section title="底部导航栏" colorScheme={colorScheme}>
         {(Object.keys(tabLabels) as TabKey[]).map((tab) => (
           <SettingItem

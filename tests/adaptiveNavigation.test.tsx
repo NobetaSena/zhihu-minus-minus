@@ -1,0 +1,445 @@
+import { Slot, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
+import type { NativeStackNavigationProp } from 'expo-router/native-stack';
+import {
+  act,
+  fireEvent,
+  renderRouter,
+  screen,
+  testRouter,
+  waitFor,
+} from 'expo-router/testing-library';
+import { useEffect, useState } from 'react';
+import {
+  BackHandler,
+  Dimensions,
+  Keyboard,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { AdaptiveStack } from '../src/features/adaptive-layout/AdaptiveStack';
+import {
+  canUseTwoPanes,
+  getListPaneWidth,
+  getVisiblePanes,
+} from '../src/features/adaptive-layout/layout';
+import {
+  usePaneDimensions,
+  usePaneVisible,
+} from '../src/features/adaptive-layout/PaneContext';
+import { usePaneRouter } from '../src/features/adaptive-layout/usePaneRouter';
+import { useRefreshAction } from '../src/hooks/useRefreshAction';
+import { useSettingsStore } from '../src/store/useSettingsStore';
+
+jest.mock('../src/components/Themed', () => ({
+  useRuntimeThemeColors: () => ({
+    background: '#fff',
+    textSecondary: '#666',
+    primary: '#08f',
+    border: '#ccc',
+  }),
+}));
+
+const mounts: Record<string, number> = {};
+const cleanups: Record<string, number> = {};
+let finishRefresh: (() => void) | undefined;
+function Page({ name }: { name: string }) {
+  const router = usePaneRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [draft, setDraft] = useState('');
+  const [scroll, setScroll] = useState(0);
+  const visible = usePaneVisible();
+  const { width } = usePaneDimensions();
+  const identity = `${name}:${id ?? 'root'}`;
+  useEffect(
+    () => () => {
+      cleanups[identity] = (cleanups[identity] ?? 0) + 1;
+    },
+    [identity],
+  );
+  const { refresh, refreshing } = useRefreshAction(
+    () =>
+      new Promise<void>((resolve) => {
+        finishRefresh = resolve;
+      }),
+  );
+  const [instance] = useState(
+    () => (mounts[identity] = (mounts[identity] ?? 0) + 1),
+  );
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<{ 'answer/[id]': { id: string } }>
+    >();
+  return (
+    <View>
+      <Stack.Screen
+        options={{ headerShown: name === 'header', title: '详情标题' }}
+      />
+      <Text>{identity}</Text>
+      <Text testID={`width-${identity}`}>{width}</Text>
+      <Text testID={`visible-${identity}`}>{String(visible)}</Text>
+      <TextInput
+        testID={`draft-${identity}`}
+        value={draft}
+        onChangeText={setDraft}
+      />
+      <Text testID={`instance-${identity}`}>{instance}</Text>
+      <ScrollView
+        testID={`scroll-${identity}`}
+        onScroll={(event) => setScroll(event.nativeEvent.contentOffset.y)}
+      >
+        <Text testID={`offset-${identity}`}>{scroll}</Text>
+      </ScrollView>
+      <Text onPress={() => navigation.setParams({ id: 'switched' })}>
+        switch-{identity}
+      </Text>
+      <Text
+        onPress={() =>
+          navigation.dispatch({
+            type: 'GO_BACK',
+            target: navigation.getState().key,
+          })
+        }
+      >
+        delete-{identity}
+      </Text>
+      <Text
+        onPress={() => {
+          void refresh();
+        }}
+      >
+        refresh-{identity}
+      </Text>
+      <Text testID={`refreshing-${identity}`}>{String(refreshing)}</Text>
+      <Text onPress={() => router.push('/answer/a')}>open-a-{identity}</Text>
+      <Text onPress={() => router.push('/answer/b')}>open-b-{identity}</Text>
+      <Text onPress={() => router.push('/comments/a?type=answer')}>
+        comments-{identity}
+      </Text>
+    </View>
+  );
+}
+
+async function resize(width: number, height: number) {
+  await act(() =>
+    Dimensions.set({
+      window: { width, height, scale: 1, fontScale: 1 },
+      screen: { width, height, scale: 1, fontScale: 1 },
+    }),
+  );
+}
+
+async function open(initialUrl = '/') {
+  return renderRouter(
+    {
+      _layout: {
+        default: () => (
+          <AdaptiveStack screenOptions={{ headerShown: false }}>
+            <AdaptiveStack.Screen name="(tabs)" options={{ title: '首页' }} />
+          </AdaptiveStack>
+        ),
+        unstable_settings: { anchor: '(tabs)' },
+      },
+      '(tabs)/_layout': () => <Slot />,
+      '(tabs)/index': () => <Page name="home" />,
+      'answer/[id]': () => <Page name="answer" />,
+      'user/[id]/index': () => <Page name="user" />,
+      'login/index': () => <Page name="login" />,
+      'comments/[id]': () => <Page name="comments" />,
+      about: () => <Page name="header" />,
+    },
+    { initialUrl },
+  );
+}
+
+function appRoutes(result: Awaited<ReturnType<typeof open>>) {
+  const state = result.getRouterState();
+  return (
+    state?.routes.find((route) => route.name === '__root')?.state?.routes ??
+    state?.routes ??
+    []
+  );
+}
+
+beforeEach(async () => {
+  for (const key of Object.keys(mounts)) delete mounts[key];
+  for (const key of Object.keys(cleanups)) delete cleanups[key];
+  finishRefresh = undefined;
+  useSettingsStore.setState({
+    enableLargeScreenLayout: true,
+    largeScreenListRatio: 1 / 3,
+  });
+  await resize(1200, 800);
+});
+
+test('layout projection keeps chronological history and never crosses a full-screen boundary', () => {
+  const routes = [
+    { key: 'home', name: '(tabs)' },
+    { key: 'a', name: 'answer/[id]' },
+    { key: 'u', name: 'user/[id]/index' },
+    { key: 'b', name: 'answer/[id]' },
+  ];
+  expect(getVisiblePanes(routes, 3, true)).toEqual({
+    listKey: 'u',
+    detailKey: 'b',
+    fullKey: undefined,
+  });
+  expect(getVisiblePanes(routes, 2, true)).toEqual({
+    listKey: 'u',
+    detailKey: undefined,
+    fullKey: undefined,
+  });
+  expect(getVisiblePanes(routes, 3, false).fullKey).toBe('b');
+  expect(
+    getVisiblePanes([...routes, { key: 'login', name: 'login/index' }], 4, true)
+      .fullKey,
+  ).toBe('login');
+  expect(
+    getVisiblePanes([{ key: 'login', name: 'login/index' }, routes[1]], 1, true)
+      .fullKey,
+  ).toBe('a');
+  expect(canUseTwoPanes(1200, 800, true)).toBe(true);
+  expect(canUseTwoPanes(800, 1200, true)).toBe(false);
+  expect(canUseTwoPanes(1200, 800, false)).toBe(false);
+  expect(getListPaneWidth(840, 1)).toBeLessThanOrEqual(840 - 16 - 480);
+});
+
+test('rotation preserves route keys, draft state and full back order across both panes', async () => {
+  const result = await open();
+  await testRouter.push('/answer/a');
+  await fireEvent.changeText(screen.getByTestId('draft-answer:a'), 'reading a');
+  await fireEvent.scroll(screen.getByTestId('scroll-answer:a'), {
+    nativeEvent: { contentOffset: { x: 0, y: 1234 } },
+  });
+  await testRouter.push('/user/u');
+  expect(screen.queryByText('answer:a')).toBeNull();
+  expect(screen.getByText('user:u')).toBeVisible();
+  await testRouter.push('/answer/b');
+  await fireEvent.changeText(screen.getByTestId('draft-answer:b'), 'reading b');
+  const keys = appRoutes(result).map((route) => route.key);
+  await resize(800, 1200);
+  expect(screen.getByTestId('draft-answer:b').props.value).toBe('reading b');
+  expect(screen.queryByText('user:u')).toBeNull();
+  expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
+  await resize(1200, 800);
+  expect(screen.getByText('user:u')).toBeVisible();
+  expect(screen.getByTestId('draft-answer:b').props.value).toBe('reading b');
+  await testRouter.back('/user/u');
+  await testRouter.back('/answer/a');
+  expect(screen.getByTestId('draft-answer:a').props.value).toBe('reading a');
+  expect(screen.getByTestId('offset-answer:a').props.children).toBe(1234);
+  expect(screen.getByTestId('instance-answer:a').props.children).toBe(1);
+  expect(cleanups['answer:a']).toBeUndefined();
+  await testRouter.back();
+  expect(result.getPathname()).toBe('/');
+  expect(screen.getByText('home:root')).toBeVisible();
+});
+
+test('a covered pane keeps its effects and geometry and completes an in-flight refresh', async () => {
+  await open();
+  const width = screen.getByTestId('width-home:root').props.children;
+  await fireEvent.press(screen.getByText('refresh-home:root'));
+  expect(screen.getByTestId('refreshing-home:root').props.children).toBe(
+    'true',
+  );
+  await testRouter.push('/answer/a');
+  await resize(800, 1200);
+  expect(
+    screen.getByTestId('width-home:root', { includeHiddenElements: true }).props
+      .children,
+  ).toBe(width);
+  await act(() => finishRefresh?.());
+  await resize(1200, 800);
+  expect(screen.getByTestId('refreshing-home:root').props.children).toBe(
+    'false',
+  );
+  expect(cleanups['home:root']).toBeUndefined();
+});
+
+test('a pending deletion removes its own detail and preserves the newer list', async () => {
+  const result = await open();
+  await testRouter.push('/answer/a');
+  const finishDelete = screen.getByText('delete-answer:a').props.onPress;
+  await testRouter.push('/user/u');
+  const userKey = appRoutes(result).at(-1)?.key;
+  await act(() => finishDelete());
+  expect(result.getPathname()).toBe('/user/u');
+  expect(appRoutes(result).at(-1)?.key).toBe(userKey);
+  expect(
+    screen.queryByText('answer:a', { includeHiddenElements: true }),
+  ).toBeNull();
+  await testRouter.back('/');
+});
+
+test('system back consumes one chronological entry per press and leaves root unhandled', async () => {
+  const listener = jest.spyOn(BackHandler, 'addEventListener');
+  try {
+    const result = await open();
+    const onBack = listener.mock.calls.find(
+      ([event]) => event === 'hardwareBackPress',
+    )?.[1];
+    expect(onBack).toBeDefined();
+    await testRouter.push('/answer/a');
+    await testRouter.push('/user/u');
+    await resize(800, 1200);
+    await act(() => {
+      expect(onBack?.({ type: 'hardwareBackPress', timeStamp: 1 })).toBe(true);
+    });
+    expect(result.getPathname()).toBe('/answer/a');
+    await resize(1200, 800);
+    await act(() => {
+      expect(onBack?.({ type: 'hardwareBackPress', timeStamp: 1 })).toBe(true);
+    });
+    expect(result.getPathname()).toBe('/');
+    await act(() => {
+      expect(onBack?.({ type: 'hardwareBackPress', timeStamp: 1 })).toBe(false);
+    });
+  } finally {
+    listener.mockRestore();
+  }
+});
+
+test('narrow first, resizing, divider adjustments and preference changes retain the same page', async () => {
+  await resize(800, 1200);
+  const result = await open('/answer/a');
+  await fireEvent.changeText(screen.getByTestId('draft-answer:a'), 'saved');
+  const keys = appRoutes(result).map((route) => route.key);
+  await resize(1200, 800);
+  const previousWidth = screen.getByTestId('width-answer:a').props.children;
+  await fireEvent(
+    screen.getByTestId('adaptive-divider'),
+    'accessibilityAction',
+    { nativeEvent: { actionName: 'increment' } },
+  );
+  expect(screen.getByTestId('width-answer:a').props.children).toBeLessThan(
+    previousWidth,
+  );
+  expect(useSettingsStore.getState().largeScreenListRatio).toBeGreaterThan(
+    1 / 3,
+  );
+  await act(() =>
+    useSettingsStore
+      .getState()
+      .updateSettings({ enableLargeScreenLayout: false }),
+  );
+  expect(screen.getByTestId('draft-answer:a').props.value).toBe('saved');
+  expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
+  await act(() =>
+    useSettingsStore
+      .getState()
+      .updateSettings({ enableLargeScreenLayout: true }),
+  );
+  expect(screen.getByTestId('draft-answer:a').props.value).toBe('saved');
+  await testRouter.back();
+  expect(result.getPathname()).toBe('/');
+});
+
+test('late detail parameter updates target their own route and full-screen back restores the current selection', async () => {
+  const result = await open();
+  await testRouter.push('/answer/a');
+  const finishSwitch = screen.getByText('switch-answer:a').props.onPress;
+  await testRouter.push('/user/u');
+  await act(() => finishSwitch());
+  expect(result.getPathname()).toBe('/user/u');
+  expect(
+    appRoutes(result).find((route) => route.name === 'answer/[id]')?.params,
+  ).toMatchObject({ id: 'switched' });
+  await testRouter.push('/login');
+  expect(screen.queryByText('user:u')).toBeNull();
+  await testRouter.back('/user/u');
+  expect(screen.getByText('user:u')).toBeVisible();
+  expect(screen.queryByText('answer:switched')).toBeNull();
+  await testRouter.back('/answer/switched');
+  expect(screen.getByText('answer:switched')).toBeVisible();
+});
+
+test('hiding the pane with input focus dismisses its keyboard without clearing the draft', async () => {
+  const dismiss = jest.spyOn(Keyboard, 'dismiss');
+  try {
+    const result = await open();
+    const homeKey = appRoutes(result)[0].key;
+    await fireEvent.changeText(
+      screen.getByTestId('draft-home:root'),
+      'search draft',
+    );
+    await fireEvent(
+      screen.getByTestId(`adaptive-route-${homeKey}`),
+      'focusCapture',
+    );
+    await testRouter.push('/answer/a');
+    expect(dismiss).not.toHaveBeenCalled();
+    await resize(800, 1200);
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    await resize(1200, 800);
+    expect(screen.getByTestId('draft-home:root').props.value).toBe(
+      'search draft',
+    );
+  } finally {
+    dismiss.mockRestore();
+  }
+});
+
+test('the adaptive header keeps its back button usable after rotating a full-screen route', async () => {
+  const result = await open();
+  await testRouter.push('/about');
+  expect(screen.getByText('详情标题')).toBeVisible();
+  await resize(800, 1200);
+  await fireEvent.press(screen.getByLabelText('返回'));
+  await waitFor(() => expect(result.getPathname()).toBe('/'));
+});
+
+test('phones keep the native stack and the same route instance when rotated', async () => {
+  await resize(390, 844);
+  const result = await open();
+  expect(screen.queryByTestId('adaptive-stack')).toBeNull();
+  await testRouter.push('/answer/a');
+  await fireEvent.changeText(
+    screen.getByTestId('draft-answer:a'),
+    'phone draft',
+  );
+  const keys = appRoutes(result).map((route) => route.key);
+  await resize(844, 390);
+  expect(screen.queryByTestId('adaptive-stack')).toBeNull();
+  expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
+  expect(screen.getByTestId('draft-answer:a').props.value).toBe('phone draft');
+  await testRouter.back('/');
+});
+
+test('wide list selections replace the open detail, retain a reselected page, and close after nested back', async () => {
+  const result = await open();
+  await fireEvent.changeText(
+    screen.getByTestId('draft-home:root'),
+    'list filter',
+  );
+  await fireEvent.press(screen.getByText('open-a-home:root'));
+  const firstKey = appRoutes(result).at(-1)?.key;
+  expect(appRoutes(result).at(-1)?.params).toMatchObject({
+    id: 'a',
+    readingMode: 'detail',
+  });
+  await fireEvent.changeText(
+    screen.getByTestId('draft-answer:a'),
+    'answer draft',
+  );
+  await fireEvent.press(screen.getByText('open-a-home:root'));
+  expect(appRoutes(result).at(-1)?.key).toBe(firstKey);
+  expect(screen.getByTestId('draft-answer:a').props.value).toBe('answer draft');
+  await fireEvent.press(screen.getByText('comments-answer:a'));
+  expect(appRoutes(result)).toHaveLength(3);
+  await fireEvent.press(screen.getByText('open-b-home:root'));
+  expect(appRoutes(result)).toHaveLength(2);
+  expect(screen.getByText('answer:b')).toBeVisible();
+  expect(
+    appRoutes(result).some((route) => route.name.startsWith('comments/')),
+  ).toBe(false);
+  const selectedKey = appRoutes(result).at(-1)?.key;
+  await resize(800, 1200);
+  await resize(1200, 800);
+  expect(appRoutes(result).at(-1)?.key).toBe(selectedKey);
+  await fireEvent.press(screen.getByText('comments-answer:b'));
+  await testRouter.back('/answer/b?readingMode=detail');
+  await testRouter.back('/');
+  expect(screen.getByTestId('adaptive-empty-detail')).toBeVisible();
+  expect(screen.getByTestId('draft-home:root').props.value).toBe('list filter');
+});

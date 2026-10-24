@@ -7,7 +7,6 @@ import {
   type ScrollViewInstance as NativeScrollView,
   type ViewInstance as NativeView,
   View as RawView,
-  useWindowDimensions,
 } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -48,6 +47,7 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, ThemedIcon, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
 import {
   isRichTextNativeAvailable,
   type RichContentLoadingPhase,
@@ -200,7 +200,7 @@ export const AnswerDetailView = ({
   );
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
   const lineHeightScale = useSettingsStore((state) => state.lineHeightScale);
-  const dimensions = useWindowDimensions();
+  const dimensions = usePaneDimensions();
   const waitForNativeLayout =
     richContentRenderer === 'native-v2' && isRichTextNativeAvailable();
   const shouldRenderBody =
