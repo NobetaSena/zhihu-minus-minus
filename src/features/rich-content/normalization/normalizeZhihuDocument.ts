@@ -961,6 +961,18 @@ export function normalizeZhihuDocument(
       return [];
     }
     if (tag === 'p') {
+      const elementChildren = node.children.filter(isTag);
+      const onlyWhitespaceText = node.children.every(
+        (child) => !isText(child) || !child.data.trim(),
+      );
+      if (
+        node.children.length === 0 ||
+        (elementChildren.length === 1 &&
+          onlyWhitespaceText &&
+          elementChildren[0].name === 'br')
+      ) {
+        return [];
+      }
       const meaningful = node.children.filter(
         (child) => !isText(child) || child.data.trim(),
       );

@@ -14,6 +14,22 @@ const normalize = (html: string) =>
 const image = 'https://example.com/image.png';
 
 describe('prototype HTML to ZhihuDocument normalization', () => {
+  it('drops Zhihu empty paragraph markers instead of adding a visible blank paragraph', () => {
+    const { document } = normalize(
+      '<p data-pid="first">第一段</p><p class="ztext-empty-paragraph"><br/></p><p data-pid="second">第二段</p><p></p>',
+    );
+    expect(document.blocks.map((block) => block.type)).toEqual([
+      'paragraph',
+      'paragraph',
+    ]);
+    const part = compileZhihuDocument(document, {
+      fontSize: 17,
+      lineHeight: 25.5,
+    }).parts[0];
+    expect(part.type === 'flow' && part.flow.text).toBe('第一段\n第二段');
+    expect(part.type === 'flow' && part.flow.paragraphs).toHaveLength(2);
+  });
+
   it('passes structured pin fields through attribute escaping and the existing resource allowlist', () => {
     const { document, diagnostics } = normalizeZhihuContentSegments(
       [
