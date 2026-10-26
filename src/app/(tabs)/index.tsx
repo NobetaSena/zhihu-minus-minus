@@ -208,7 +208,7 @@ export default function HomeScreen() {
       if (idx >= 0) return idx;
     }
     const idx = currentTabs.indexOf(defaultTab);
-    return idx >= 0 ? idx : 0;
+    return Math.max(idx, 0);
   }, [currentTabs, defaultTab, params.tab]);
 
   // 核心状态：共享滚动位置

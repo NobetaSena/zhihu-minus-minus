@@ -194,7 +194,7 @@ function AnswerDetailScreen() {
 
   const initialPage = useMemo(() => {
     const index = answerIds.indexOf(initialId);
-    return index >= 0 ? index : 0;
+    return Math.max(index, 0);
   }, [answerIds, initialId]);
 
   const currentPage = Math.max(0, answerIds.indexOf(selectedId));

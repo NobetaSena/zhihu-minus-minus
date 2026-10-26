@@ -159,8 +159,8 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
   };
 
   return (
-    <View type="surface" className="p-4 mb-2.5 mx-1.5 rounded-xl">
-      <View className="flex-row items-center mb-3 bg-transparent">
+    <View type="surface" className="p-4 pb-2 mb-2.5 mx-1.5 rounded-xl">
+      <View className="flex-row items-center mb-2 bg-transparent">
         <BouncyButton
           accessibilityRole="button"
           accessibilityLabel={`查看 ${item.author.name} 的主页`}
@@ -200,7 +200,7 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
         accessibilityRole="button"
         accessibilityLabel={`阅读 ${item.author.name} 的回答`}
         onPress={openAnswer}
-        className="py-1 mb-2"
+        className="py-1"
       >
         <FeedExcerpt
           html={item.excerpt || item.content || '点击阅读回答'}

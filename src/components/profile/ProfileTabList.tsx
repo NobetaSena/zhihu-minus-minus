@@ -329,6 +329,7 @@ export const ProfileTabList = forwardRef<
             onRetry={() => void query.refetch().catch(() => undefined)}
           />
         ) : emptyState ? (
+          // biome-ignore lint/complexity/noUselessFragments: FlashList requires a ReactElement while emptyState accepts ReactNode.
           <>{emptyState}</>
         ) : (
           <View className="items-center py-20 bg-transparent">
