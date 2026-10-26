@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler/jestSetup';
 import { Slot, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import type { NativeStackNavigationProp } from 'expo-router/native-stack';
 import {
@@ -8,7 +9,7 @@ import {
   testRouter,
   waitFor,
 } from 'expo-router/testing-library';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   BackHandler,
   Dimensions,
@@ -18,9 +19,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AdaptiveStack } from '../src/features/adaptive-layout/AdaptiveStack';
 import {
-  canUseTwoPanes,
   getListPaneWidth,
   getVisiblePanes,
 } from '../src/features/adaptive-layout/layout';
@@ -31,6 +32,12 @@ import {
 import { usePaneRouter } from '../src/features/adaptive-layout/usePaneRouter';
 import { useRefreshAction } from '../src/hooks/useRefreshAction';
 import { useSettingsStore } from '../src/store/useSettingsStore';
+
+jest.mock('react-native-gesture-handler', () => ({
+  ...jest.requireActual('react-native-gesture-handler'),
+  // The divider's native gesture lifecycle has its own controller tests.
+  GestureDetector: ({ children }: { children: ReactNode }) => children,
+}));
 
 jest.mock('../src/components/Themed', () => ({
   useRuntimeThemeColors: () => ({
@@ -130,14 +137,32 @@ async function resize(width: number, height: number) {
   );
 }
 
+async function setTwoPanes(enabled: boolean) {
+  await act(() =>
+    useSettingsStore
+      .getState()
+      .updateSettings({ enableLargeScreenLayout: enabled }),
+  );
+}
+
 async function open(initialUrl = '/') {
   return renderRouter(
     {
       _layout: {
         default: () => (
-          <AdaptiveStack screenOptions={{ headerShown: false }}>
-            <AdaptiveStack.Screen name="(tabs)" options={{ title: '首页' }} />
-          </AdaptiveStack>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AdaptiveStack screenOptions={{ headerShown: false }}>
+              <AdaptiveStack.Screen name="(tabs)" options={{ title: '首页' }} />
+              <AdaptiveStack.Screen
+                name="about"
+                options={{
+                  headerRight: () => (
+                    <Text onPress={() => testRouter.back()}>关闭详情</Text>
+                  ),
+                }}
+              />
+            </AdaptiveStack>
+          </GestureHandlerRootView>
         ),
         unstable_settings: { anchor: '(tabs)' },
       },
@@ -147,6 +172,8 @@ async function open(initialUrl = '/') {
       'user/[id]/index': () => <Page name="user" />,
       'login/index': () => <Page name="login" />,
       'comments/[id]': () => <Page name="comments" />,
+      'settings/index': () => <Page name="settings" />,
+      'settings/appearance': () => <Page name="appearance" />,
       about: () => <Page name="header" />,
     },
     { initialUrl },
@@ -199,10 +226,6 @@ test('layout projection keeps chronological history and never crosses a full-scr
     getVisiblePanes([{ key: 'login', name: 'login/index' }, routes[1]], 1, true)
       .fullKey,
   ).toBe('a');
-  expect(canUseTwoPanes(1200, 800, true)).toBe(true);
-  expect(canUseTwoPanes(800, 1200, true)).toBe(false);
-  expect(canUseTwoPanes(1200, 800, false)).toBe(false);
-  expect(getListPaneWidth(840, 1)).toBeLessThanOrEqual(840 - 16 - 480);
 });
 
 test('rotation preserves route keys, draft state and full back order across both panes', async () => {
@@ -220,7 +243,7 @@ test('rotation preserves route keys, draft state and full back order across both
   const keys = appRoutes(result).map((route) => route.key);
   await resize(800, 1200);
   expect(screen.getByTestId('draft-answer:b').props.value).toBe('reading b');
-  expect(screen.queryByText('user:u')).toBeNull();
+  expect(screen.getByText('user:u')).toBeVisible();
   expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
   await resize(1200, 800);
   expect(screen.getByText('user:u')).toBeVisible();
@@ -244,6 +267,7 @@ test('a covered pane keeps its effects and geometry and completes an in-flight r
     'true',
   );
   await testRouter.push('/answer/a');
+  await setTwoPanes(false);
   await resize(800, 1200);
   expect(
     screen.getByTestId('width-home:root', { includeHiddenElements: true }).props
@@ -251,6 +275,7 @@ test('a covered pane keeps its effects and geometry and completes an in-flight r
   ).toBe(width);
   await act(() => finishRefresh?.());
   await resize(1200, 800);
+  await setTwoPanes(true);
   expect(screen.getByTestId('refreshing-home:root').props.children).toBe(
     'false',
   );
@@ -300,12 +325,15 @@ test('system back consumes one chronological entry per press and leaves root unh
   }
 });
 
-test('narrow first, resizing, divider adjustments and preference changes retain the same page', async () => {
+test('starting with panes disabled, resizing and changing preferences retain the same page', async () => {
   await resize(800, 1200);
+  await setTwoPanes(false);
   const result = await open('/answer/a');
   await fireEvent.changeText(screen.getByTestId('draft-answer:a'), 'saved');
   const keys = appRoutes(result).map((route) => route.key);
   await resize(1200, 800);
+  expect(screen.queryByTestId('adaptive-divider')).toBeNull();
+  await setTwoPanes(true);
   const previousWidth = screen.getByTestId('width-answer:a').props.children;
   await fireEvent(
     screen.getByTestId('adaptive-divider'),
@@ -370,8 +398,11 @@ test('hiding the pane with input focus dismisses its keyboard without clearing t
     await testRouter.push('/answer/a');
     expect(dismiss).not.toHaveBeenCalled();
     await resize(800, 1200);
+    expect(dismiss).not.toHaveBeenCalled();
+    await setTwoPanes(false);
     expect(dismiss).toHaveBeenCalledTimes(1);
     await resize(1200, 800);
+    await setTwoPanes(true);
     expect(screen.getByTestId('draft-home:root').props.value).toBe(
       'search draft',
     );
@@ -389,22 +420,105 @@ test('the adaptive header keeps its back button usable after rotating a full-scr
   await waitFor(() => expect(result.getPathname()).toBe('/'));
 });
 
-test('phones keep the native stack and the same route instance when rotated', async () => {
-  await resize(390, 844);
+test('the adaptive navigator applies controls declared on root Stack.Screen options', async () => {
   const result = await open();
-  expect(screen.queryByTestId('adaptive-stack')).toBeNull();
-  await testRouter.push('/answer/a');
-  await fireEvent.changeText(
-    screen.getByTestId('draft-answer:a'),
-    'phone draft',
-  );
-  const keys = appRoutes(result).map((route) => route.key);
-  await resize(844, 390);
-  expect(screen.queryByTestId('adaptive-stack')).toBeNull();
-  expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
-  expect(screen.getByTestId('draft-answer:a').props.value).toBe('phone draft');
-  await testRouter.back('/');
+  await testRouter.push('/about');
+  await fireEvent.press(screen.getByText('关闭详情'));
+  await waitFor(() => expect(result.getPathname()).toBe('/'));
 });
+
+test.each([
+  [320, 700],
+  [390, 844],
+  [700, 390],
+  [800, 1200],
+  [1200, 800],
+])(
+  'only the switch controls panes at %s by %s without remounting pages',
+  async (width, height) => {
+    await resize(width, height);
+    const result = await open();
+    await fireEvent.changeText(screen.getByTestId('draft-home:root'), 'filter');
+    await fireEvent.press(screen.getByText('open-a-home:root'));
+    await fireEvent.changeText(screen.getByTestId('draft-answer:a'), 'saved');
+    const keys = appRoutes(result).map((route) => route.key);
+    expect(screen.getByTestId('adaptive-divider')).toBeVisible();
+    const detailWidth = screen.getByTestId('width-answer:a').props.children;
+    expect(detailWidth).toBeGreaterThan(0);
+    expect(detailWidth).toBeLessThan(width);
+    await fireEvent(
+      screen.getByTestId('adaptive-divider'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'increment' },
+      },
+    );
+    expect(screen.getByTestId('width-answer:a').props.children).toBeLessThan(
+      detailWidth,
+    );
+    await resize(height, width);
+    expect(screen.getByTestId('adaptive-divider')).toBeVisible();
+    await setTwoPanes(false);
+    expect(screen.queryByTestId('adaptive-divider')).toBeNull();
+    expect(screen.queryByText('home:root')).toBeNull();
+    expect(screen.getByTestId('width-answer:a').props.children).toBe(height);
+    await resize(width, height);
+    expect(screen.queryByTestId('adaptive-divider')).toBeNull();
+    await setTwoPanes(true);
+    expect(screen.getByTestId('adaptive-divider')).toBeVisible();
+    expect(screen.getByTestId('draft-home:root').props.value).toBe('filter');
+    expect(screen.getByTestId('draft-answer:a').props.value).toBe('saved');
+    expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
+    expect(mounts['answer:a']).toBe(1);
+    expect(cleanups['answer:a']).toBeUndefined();
+    await testRouter.back('/');
+  },
+);
+
+test.each([320, 390, 700, 1200])(
+  'both panes remain within width %s at every divider limit',
+  (width) => {
+    const widths = [-1, 1 / 3, 0.45, 1, Number.NaN].map((ratio) =>
+      getListPaneWidth(width, ratio),
+    );
+    for (const listWidth of widths) {
+      expect(listWidth).toBeGreaterThan(0);
+      expect(width - 16 - listWidth).toBeGreaterThan(0);
+    }
+    expect(widths[3]).toBeGreaterThan(widths[0]);
+  },
+);
+
+test.each([
+  [390, 844],
+  [1200, 800],
+])(
+  'settings remain full screen at %s by %s and returning restores the selected detail',
+  async (width, height) => {
+    await resize(width, height);
+    const result = await open();
+    await fireEvent.press(screen.getByText('open-a-home:root'));
+    const keys = appRoutes(result).map((route) => route.key);
+    await testRouter.push('/settings');
+    expect(screen.getByTestId('width-settings:root').props.children).toBe(
+      width,
+    );
+    expect(screen.queryByTestId('adaptive-divider')).toBeNull();
+    await testRouter.push('/settings/appearance');
+    expect(screen.getByTestId('width-appearance:root').props.children).toBe(
+      width,
+    );
+    expect(screen.queryByText('answer:a')).toBeNull();
+    await setTwoPanes(false);
+    await testRouter.back('/settings');
+    await testRouter.back('/answer/a?readingMode=detail');
+    expect(screen.getByTestId('width-answer:a').props.children).toBe(width);
+    await setTwoPanes(true);
+    expect(screen.getByText('home:root')).toBeVisible();
+    expect(screen.getByText('answer:a')).toBeVisible();
+    expect(appRoutes(result).map((route) => route.key)).toEqual(keys);
+  },
+);
 
 test('wide list selections replace the open detail, retain a reselected page, and close after nested back', async () => {
   const result = await open();

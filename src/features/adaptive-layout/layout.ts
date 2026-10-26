@@ -9,11 +9,12 @@ export const PANE_DIVIDER_WIDTH = 16;
 
 /** Unknown routes stay full screen, especially login, editors and media viewers. */
 export function getPaneRole(name: string): PaneRole {
+  // Keep settings and the layout switch reachable at any pane width.
+  if (name.startsWith('settings/')) return 'full';
   if (
     name === '(tabs)' ||
     name === 'search' ||
     name === 'history' ||
-    name === 'settings/index' ||
     name === 'question/[id]/index' ||
     name === 'user/[id]/index' ||
     name === 'topic/[id]' ||
@@ -28,19 +29,10 @@ export function getPaneRole(name: string): PaneRole {
     name === 'article/[id]' ||
     name === 'pin/[id]' ||
     name === 'guest/detail' ||
-    name.startsWith('comments/') ||
-    (name.startsWith('settings/') && name !== 'settings/index')
+    name.startsWith('comments/')
   )
     return 'detail';
   return 'full';
-}
-
-export function canUseTwoPanes(
-  width: number,
-  height: number,
-  enabled: boolean,
-) {
-  return enabled && width >= 840 && width > height;
 }
 
 export function getListPaneWidth(width: number, ratio: number): number {
@@ -48,7 +40,7 @@ export function getListPaneWidth(width: number, ratio: number): number {
   const safeRatio = Number.isFinite(ratio)
     ? Math.min(0.6, Math.max(0.2, ratio))
     : 1 / 3;
-  return Math.min(Math.max(0, usable - 480), Math.max(320, usable * safeRatio));
+  return usable * safeRatio;
 }
 
 /**
@@ -59,12 +51,12 @@ export function getListPaneWidth(width: number, ratio: number): number {
 export function getVisiblePanes(
   routes: readonly PaneRoute[],
   index: number,
-  wide: boolean,
+  enabled: boolean,
 ) {
   const current = routes[index];
   if (!current)
     return { listKey: undefined, detailKey: undefined, fullKey: undefined };
-  if (!wide || getPaneRole(current.name) === 'full') {
+  if (!enabled || getPaneRole(current.name) === 'full') {
     return { listKey: undefined, detailKey: undefined, fullKey: current.key };
   }
   let listKey: string | undefined;

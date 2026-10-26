@@ -154,9 +154,9 @@ export interface AppSettings {
   enableHapticFeedback: boolean;
   /** iOS 是否使用系统原生底部 Tab（iOS 26+ 显示 Liquid Glass） */
   useNativeIOSBottomTabs: boolean;
-  /** 在平板和大窗口横屏时使用列表、详情双栏。 */
+  /** 是否并排显示列表与详情；仅由开关控制，不限制设备、尺寸或方向。 */
   enableLargeScreenLayout: boolean;
-  /** 双栏中列表占可用宽度的比例；实际尺寸仍受两栏最小宽度约束。 */
+  /** 双栏中列表占可用宽度的比例。 */
   largeScreenListRatio: number;
   /** 是否开启浏览历史记录 */
   enableBrowseHistory: boolean;

@@ -17,7 +17,10 @@ import {
   SafeAreaProviderCompat,
 } from 'expo-router/react-navigation';
 import {
+  Children,
   type ComponentProps,
+  createElement,
+  isValidElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -26,9 +29,7 @@ import {
   useState,
 } from 'react';
 import {
-  Dimensions,
   Keyboard,
-  PanResponder,
   Platform,
   StyleSheet,
   Text,
@@ -39,12 +40,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRuntimeThemeColors } from '@/components/Themed';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import {
-  canUseTwoPanes,
   getListPaneWidth,
   getVisiblePanes,
   PANE_DIVIDER_WIDTH,
 } from './layout';
 import { PaneContext, usePaneDimensions } from './PaneContext';
+import { PaneDivider } from './PaneDivider';
 import { PaneStackRouter } from './PaneStackRouter';
 import { resolvePaneDetailHref } from './selection';
 import { PaneSelectionContext } from './usePaneRouter';
@@ -91,11 +92,10 @@ export function AdaptiveStackContent({
   useEffect(() => setRatio(savedRatio), [savedRatio]);
   const width = size?.width ?? dimensions.width;
   const height = size?.height ?? dimensions.height;
-  const wide = canUseTwoPanes(width, height, enabled);
-  const panes = getVisiblePanes(state.routes, state.index, wide);
+  const panes = getVisiblePanes(state.routes, state.index, enabled);
   const selectDetail = useCallback(
     (sourceKey: string, href: Href) => {
-      if (!wide || sourceKey !== panes.listKey) return false;
+      if (!enabled || sourceKey !== panes.listKey) return false;
       const destination = resolvePaneDetailHref(href);
       if (!destination) return false;
       // A list selection opens one answer, irrespective of the phone reading mode.
@@ -108,43 +108,17 @@ export function AdaptiveStackContent({
       });
       return true;
     },
-    [wide, panes.listKey, dispatchNavigation, navigatorKey],
+    [enabled, panes.listKey, dispatchNavigation, navigatorKey],
   );
   const listWidth = getListPaneWidth(width, ratio);
   const detailLeft = listWidth + PANE_DIVIDER_WIDTH;
-  const drag = useRef({ width, ratio, start: listWidth });
-  drag.current.width = width;
-  drag.current.ratio = ratio;
-  const divider = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        drag.current.start = getListPaneWidth(
-          drag.current.width,
-          drag.current.ratio,
-        );
-      },
-      onPanResponderMove: (_, gesture) => {
-        const next = Math.min(
-          0.6,
-          Math.max(
-            0.2,
-            (drag.current.start + gesture.dx) /
-              (drag.current.width - PANE_DIVIDER_WIDTH),
-          ),
-        );
-        drag.current.ratio = next;
-        setRatio(next);
-      },
-      onPanResponderRelease: () =>
-        useSettingsStore
-          .getState()
-          .updateSettings({ largeScreenListRatio: drag.current.ratio }),
-      onPanResponderTerminate: () =>
-        setRatio(useSettingsStore.getState().largeScreenListRatio),
-    }),
-  ).current;
+  const commitRatio = useCallback((next: number) => {
+    setRatio(next);
+    useSettingsStore.getState().updateSettings({ largeScreenListRatio: next });
+  }, []);
+  const cancelResize = useCallback(() => {
+    setRatio(useSettingsStore.getState().largeScreenListRatio);
+  }, []);
 
   return (
     <PaneSelectionContext.Provider value={selectDetail}>
@@ -191,7 +165,7 @@ export function AdaptiveStackContent({
             <RoutePane
               key={route.key}
               routeKey={route.key}
-              twoPane={wide}
+              twoPane={!!panes.listKey}
               testID={`adaptive-route-${route.key}`}
               left={isDetail ? detailLeft : 0}
               width={paneWidth}
@@ -212,47 +186,13 @@ export function AdaptiveStackContent({
           );
         })}
         {panes.listKey ? (
-          <View
-            {...divider.panHandlers}
-            testID="adaptive-divider"
-            accessibilityRole="adjustable"
-            accessibilityLabel="调整列表宽度"
-            accessibilityValue={{
-              min: 20,
-              max: 60,
-              now: Math.round(ratio * 100),
-            }}
-            accessibilityActions={[
-              { name: 'increment' },
-              { name: 'decrement' },
-            ]}
-            onAccessibilityAction={({ nativeEvent }) => {
-              const next = Math.min(
-                0.6,
-                Math.max(
-                  0.2,
-                  ratio +
-                    (nativeEvent.actionName === 'increment' ? 0.05 : -0.05),
-                ),
-              );
-              setRatio(next);
-              useSettingsStore
-                .getState()
-                .updateSettings({ largeScreenListRatio: next });
-            }}
-            style={[
-              styles.divider,
-              { left: listWidth, backgroundColor: colors.background },
-            ]}
-          >
-            <View
-              style={{
-                width: 1,
-                height: '100%',
-                backgroundColor: colors.border,
-              }}
-            />
-          </View>
+          <PaneDivider
+            width={width}
+            ratio={ratio}
+            onChange={setRatio}
+            onCommit={commitRatio}
+            onCancel={cancelResize}
+          />
         ) : null}
       </View>
     </PaneSelectionContext.Provider>
@@ -409,20 +349,26 @@ export const TwoPaneStack = createStandardRouterNavigator(
   },
 );
 
-/** Choose the host once: rotating or disabling the preference must not remount it. */
 function AdaptiveStackHost(props: ComponentProps<typeof Stack>) {
-  const [capable] = useState(() => {
-    const screen = Dimensions.get('screen');
-    return (
-      Platform.OS === 'web' ||
-      (Platform.OS === 'ios' && Platform.isPad) ||
-      Math.min(screen.width, screen.height) >= 600
-    );
-  });
-  return capable ? (
-    <TwoPaneStack {...props} activityEnabled={false} />
-  ) : (
-    <Stack {...props} />
+  // Expo's native Stack unwraps Stack.Screen itself. A standard navigator
+  // instead expects its own Screen marker when reading layout options.
+  const adaptiveChildren = useMemo(
+    () =>
+      Children.map(props.children, (child) =>
+        isValidElement<ComponentProps<typeof Stack.Screen>>(child) &&
+        child.type === Stack.Screen
+          ? createElement(TwoPaneStack.Screen, {
+              ...child.props,
+              key: child.key,
+            })
+          : child,
+      ),
+    [props.children],
+  );
+  return (
+    <TwoPaneStack {...props} activityEnabled={false}>
+      {adaptiveChildren}
+    </TwoPaneStack>
   );
 }
 
@@ -438,14 +384,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  divider: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: PANE_DIVIDER_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -46,14 +46,15 @@ export function NavigationInteractionSettings() {
 
   return (
     <>
-      <Section title="大屏布局" colorScheme={colorScheme}>
+      <Section title="双栏布局（试验性）" colorScheme={colorScheme}>
         <SettingItem
-          label="横屏双栏布局"
+          label="启用双栏布局"
           icon="grid-outline"
           colorScheme={colorScheme}
         >
           <Switch
-            accessibilityLabel="横屏双栏布局"
+            accessibilityLabel="启用双栏布局"
+            accessibilityHint="试验性功能，开启后并排显示列表与详情"
             value={enableLargeScreenLayout}
             onValueChange={(value) =>
               updateSettings({ enableLargeScreenLayout: value })
@@ -62,7 +63,7 @@ export function NavigationInteractionSettings() {
           />
         </SettingItem>
         <Text type="secondary" style={styles.feedbackHint}>
-          平板和大窗口横屏时并排显示列表与详情。切换横竖屏或关闭双栏会保留当前页面与返回记录。
+          试验性功能，布局和手势仍在完善。开启后并排显示列表与详情，不限制屏幕大小或横竖屏。长按两栏之间再拖动可调整栏宽，按住时显示指示器。关闭后恢复单栏并保留当前页面与返回记录。
         </Text>
       </Section>
 
