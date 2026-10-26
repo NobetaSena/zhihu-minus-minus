@@ -257,7 +257,6 @@ export default function LoginScreen() {
             webViewRef.current?.injectJavaScript(
               `window.ReactNativeWebView.postMessage(document.cookie); true;`,
             );
-            return;
           }
         }}
         onLoadStart={() => setLoading(true)}
