@@ -191,14 +191,16 @@ Biome 2.6 使用 `linter.rules.preset: "recommended"`；Markdown 格式化保持
 
 双栏列表选择回答时显式传入 `readingMode: detail`，右栏只打开该回答。双栏中 Pager 禁止手势翻页，切换到单栏后恢复；尺寸变化不替换 Pager 或强制切换已经打开的阅读模式。新增列表内容入口应使用 `usePaneRouter`；详情正文链接继续使用普通路由。
 
-隐藏页面保留最后可见尺寸和 effects，不使用 `display: none` 或 React Activity，以免滚动容器归零、刷新卡住或标题状态被重新初始化。栏位可见性单独控制自动续页、弹层和活跃状态；嵌套原生 Tab 仍需处于选中状态，隐藏持有输入焦点的栏位时收起键盘。回答翻页与删除内容使用来源路由的参数更新或带目标栈的动作，不能误改另一栏当前页面。
+隐藏页面保留最后可见尺寸和 effects，不使用 `display: none` 或 React Activity，以免滚动容器归零、刷新卡住或标题状态被重新初始化。栏位可见性单独控制自动续页、弹层和活跃状态；嵌套原生 Tab 仍需处于选中状态，隐藏持有输入焦点的栏位时收起键盘。回答翻页与删除内容使用来源路由的参数更新或带目标栈的动作，不能误改另一栏当前页面。删除回答的延迟回调还需核对回答、登录会话和 Pager scope；旧页面已被替换或已切换回答时，不得关闭新内容。
+
+首页顶部标签与搜索、底部导航在窄栏中均可横向滚动，按钮保留可操作宽度，选中项和栏宽变化会将当前控件滚入可视区。不要通过压缩按钮或裁切导航来容纳窄栏。
 
 手机、平板和 Web 均使用自适应容器及 JavaScript header，没有原生 Stack 转场动画和原生侧滑返回；可使用页面返回按钮，Android 还可使用系统返回。单栏和双栏共用同一容器，关闭双栏不会更换导航实现。平台手势、键盘、安全区以及原生正文重排须用 Development Build 验证，逻辑测试不能证明这些体验已经通过验收。
 
 使用 Node.js 24 运行以下定向回归，再运行完整质量门禁：
 
 ```bash
-npm test -- tests/adaptiveNavigation.test.tsx tests/adaptiveLayoutSettings.test.ts tests/navigationInteractionSettings.test.tsx tests/paneDivider.test.tsx tests/paneDimensions.test.tsx tests/paneOverlays.test.tsx tests/paneSelection.test.ts --runInBand
+npm test -- tests/adaptiveNavigation.test.tsx tests/adaptiveLayoutSettings.test.ts tests/navigationInteractionSettings.test.tsx tests/paneDivider.test.tsx tests/homeNavigationRow.test.tsx tests/answerNeighborRendering.test.tsx tests/paneDimensions.test.tsx tests/paneOverlays.test.tsx tests/paneSelection.test.ts --runInBand
 npm run check
 ```
 
