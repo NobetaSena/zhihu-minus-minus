@@ -120,6 +120,12 @@ npm run web
 
 Web 适合检查路由和不依赖原生模块的页面，不代表 Android/iOS 的原生行为已经验证。
 
+### 空段落排版验证
+
+富文本空段保留数量：每组连续空段的首个压窄并移除段距，其余保留正文行高和段后间距。合成样本 `src/features/rich-content/fixtures/cases/empty-paragraph-spacing-001.json` 覆盖首尾、连续空段、普通正文和图片两侧；正文中的多个 `<br>` 不合并。双端原生模块增加了精确空行度量与复制锚点过滤，需要重新 prebuild、编译并安装 Development Build 后再检查，单独重启 Metro 不会更新原生代码。
+
+相关验证命令为 `npm test -- src/features/rich-content/tests --runInBand`、`npm run analyze:rich-content`、`npm run check`，以及原生模块 README 中的 Android JVM/iOS 模型检查。平台验收应查看单个/多个空段、图片间单空段、引用和列表、字体缩放，以及跨空段复制时空行数量与正文字符是否保留；同时切换到 WebView 对照。
+
 ## 什么时候需要重新 prebuild
 
 以下改动后应重新生成原生工程：
