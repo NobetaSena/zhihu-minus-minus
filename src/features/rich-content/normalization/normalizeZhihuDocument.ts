@@ -10,6 +10,7 @@ import type {
   ZhihuImageResource,
   ZhihuInlineRun,
   ZhihuListItem,
+  ZhihuParagraphBlock,
   ZhihuTableAlignment,
   ZhihuTableRow,
 } from '../document';
@@ -724,7 +725,10 @@ export function normalizeZhihuDocument(
     return result;
   }
 
-  function paragraph(nodes: readonly Node[], paragraphId?: string): ZhihuBlock {
+  function paragraph(
+    nodes: readonly Node[],
+    paragraphId?: string,
+  ): ZhihuParagraphBlock {
     return {
       id: id('paragraph'),
       type: 'paragraph',
@@ -739,7 +743,6 @@ export function normalizeZhihuDocument(
     paragraphId?: string,
   ): ZhihuBlock[] {
     const original = paragraph(nodes, paragraphId);
-    if (original.type !== 'paragraph') return [original];
     type FormulaRun = Extract<ZhihuInlineRun, { type: 'inlineFormula' }>;
     type Part = ZhihuInlineRun[] | FormulaRun;
     const isDisplay = (run: ZhihuInlineRun): boolean =>
@@ -961,6 +964,15 @@ export function normalizeZhihuDocument(
       return [];
     }
     if (tag === 'p') {
+      const visible = node.children.filter(
+        (child) => isTag(child) || (isText(child) && child.data.trim()),
+      );
+      if (
+        visible.length === 0 ||
+        (visible.length === 1 && isTag(visible[0]) && visible[0].name === 'br')
+      ) {
+        return [{ ...paragraph([], paragraphId), empty: true }];
+      }
       const meaningful = node.children.filter(
         (child) => !isText(child) || child.data.trim(),
       );
