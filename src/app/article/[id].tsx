@@ -425,7 +425,10 @@ export default function ArticleDetail() {
               </View>
             ) : (
               <View className="p-5 pt-[10px]">
-                <Text className="text-2xl font-bold leading-8 mb-5">
+                <Text
+                  className="font-bold mb-5"
+                  style={{ fontSize: 22, lineHeight: 32 }}
+                >
                   {data.title}
                 </Text>
                 <View className="flex-row items-center justify-between bg-transparent mt-2">
