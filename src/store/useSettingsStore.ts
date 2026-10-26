@@ -233,7 +233,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   androidFeedbackType: 'ripple',
   enableHapticFeedback: true,
   useNativeIOSBottomTabs: true,
-  enableLargeScreenLayout: true,
+  enableLargeScreenLayout: false,
   largeScreenListRatio: DEFAULT_LARGE_SCREEN_LIST_RATIO,
   enableBrowseHistory: true,
   enableLocalFeedDedup: false,
@@ -307,7 +307,7 @@ export const useSettingsStore = create<SettingsState>()(
             nextSettings.enablePressFeedback = true;
           }
           if (typeof nextSettings.enableLargeScreenLayout !== 'boolean') {
-            nextSettings.enableLargeScreenLayout = true;
+            nextSettings.enableLargeScreenLayout = false;
           }
           nextSettings.largeScreenListRatio = normalizeLargeScreenListRatio(
             nextSettings.largeScreenListRatio,
@@ -519,7 +519,7 @@ export const useSettingsStore = create<SettingsState>()(
         persistedState.enableLargeScreenLayout =
           typeof persistedState.enableLargeScreenLayout === 'boolean'
             ? persistedState.enableLargeScreenLayout
-            : true;
+            : false;
         persistedState.largeScreenListRatio = normalizeLargeScreenListRatio(
           persistedState.largeScreenListRatio,
         );

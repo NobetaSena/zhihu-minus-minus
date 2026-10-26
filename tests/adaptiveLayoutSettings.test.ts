@@ -22,9 +22,9 @@ beforeEach(() => {
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
 });
 
-test('enables adaptive panes with a one-third list width in settings version 19', () => {
+test('defaults adaptive panes to disabled with a one-third list width in settings version 19', () => {
   expect(useSettingsStore.getState()).toMatchObject({
-    enableLargeScreenLayout: true,
+    enableLargeScreenLayout: false,
     largeScreenListRatio: 1 / 3,
   });
   expect(useSettingsStore.persist.getOptions().version).toBe(19);
@@ -38,7 +38,7 @@ test('migrates v18 settings without changing unrelated preferences or the input 
   };
   expect(await migrate(previous)).toMatchObject({
     ...previous,
-    enableLargeScreenLayout: true,
+    enableLargeScreenLayout: false,
     largeScreenListRatio: 1 / 3,
   });
   expect(previous).not.toHaveProperty('enableLargeScreenLayout');
@@ -49,20 +49,20 @@ test.each([null, undefined, 'invalid', 42])(
   'recovers absent or invalid persisted settings %j',
   async (value) => {
     expect(await migrate(value)).toMatchObject({
-      enableLargeScreenLayout: true,
+      enableLargeScreenLayout: false,
       largeScreenListRatio: 1 / 3,
     });
   },
 );
 
-test('retains an explicit disabled preference and saved list width during migration', async () => {
+test('retains an explicit enabled preference and saved list width during migration', async () => {
   expect(
     await migrate({
-      enableLargeScreenLayout: false,
+      enableLargeScreenLayout: true,
       largeScreenListRatio: 0.45,
     }),
   ).toMatchObject({
-    enableLargeScreenLayout: false,
+    enableLargeScreenLayout: true,
     largeScreenListRatio: 0.45,
   });
 });
@@ -89,7 +89,7 @@ test.each<[unknown, number]>([
       }),
     ).toMatchObject({
       largeScreenListRatio: expected,
-      enableLargeScreenLayout: true,
+      enableLargeScreenLayout: false,
     });
 
     useSettingsStore.getState().updateSettings({
@@ -98,7 +98,7 @@ test.each<[unknown, number]>([
     } as unknown as Partial<AppSettings>);
     expect(useSettingsStore.getState()).toMatchObject({
       largeScreenListRatio: expected,
-      enableLargeScreenLayout: true,
+      enableLargeScreenLayout: false,
     });
   },
 );
@@ -148,7 +148,7 @@ test('rehydrates v18 settings and persists the v19 layout defaults', async () =>
   await useSettingsStore.persist.rehydrate();
   expect(useSettingsStore.getState()).toMatchObject({
     doubleTapAction: 'like',
-    enableLargeScreenLayout: true,
+    enableLargeScreenLayout: false,
     largeScreenListRatio: 1 / 3,
   });
   const persistedJson = jest
@@ -157,18 +157,18 @@ test('rehydrates v18 settings and persists the v19 layout defaults', async () =>
   if (!persistedJson) throw new Error('Migrated settings must be persisted');
   expect(JSON.parse(persistedJson)).toMatchObject({
     version: 19,
-    state: { enableLargeScreenLayout: true, largeScreenListRatio: 1 / 3 },
+    state: { enableLargeScreenLayout: false, largeScreenListRatio: 1 / 3 },
   });
 });
 
 test('reset restores the default adaptive pane preference and width', () => {
   useSettingsStore.getState().updateSettings({
-    enableLargeScreenLayout: false,
+    enableLargeScreenLayout: true,
     largeScreenListRatio: 0.45,
   });
   useSettingsStore.getState().resetSettings();
   expect(useSettingsStore.getState()).toMatchObject({
-    enableLargeScreenLayout: true,
+    enableLargeScreenLayout: false,
     largeScreenListRatio: 1 / 3,
   });
 });

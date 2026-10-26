@@ -29,13 +29,13 @@ beforeEach(() => {
 test('the single pane switch applies both changes immediately', async () => {
   const host = await render(<NavigationInteractionSettings />);
   expect(host.getByText('双栏布局（试验性）')).toBeVisible();
-  expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', true);
-
-  await fireEvent(host.getByLabelText('启用双栏布局'), 'valueChange', false);
-  expect(useSettingsStore.getState().enableLargeScreenLayout).toBe(false);
   expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', false);
 
   await fireEvent(host.getByLabelText('启用双栏布局'), 'valueChange', true);
   expect(useSettingsStore.getState().enableLargeScreenLayout).toBe(true);
   expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', true);
+
+  await fireEvent(host.getByLabelText('启用双栏布局'), 'valueChange', false);
+  expect(useSettingsStore.getState().enableLargeScreenLayout).toBe(false);
+  expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', false);
 });
