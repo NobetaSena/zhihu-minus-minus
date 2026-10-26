@@ -54,6 +54,13 @@ const VALID_READING_BACKGROUNDS: ReadonlyArray<ReadingBackground> = [
 const VALID_TEXT_CONTRASTS: ReadonlyArray<TextContrast> = ['standard', 'high'];
 const VALID_SURFACE_STYLES: ReadonlyArray<SurfaceStyle> = ['layered', 'flat'];
 const DEFAULT_RECOMMEND_AD_INTERVAL = -10;
+const DEFAULT_LARGE_SCREEN_LIST_RATIO = 1 / 3;
+
+function normalizeLargeScreenListRatio(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(0.6, Math.max(0.2, value))
+    : DEFAULT_LARGE_SCREEN_LIST_RATIO;
+}
 
 function isValidFilterMode(v: unknown): v is FilterMode {
   return typeof v === 'string' && (VALID_FILTER_MODES as string[]).includes(v);
@@ -147,6 +154,10 @@ export interface AppSettings {
   enableHapticFeedback: boolean;
   /** iOS 是否使用系统原生底部 Tab（iOS 26+ 显示 Liquid Glass） */
   useNativeIOSBottomTabs: boolean;
+  /** 是否并排显示列表与详情；仅由开关控制，不限制设备、尺寸或方向。 */
+  enableLargeScreenLayout: boolean;
+  /** 双栏中列表占可用宽度的比例。 */
+  largeScreenListRatio: number;
   /** 是否开启浏览历史记录 */
   enableBrowseHistory: boolean;
   /** 是否在本地记录并过滤近期看过的推荐内容 */
@@ -222,6 +233,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   androidFeedbackType: 'ripple',
   enableHapticFeedback: true,
   useNativeIOSBottomTabs: true,
+  enableLargeScreenLayout: false,
+  largeScreenListRatio: DEFAULT_LARGE_SCREEN_LIST_RATIO,
   enableBrowseHistory: true,
   enableLocalFeedDedup: false,
   enableFeedCacheOnLaunch: false,
@@ -293,6 +306,12 @@ export const useSettingsStore = create<SettingsState>()(
           if (typeof nextSettings.enablePressFeedback !== 'boolean') {
             nextSettings.enablePressFeedback = true;
           }
+          if (typeof nextSettings.enableLargeScreenLayout !== 'boolean') {
+            nextSettings.enableLargeScreenLayout = false;
+          }
+          nextSettings.largeScreenListRatio = normalizeLargeScreenListRatio(
+            nextSettings.largeScreenListRatio,
+          );
           if (
             typeof nextSettings.recommendRequestIncludeDesktop !== 'boolean'
           ) {
@@ -337,7 +356,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'zhihu-settings-storage',
       storage: createJSONStorage(() => settingsStorage),
-      version: 18,
+      version: 19,
       migrate: (rawPersistedState: unknown, version: number) => {
         const persistedState =
           normalizePersistedSettingsState(rawPersistedState);
@@ -495,6 +514,15 @@ export const useSettingsStore = create<SettingsState>()(
         )
           ? persistedState.doubleTapAction
           : undefined;
+
+        // v19 adds adaptive panes while retaining any saved layout preference.
+        persistedState.enableLargeScreenLayout =
+          typeof persistedState.enableLargeScreenLayout === 'boolean'
+            ? persistedState.enableLargeScreenLayout
+            : false;
+        persistedState.largeScreenListRatio = normalizeLargeScreenListRatio(
+          persistedState.largeScreenListRatio,
+        );
 
         return persistedState as unknown as SettingsState;
       },

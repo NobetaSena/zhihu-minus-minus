@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import React from 'react';
 import { View as NativeView, type ViewInstance } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -13,6 +12,7 @@ import {
 import { CollectionButton } from '@/components/CollectionButton';
 import { MoreActionsButton } from '@/components/MoreActionsButton';
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useCollectionStore } from '@/store/useCollectionStore';
 import type { ZhihuContentSegment } from '@/types/zhihu';
 import { seedAnswerPreviewEntry } from '@/utils/answerPreviewEntry';

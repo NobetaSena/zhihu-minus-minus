@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { type Href, useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
 import { Image } from 'react-native';
 import Animated, {
@@ -16,6 +16,7 @@ import { getDailyBefore, getDailyLatest } from '@/api/zhihu';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import {
   type CollapsibleChromeScrollOptions,
   useCollapsibleChromeScroll,

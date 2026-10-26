@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { type Href, Stack, useRouter } from 'expo-router';
+import { type Href, Stack } from 'expo-router';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import {
@@ -16,6 +16,7 @@ import { Section } from '@/components/SettingItem';
 import { Text, useThemeColor } from '@/components/Themed';
 import { ThemeModeSelector } from '@/components/ThemeModeSelector';
 import { useColorScheme } from '@/components/useColorScheme';
+import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTelemetryStore } from '@/store/useTelemetryStore';
 

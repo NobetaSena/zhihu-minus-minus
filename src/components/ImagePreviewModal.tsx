@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import {
   Image,
   type ImageProps,
-  Modal,
   SafeAreaView,
   StyleSheet,
   View,
@@ -13,6 +12,7 @@ import { BouncyButton } from '@/components/BouncyButton';
 import { ImageActionBottomSheet } from '@/components/ImageActionBottomSheet';
 import { Text } from '@/components/Themed';
 import Colors from '@/constants/Colors';
+import { PaneModal } from '@/features/adaptive-layout/PaneModal';
 import { getCachedImageSource } from '@/utils/imageSource';
 import { saveImageToGallery } from '@/utils/saveImage';
 
@@ -103,7 +103,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   }
 
   return (
-    <Modal
+    <PaneModal
       visible={visible}
       transparent={true}
       animationType="fade"
@@ -158,7 +158,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           onClose={() => setSheetUrl(null)}
         />
       </View>
-    </Modal>
+    </PaneModal>
   );
 };
 

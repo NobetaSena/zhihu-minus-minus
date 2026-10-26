@@ -1,6 +1,5 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import React, {
   type ReactNode,
   useCallback,
@@ -42,6 +41,7 @@ import { QueryErrorView } from '@/components/QueryErrorView';
 import { ShareMenu } from '@/components/ShareMenu';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useRuntimeThemeColors, View } from '@/components/Themed';
+import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { ZhihuStructuredContent } from '@/features/rich-content';
 import { useAnswerPreviewAutoLoad } from '@/hooks/useAnswerPreviewAutoLoad';
 import { useAnswerPreviewBody } from '@/hooks/useAnswerPreviewBody';

@@ -15,6 +15,7 @@ export function NavigationInteractionSettings() {
     androidFeedbackType,
     defaultTab,
     enableHapticFeedback,
+    enableLargeScreenLayout,
     enablePressFeedback,
     localCityName,
     pressOpacity,
@@ -45,6 +46,27 @@ export function NavigationInteractionSettings() {
 
   return (
     <>
+      <Section title="双栏布局（试验性）" colorScheme={colorScheme}>
+        <SettingItem
+          label="启用双栏布局"
+          icon="grid-outline"
+          colorScheme={colorScheme}
+        >
+          <Switch
+            accessibilityLabel="启用双栏布局"
+            accessibilityHint="试验性功能，开启后并排显示列表与详情"
+            value={enableLargeScreenLayout}
+            onValueChange={(value) =>
+              updateSettings({ enableLargeScreenLayout: value })
+            }
+            trackColor={{ true: tintColor }}
+          />
+        </SettingItem>
+        <Text type="secondary" style={styles.feedbackHint}>
+          试验性功能，布局和手势仍在完善。开启后并排显示列表与详情，不限制屏幕大小或横竖屏。长按两栏之间再拖动可调整栏宽，按住时显示指示器。关闭后恢复单栏并保留当前页面与返回记录。
+        </Text>
+      </Section>
+
       <Section title="底部导航栏" colorScheme={colorScheme}>
         {(Object.keys(tabLabels) as TabKey[]).map((tab) => (
           <SettingItem
