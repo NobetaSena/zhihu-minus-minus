@@ -337,6 +337,7 @@ xcrun simctl openurl booted 'zhihu--:///dev/rich-content/prototype?caseId=attach
 ## GitHub Actions 与发布
 
 - [`ci.yml`](../.github/workflows/ci.yml) 在 Pull Request 和 `main` push 时运行 `npm ci` 与 `npm run check`。
+- [`pr-build.yml`](../.github/workflows/pr-build.yml) 支持维护者在 Pull Request 下评论 `/build`、`/build-apk`、`/build-ios` 或 `/build-all`，按需触发单平台或双平台正式包预览构建，并在 PR 评论中回复产物下载入口。
 - [`build.yaml`](../.github/workflows/build.yaml) 手动构建四个 Android 单 ABI APK 和一个未签名 iOS IPA；`build_mode=build` 只保留 7 天的 artifact，`build_mode=release` 还会创建 Release。
 - Release 必须从 `main` 运行，且 `package.json`、`app.json` 版本一致，`v<version>` tag 尚不存在。`publish_release=false` 创建草稿，`true` 才直接公开。
 - 构建工作流的 Android job 需要 `EXPO_TOKEN` 加上 4 个 telemetry Secret，iOS job 需要其中 4 个 telemetry Secret；由于两个 job 总是一起运行，完整 workflow 需要配置 `EXPO_TOKEN`、`FIREBASE_ANDROID_JSON_B64`、`FIREBASE_IOS_PLIST_B64`、`EXPO_PUBLIC_SENTRY_DSN` 和 `SENTRY_AUTH_TOKEN`。详情见 [`docs/RELEASING.md`](./RELEASING.md) 和 [`docs/TELEMETRY.md`](./TELEMETRY.md)。
