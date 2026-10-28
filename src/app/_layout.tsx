@@ -206,9 +206,11 @@ function RootLayout() {
                   },
                   headerTitleStyle: {
                     color: appThemeColors.text,
-                    fontWeight: 'bold',
+                    fontSize: 18,
+                    fontWeight: '600',
                   },
-                  headerTintColor: currentTint,
+                  // Back arrows match the text, as on the custom detail headers.
+                  headerTintColor: appThemeColors.text,
                   headerShadowVisible: false,
                   headerBackButtonDisplayMode: 'minimal',
                 }}

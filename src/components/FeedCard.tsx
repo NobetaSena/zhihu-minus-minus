@@ -6,8 +6,6 @@ import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
 import { FeedCardActionRow } from '@/components/FeedCardActionRow';
 import type { ActionSheetOption } from '@/components/overlays/ActionSheet';
-import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useContentActions } from '@/hooks/useContentActions';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -28,6 +26,7 @@ import { showToast } from '@/utils/toast';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
 import { BouncyButton } from './BouncyButton';
 import { CustomContextMenu, type MenuOption } from './CustomContextMenu';
+import { useContentCardSurface } from './contentCardSurface';
 import { FeedCardPreview } from './FeedCardPreview';
 import { FeedExcerpt } from './FeedExcerpt';
 import { type ShareContentType, ShareMenu } from './ShareMenu';
@@ -101,6 +100,7 @@ function areFeedCardPropsEqual(
     previousItem.titleString === nextItem.titleString &&
     previousItem.questionId === nextItem.questionId &&
     previousItem.actionText === nextItem.actionText &&
+    previousItem.hideAuthor === nextItem.hideAuthor &&
     previousItem.excerpt === nextItem.excerpt &&
     areFeedContentEqual(previousItem.content, nextItem.content) &&
     previousItem.created_time === nextItem.created_time &&
@@ -140,7 +140,7 @@ const FeedCardComponent = ({
       ? item.type
       : null;
   const isGuest = !cookies;
-  const colorScheme = useColorScheme();
+  const surface = useContentCardSurface({ radius: 12, gap: 8 });
 
   const [voted, setVoted] = useState(item.voted || 0);
   const [voteCount, setVoteCount] = useState(item.voteCount || 0);
@@ -400,48 +400,65 @@ const FeedCardComponent = ({
         }}
         onPress={openDetail}
         style={[
-          {
-            backgroundColor: Colors[colorScheme].backgroundSecondary,
-            borderRadius: 12,
-            opacity: previewVisible ? 0 : 1,
-          },
+          surface,
+          { opacity: previewVisible ? 0 : 1 },
           isQuestionType ? { paddingBottom: 10 } : undefined,
         ]}
-        className="p-4 pb-2 mb-2 mx-1.5"
+        className="p-4 pb-2 mx-1.5"
       >
         {/* 动态动作提示 (针对关注流) */}
-        {item.actionText && (
+        {item.actionText && item.hideAuthor && authorId ? (
+          <BouncyButton
+            accessibilityRole="link"
+            accessibilityLabel={`查看${item.author.name}的主页`}
+            onPress={() =>
+              router.push({
+                pathname: '/user/[id]',
+                params: { id: authorId, avatar: item.author.avatar },
+              })
+            }
+          >
+            <Text
+              type="secondary"
+              className="text-[13px] mb-2 text-tertiary dark:text-tertiary-dark"
+            >
+              {item.actionText}
+            </Text>
+          </BouncyButton>
+        ) : item.actionText ? (
           <Text
             type="secondary"
             className="text-[13px] mb-2 text-tertiary dark:text-tertiary-dark"
           >
             {item.actionText}
           </Text>
-        )}
+        ) : null}
 
         {/* 热区1：点击作者头像/姓名 -> 用户页 */}
-        <BouncyButton
-          disabled={!authorId}
-          onPress={() =>
-            router.push({
-              pathname: '/user/[id]',
-              params: {
-                id: authorId,
-                avatar: item.author.avatar,
-              },
-            })
-          }
-          className="flex-row items-center mb-2"
-        >
-          <Animated.Image
-            source={authorAvatarSource}
-            className="w-[22px] h-[22px] rounded-full"
-            sharedTransitionTag={`avatar-${item.author.url_token || item.author.id}`}
-          />
-          <Text type="secondary" className="ml-2 text-[13px]">
-            {item.author.name}
-          </Text>
-        </BouncyButton>
+        {item.hideAuthor ? null : (
+          <BouncyButton
+            disabled={!authorId}
+            onPress={() =>
+              router.push({
+                pathname: '/user/[id]',
+                params: {
+                  id: authorId,
+                  avatar: item.author.avatar,
+                },
+              })
+            }
+            className="flex-row items-center mb-2"
+          >
+            <Animated.Image
+              source={authorAvatarSource}
+              className="w-[22px] h-[22px] rounded-full"
+              sharedTransitionTag={`avatar-${item.author.url_token || item.author.id}`}
+            />
+            <Text type="secondary" className="ml-2 text-[13px]">
+              {item.author.name}
+            </Text>
+          </BouncyButton>
+        )}
 
         {/* 话题标签 */}
         {item.topics && item.topics.length > 0 && (

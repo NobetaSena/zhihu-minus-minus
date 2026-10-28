@@ -12,6 +12,10 @@ jest.mock('../src/components/BouncyButton', () => ({
 jest.mock('../src/components/Themed', () => ({
   Text: jest.requireActual('react-native').Text,
   useThemeColor: () => '#123456',
+  useRuntimeThemeColors: () => ({
+    primary: '#123456',
+    textTertiary: '#999999',
+  }),
 }));
 jest.mock('../src/components/useColorScheme', () => ({
   useColorScheme: () => 'light',

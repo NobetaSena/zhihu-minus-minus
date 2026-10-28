@@ -111,6 +111,10 @@ jest.mock('../src/components/Themed', () => {
     Text: native.Text,
     View: native.View,
     useThemeColor: () => '#123456',
+    useRuntimeThemeColors: () => ({
+      backgroundSecondary: '#123456',
+      border: '#123456',
+    }),
   };
 });
 jest.mock('../src/components/BouncyButton', () => ({
@@ -229,6 +233,23 @@ test.each([
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/user/[id]',
     params: { id: author.url_token || author.id, avatar: '' },
+  });
+});
+
+test('the action line still opens the author profile when the author row is hidden', async () => {
+  const host = await render(
+    <FeedCard
+      item={{
+        ...baseItem,
+        actionText: '合成作者 回答了问题',
+        hideAuthor: true,
+      }}
+    />,
+  );
+  await fireEvent.press(host.getByRole('link', { name: '查看合成作者的主页' }));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/user/[id]',
+    params: { id: 'author', avatar: '' },
   });
 });
 
