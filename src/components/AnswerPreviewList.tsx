@@ -32,6 +32,7 @@ import {
   CONTENT_ACTION_BAR_HEIGHT,
   getContentActionBarBottom,
 } from '@/components/ContentActionBar';
+import { useContentCardSurface } from '@/components/contentCardSurface';
 import {
   DetailNavigationHeader,
   useDetailNavigationHeight,
@@ -176,7 +177,7 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
   onBodyLoader,
 }: AnswerPreviewCardProps) {
   const router = useRouter();
-  const colors = useRuntimeThemeColors();
+  const surface = useContentCardSurface({ radius: 16, gap: CARD_GAP });
   const footerRef = useCallback(
     (view: ViewInstance | null) => onFooterRef(item.id, view),
     [item.id, onFooterRef],
@@ -192,14 +193,7 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
   ) : undefined;
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.backgroundSecondary,
-        borderRadius: 16,
-        padding: 12,
-        marginBottom: CARD_GAP,
-      }}
-    >
+    <View style={[{ padding: 12 }, surface]}>
       {showQuestion ? (
         <BouncyButton
           accessibilityRole="link"
@@ -608,6 +602,7 @@ export function AnswerPreviewList({
           onViewableItemsChanged={handleViewableItemsChanged}
           viewabilityConfig={floatingBar.viewabilityConfig}
           onScroll={handleScroll}
+          onScrollBeginDrag={collapseAnswer.onScrollBeginDrag}
           onScrollEndDrag={handleScrollEnd}
           onMomentumScrollEnd={handleScrollEnd}
           onCommitLayoutEffect={collapseAnswer.onCommitLayout}

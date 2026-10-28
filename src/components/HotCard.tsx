@@ -8,7 +8,8 @@ import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRo
 import { useAuthStore } from '@/store/useAuthStore';
 import { getCachedImageSource } from '@/utils/imageSource';
 import { BouncyButton } from './BouncyButton';
-import { Text, useRuntimeThemeColors } from './Themed';
+import { useContentCardSurface } from './contentCardSurface';
+import { Text } from './Themed';
 
 export interface HotItem {
   id: string;
@@ -28,18 +29,6 @@ export interface HotItem {
   } | null;
 }
 
-/** Where a row sits in the hot list; rows join into one rounded surface. */
-export type HotCardPosition = 'first' | 'middle' | 'last' | 'only';
-
-export function getHotCardPosition(
-  index: number,
-  count: number,
-): HotCardPosition {
-  if (count <= 1) return 'only';
-  if (index === 0) return 'first';
-  return index === count - 1 ? 'last' : 'middle';
-}
-
 /** 前三名用丝带角标，颜色由深到浅；之后的排名是橙色数字。 */
 const RIBBON_COLORS = [
   colors.light.hotRankFirst,
@@ -47,17 +36,11 @@ const RIBBON_COLORS = [
   colors.light.hotRankThird,
 ];
 
-const HotCardComponent = ({
-  item,
-  position = 'only',
-}: {
-  item: HotItem;
-  position?: HotCardPosition;
-}) => {
+const HotCardComponent = ({ item }: { item: HotItem }) => {
   const router = useRouter();
   const { cookies } = useAuthStore();
   const colorScheme = useColorScheme();
-  const palette = useRuntimeThemeColors();
+  const surface = useContentCardSurface({ radius: 14, gap: 8 });
   const isGuest = !cookies;
 
   const ribbonColor = RIBBON_COLORS[item.rank - 1];
@@ -72,8 +55,6 @@ const HotCardComponent = ({
   const labelText =
     item.labelArea?.type === 'text' ? item.labelArea.text : undefined;
   const hasTrend = item.labelArea?.type === 'trend';
-  const isFirst = position === 'first' || position === 'only';
-  const isLast = position === 'last' || position === 'only';
 
   return (
     <BouncyButton
@@ -98,18 +79,8 @@ const HotCardComponent = ({
           router.push(`/question/${item.questionId}`);
         }
       }}
-      style={[
-        styles.row,
-        { backgroundColor: palette.backgroundSecondary },
-        isFirst && styles.firstRow,
-        isLast && styles.lastRow,
-      ]}
+      style={[styles.row, surface]}
     >
-      {!isFirst ? (
-        <View
-          style={[styles.divider, { backgroundColor: palette.controlBorder }]}
-        />
-      ) : null}
       <View style={styles.rankColumn}>
         {ribbonColor ? (
           <View style={styles.ribbon}>
@@ -168,19 +139,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     paddingHorizontal: 14,
     paddingVertical: 14,
-  },
-  firstRow: { borderTopLeftRadius: 14, borderTopRightRadius: 14 },
-  lastRow: {
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-    marginBottom: 12,
-  },
-  divider: {
-    position: 'absolute',
-    top: 0,
-    left: 14,
-    right: 14,
-    height: StyleSheet.hairlineWidth,
   },
   rankColumn: {
     width: 24,
@@ -247,7 +205,6 @@ export const HotCard = React.memo(
     previous.item.labelArea?.trend === next.item.labelArea?.trend &&
     previous.item.labelArea?.normal_color ===
       next.item.labelArea?.normal_color &&
-    previous.item.labelArea?.night_color === next.item.labelArea?.night_color &&
-    previous.position === next.position,
+    previous.item.labelArea?.night_color === next.item.labelArea?.night_color,
 );
 HotCard.displayName = 'HotCard';
