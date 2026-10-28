@@ -140,6 +140,8 @@ export interface AppSettings {
   localCityName: string | null;
   borderRadius: number;
   richContentRenderer: RichContentRenderer;
+  /** 正文图片加载作者上传的原文件（知乎提供时），不带知乎水印。 */
+  removeImageWatermark: boolean;
   /** 点击回答卡片后的阅读方式；列表入口始终使用普通卡片。 */
   answerReadingMode: AnswerReadingMode;
   /**
@@ -236,6 +238,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   localCityName: null,
   borderRadius: 12,
   richContentRenderer: 'native-v2',
+  removeImageWatermark: true,
   answerReadingMode: 'detail',
   doubleTapAction: undefined,
   enablePrivateMessaging: false,
@@ -312,6 +315,9 @@ export const useSettingsStore = create<SettingsState>()(
           if (!isValidRichContentRenderer(nextSettings.richContentRenderer)) {
             nextSettings.richContentRenderer = 'native-v2';
           }
+          if (typeof nextSettings.removeImageWatermark !== 'boolean') {
+            nextSettings.removeImageWatermark = true;
+          }
           if (
             nextSettings.doubleTapAction !== undefined &&
             !isValidDoubleTapAction(nextSettings.doubleTapAction)
@@ -380,7 +386,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'zhihu-settings-storage',
       storage: createJSONStorage(() => settingsStorage),
-      version: 22,
+      version: 23,
       migrate: (rawPersistedState: unknown, version: number) => {
         const persistedState =
           normalizePersistedSettingsState(rawPersistedState);
@@ -547,17 +553,22 @@ export const useSettingsStore = create<SettingsState>()(
         persistedState.largeScreenListRatio = normalizeLargeScreenListRatio(
           persistedState.largeScreenListRatio,
         );
-        // v20 adds unread badge styles; existing installs keep red counts.
+        // v21 adds unread badge styles; existing installs keep red counts.
         persistedState.unreadBadgeStyle = isValidUnreadBadgeStyle(
           persistedState.unreadBadgeStyle,
         )
           ? persistedState.unreadBadgeStyle
           : 'count';
 
-        // v21 adds list preloading, off unless chosen.
+        // v20 adds watermark removal, on by default as body images already were.
+        persistedState.removeImageWatermark =
+          typeof persistedState.removeImageWatermark === 'boolean'
+            ? persistedState.removeImageWatermark
+            : true;
+        // v22 adds list preloading, off unless chosen.
         persistedState.enableListPreload =
           persistedState.enableListPreload === true;
-        // v22 adds parallel paging, off unless chosen.
+        // v23 adds parallel paging, off unless chosen.
         persistedState.enableParallelPaging =
           persistedState.enableParallelPaging === true;
 
