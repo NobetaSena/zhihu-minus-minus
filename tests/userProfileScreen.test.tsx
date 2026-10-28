@@ -14,6 +14,7 @@ import {
   getRecentMemberActivities,
   type ZhihuMember,
 } from '../src/api/zhihu/member';
+import { fetchMemberCreations } from '../src/api/zhihu/moments';
 import UserDetailScreen from '../src/app/user/[id]/index';
 import type { ProfileTabListProps } from '../src/components/profile/ProfileTabList';
 import type { AnswerReadingContext } from '../src/utils/answerReadingContext';
@@ -81,6 +82,9 @@ jest.mock('../src/api/zhihu/member', () => ({
   getMemberAnswersVotedByMe: jest.fn(),
   getMemberColumnContributions: jest.fn(),
   getRecentMemberActivities: jest.fn(),
+}));
+jest.mock('../src/api/zhihu/moments', () => ({
+  fetchMemberCreations: jest.fn(),
 }));
 jest.mock('../src/api/zhihu/history', () => ({ addReadHistory: jest.fn() }));
 jest.mock('../src/api/client', () => ({
@@ -275,6 +279,7 @@ beforeEach(() => {
   jest.mocked(getMemberAnswersVotedByMe).mockResolvedValue(emptyPage);
   jest.mocked(getMemberColumnContributions).mockResolvedValue(emptyPage);
   jest.mocked(searchContent).mockResolvedValue(emptyPage);
+  jest.mocked(fetchMemberCreations).mockResolvedValue(emptyPage);
   jest.mocked(getRecentMemberActivities).mockResolvedValue({
     ...emptyPage,
     data: [
@@ -297,15 +302,29 @@ afterEach(async () => {
   jest.useRealTimers();
 });
 
-/** Serve 创作's three sources; every other relation list stays empty. */
-function mockCreations(
-  creations: Partial<Record<'answers' | 'articles' | 'pins', unknown[]>>,
+/** A synthetic 创作 entry: the content the member's own list would return. */
+function creationCard(
+  contentType: 'answer' | 'article' | 'pin',
+  id: string,
+  title: string,
+  authorId = member.id,
 ) {
-  jest.mocked(getMemberRelations).mockImplementation(async (_id, type) => ({
-    ...emptyPage,
-    data: (creations[type as keyof typeof creations] ??
-      []) as typeof emptyPage.data,
-  }));
+  const author = { ...member, id: authorId, url_token: `${authorId}-token` };
+  return {
+    type: 'moments_feed',
+    target:
+      contentType === 'answer'
+        ? { id, type: 'answer', author, question: { id: `q-${id}`, title } }
+        : { id, type: contentType, author, title },
+  };
+}
+
+/** Serve one page of 创作 cards. */
+function mockCreations(cards: ReturnType<typeof creationCard>[]) {
+  jest.mocked(fetchMemberCreations).mockResolvedValue({
+    data: cards,
+    paging: { is_end: true, next: '' },
+  });
 }
 
 const screen = () => (
@@ -331,16 +350,9 @@ test.each([true, false])(
       ? member
       : { ...member, id: 'other-member', url_token: 'other-token' };
     client.setQueryData(['me'], mockAuthState.me);
-    mockCreations({
-      articles: [
-        {
-          id: 'creation-article',
-          type: 'article',
-          title: '最近更新的创作',
-          created: 100,
-        },
-      ],
-    });
+    mockCreations([
+      creationCard('article', 'creation-article', '最近更新的创作'),
+    ]);
     const host = await render(screen());
     expect(
       host.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel),
@@ -371,15 +383,12 @@ test.each([true, false])(
       mockPagerProps.onPageSelected({ nativeEvent: { position: 1 } }),
     );
     await flushQueries();
-    // 创作 merges the member's answers, articles and pins by publish time.
-    for (const kind of ['answers', 'articles', 'pins']) {
-      expect(getMemberRelations).toHaveBeenCalledWith(
-        member.url_token,
-        kind,
-        expect.objectContaining({ offset: 0 }),
-        expect.objectContaining({ signal: expect.anything() }),
-      );
-    }
+    // 创作 reads the App's own list for the member.
+    expect(fetchMemberCreations).toHaveBeenCalledWith(
+      member.id,
+      undefined,
+      expect.anything(),
+    );
     expect(getRecentMemberActivities).not.toHaveBeenCalled();
     expect(host.getByRole('tab', { name: '创作' })).toBeSelected();
     expect(mockListProps.get('创作')?.active).toBe(true);
@@ -397,9 +406,8 @@ test.each([undefined, 'invalid-tab', 'creations'])(
     await flushQueries();
     expect(mockPagerProps.initialPage).toBe(1);
     expect(host.getByRole('tab', { name: '创作' })).toBeSelected();
-    expect(
-      jest.mocked(getMemberRelations).mock.calls.map(([, kind]) => kind),
-    ).toEqual(['answers', 'articles', 'pins']);
+    expect(fetchMemberCreations).toHaveBeenCalledTimes(1);
+    expect(getMemberRelations).not.toHaveBeenCalled();
     await host.unmount();
   },
 );
@@ -601,17 +609,10 @@ test('switching member routes resets visited tabs and the native pager', async (
   expect(mockPagerUnmount).toHaveBeenCalledTimes(1);
   expect(searchContent).not.toHaveBeenCalled();
   // The first member's 回答 and 创作, then only the second member's 创作.
-  expect(getMemberRelations).toHaveBeenCalledTimes(7);
+  expect(getMemberRelations).toHaveBeenCalledTimes(1);
   expect(
-    jest
-      .mocked(getMemberRelations)
-      .mock.calls.slice(-3)
-      .map(([memberId, kind]) => `${memberId}:${kind}`),
-  ).toEqual([
-    'second-member-token:answers',
-    'second-member-token:articles',
-    'second-member-token:pins',
-  ]);
+    jest.mocked(fetchMemberCreations).mock.calls.map(([memberId]) => memberId),
+  ).toEqual([member.id, secondMember.id]);
   await host.unmount();
 });
 
@@ -641,34 +642,11 @@ test('creation cards of different types retain distinct list keys when their IDs
       },
     ],
   });
-  mockCreations({
-    answers: [
-      {
-        id: 'shared-content-id',
-        type: 'answer',
-        created_time: 300,
-        author: { ...member, type: 'people' },
-        content: '<p>本人完整正文</p>',
-        question: { id: 'q-1', title: '相同标识的回答' },
-      },
-      {
-        id: 'other-answer-id',
-        type: 'answer',
-        created_time: 200,
-        author: { ...member, id: 'another-author', url_token: 'another-token' },
-        question: { id: 'q-2', title: '其他作者回答' },
-        content: '<p>付费片段</p>',
-      },
-    ],
-    articles: [
-      {
-        id: 'shared-content-id',
-        type: 'article',
-        created: 250,
-        title: '相同标识的文章',
-      },
-    ],
-  });
+  mockCreations([
+    creationCard('answer', 'shared-content-id', '相同标识的回答'),
+    creationCard('article', 'shared-content-id', '相同标识的文章'),
+    creationCard('answer', 'other-answer-id', '其他作者回答', 'another-author'),
+  ]);
   const host = await render(screen());
   await flushQueries();
   expect(host.getByText('相同标识的回答')).toBeTruthy();
@@ -682,7 +660,7 @@ test('creation cards of different types retain distinct list keys when their IDs
   expect(mockFeedContexts.get('answers:other-answer-id')).toEqual({
     scene: 'unknown',
   });
-  // Newest first across sources; the owner's cards skip the author row.
+  // In the server's order; the owner's cards skip the author row.
   expect(list?.query.data.map(list.keyExtractor)).toEqual([
     'user-creation-answers-shared-content-id',
     'user-creation-articles-shared-content-id',

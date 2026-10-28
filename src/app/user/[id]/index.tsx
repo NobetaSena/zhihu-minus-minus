@@ -71,14 +71,14 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { useMergedUserCreations } from '@/hooks/useMergedUserCreations';
+import { useMemberCreations } from '@/hooks/useMemberCreations';
 import { useUserAnswersVotedByMe } from '@/hooks/useUserAnswersVotedByMe';
 import { useUserColumns } from '@/hooks/useUserColumns';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import type { ZhihuAuthor, ZhihuColumnSummary } from '@/types/zhihu';
 import { getProfileAnswerReadingContext } from '@/utils/answerReadingContext';
-import type { MergedCreation } from '@/utils/mergedCreations';
+import type { MemberCreation } from '@/utils/memberCreations';
 import { fetchOffsetPages } from '@/utils/parallelPaging';
 import {
   getProfileCoverState,
@@ -449,7 +449,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     enabled: !!user && (visitedTabs.activities || activeTab === 'activities'),
   });
 
-  const creationsQuery = useMergedUserCreations(
+  const creationsQuery = useMemberCreations(
     user,
     Boolean(visitedTabs.creations || activeTab === 'creations'),
   );
@@ -891,13 +891,13 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
   const renderItemContent = (
     item: unknown,
     tabKey: ProfileTabKey,
-    // 创作 merges answers by publish time, whatever the 回答 tab's sort.
+    // 创作 lists answers by publish time, whatever the 回答 tab's sort.
     answerSort: 'created' | 'voteups' = sortBy,
   ): ReactNode => {
     if (tabKey === 'columns')
       return <ProfileColumnCard column={item as ZhihuColumnSummary} />;
     if (tabKey === 'creations') {
-      const creation = item as MergedCreation;
+      const creation = item as MemberCreation;
       return renderItemContent(creation.item, creation.kind, 'created');
     }
     const displayItem = getProfileContentItem(item, tabKey);
@@ -1111,7 +1111,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
                       onScrollActivityChange={handleListScrollActivity}
                       keyExtractor={(item) => {
                         if (tab.key === 'creations') {
-                          const creation = item as MergedCreation;
+                          const creation = item as MemberCreation;
                           return `user-creation-${creation.kind}-${getProfileListItemKey(creation.item)}`;
                         }
                         return `user-item-${tab.key}-${getProfileListItemKey(item)}`;
