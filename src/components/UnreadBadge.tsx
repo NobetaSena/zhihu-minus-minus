@@ -79,7 +79,8 @@ export function UnreadBadge({
       className={`rounded-full justify-center items-center px-1 border-2 ${className ?? ''}`}
       style={{
         minWidth: size,
-        height: size,
+        // The count scales with the reading text settings; let it grow.
+        minHeight: size,
         backgroundColor,
         borderColor,
       }}

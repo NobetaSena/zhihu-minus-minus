@@ -121,6 +121,11 @@ export function useAnswerPreviewCollapse<T>({
     current.settleTimer = setTimeout(finish, SCROLL_SETTLE_MS);
   }, [finish]);
 
+  /** Pass to FlashList `onScrollBeginDrag`: the reader now owns the scroll. */
+  const onScrollBeginDrag = useCallback(() => {
+    anchor.current = null;
+  }, []);
+
   /** Pass to FlashList `onCommitLayoutEffect`. */
   const onCommitLayout = useCallback(() => {
     const current = anchor.current;
@@ -137,5 +142,5 @@ export function useAnswerPreviewCollapse<T>({
       list.scrollToOffset({ offset: target, animated: false });
   }, [listRef]);
 
-  return { collapse, onScroll, onCommitLayout };
+  return { collapse, onScroll, onScrollBeginDrag, onCommitLayout };
 }

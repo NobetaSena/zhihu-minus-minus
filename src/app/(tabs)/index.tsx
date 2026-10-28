@@ -48,11 +48,7 @@ import { BouncyButton } from '@/components/BouncyButton';
 import { DailyList } from '@/components/DailyList';
 import { FeedCard } from '@/components/FeedCard';
 import { GuestBootstrap } from '@/components/GuestBootstrap';
-import {
-  getHotCardPosition,
-  HotCard,
-  type HotItem,
-} from '@/components/HotCard';
+import { HotCard, type HotItem } from '@/components/HotCard';
 import {
   getHomeNavigationMetrics,
   ScrollableNavigationRow,
@@ -83,7 +79,10 @@ import {
 } from '@/storage/feedExposureRepository';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { formatFeedActionText } from '@/utils/feedActionText';
+import {
+  actionTextNamesAuthor,
+  formatFeedActionText,
+} from '@/utils/feedActionText';
 import { supportsLocalFeedDedup } from '@/utils/feedDedup';
 import {
   applyFeedFilter,
@@ -1426,13 +1425,7 @@ const FeedList = React.forwardRef<
             paddingTop: insets.top + 70,
             paddingBottom: 120,
           }}
-          renderItem={({
-            item,
-            index,
-          }: {
-            item: FeedListItem;
-            index: number;
-          }) => {
+          renderItem={({ item }: { item: FeedListItem }) => {
             if (isCollapsedGroup(item)) {
               const expanded = expandedCollapsedKeys.has(item.groupKey);
               const showReason = filterMode === 'collapse' && filterShowReason;
@@ -1461,10 +1454,7 @@ const FeedList = React.forwardRef<
             return tab === 'hot' ? (
               // tab 在该 FeedList 实例生命周期内不变，是可靠的运行时判别：
               // hot tab 的 data 只含 HotItem，其余 tab 只含 FeedItem（折叠行已在上层排除）。
-              <HotCard
-                item={item as HotItem}
-                position={getHotCardPosition(index, flattenedData.length)}
-              />
+              <HotCard item={item as HotItem} />
             ) : (
               <FeedCard
                 item={item as FeedItem}
@@ -1567,10 +1557,11 @@ function parseFollowingData(item: RawFeedItem): FeedItem | null {
       item.updated_time,
     ),
     // The action line already names the author of their own activity.
-    hideAuthor:
-      !!item.action_text &&
-      !!target.author?.id &&
-      item.actors?.[0]?.id === target.author.id,
+    hideAuthor: actionTextNamesAuthor(
+      item.action_text,
+      item.actors?.[0],
+      target.author?.id,
+    ),
     author: {
       id: target.author?.id || '',
       url_token: target.author?.url_token || '',

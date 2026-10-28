@@ -6,8 +6,6 @@ import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
 import { FeedCardActionRow } from '@/components/FeedCardActionRow';
 import type { ActionSheetOption } from '@/components/overlays/ActionSheet';
-import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useContentActions } from '@/hooks/useContentActions';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -28,6 +26,7 @@ import { showToast } from '@/utils/toast';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
 import { BouncyButton } from './BouncyButton';
 import { CustomContextMenu, type MenuOption } from './CustomContextMenu';
+import { useContentCardSurface } from './contentCardSurface';
 import { FeedCardPreview } from './FeedCardPreview';
 import { FeedExcerpt } from './FeedExcerpt';
 import { type ShareContentType, ShareMenu } from './ShareMenu';
@@ -141,7 +140,7 @@ const FeedCardComponent = ({
       ? item.type
       : null;
   const isGuest = !cookies;
-  const colorScheme = useColorScheme();
+  const surface = useContentCardSurface({ radius: 12, gap: 8 });
 
   const [voted, setVoted] = useState(item.voted || 0);
   const [voteCount, setVoteCount] = useState(item.voteCount || 0);
@@ -401,14 +400,11 @@ const FeedCardComponent = ({
         }}
         onPress={openDetail}
         style={[
-          {
-            backgroundColor: Colors[colorScheme].backgroundSecondary,
-            borderRadius: 12,
-            opacity: previewVisible ? 0 : 1,
-          },
+          surface,
+          { opacity: previewVisible ? 0 : 1 },
           isQuestionType ? { paddingBottom: 10 } : undefined,
         ]}
-        className="p-4 pb-2 mb-2 mx-1.5"
+        className="p-4 pb-2 mx-1.5"
       >
         {/* 动态动作提示 (针对关注流) */}
         {item.actionText && (
