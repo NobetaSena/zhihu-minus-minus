@@ -124,7 +124,11 @@ export function useAnswerPreviewCollapse<T>({
   /** Pass to FlashList `onScrollBeginDrag`: the reader now owns the scroll. */
   const onScrollBeginDrag = useCallback(() => {
     anchor.current = null;
-  }, []);
+    const current = pending.current;
+    if (!current) return;
+    clearPending();
+    current.collapse();
+  }, [clearPending]);
 
   /** Pass to FlashList `onCommitLayoutEffect`. */
   const onCommitLayout = useCallback(() => {

@@ -29,8 +29,8 @@ export interface HotItem {
   } | null;
 }
 
-/** 前三名用丝带角标，颜色由深到浅；之后的排名是橙色数字。 */
-const RIBBON_COLORS = [
+/** 前三名用方块角标，颜色由深到浅；之后的排名是橙色数字。 */
+const RANK_BADGE_COLORS = [
   colors.light.hotRankFirst,
   colors.light.hotRankSecond,
   colors.light.hotRankThird,
@@ -43,7 +43,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
   const surface = useContentCardSurface({ radius: 14, gap: 8 });
   const isGuest = !cookies;
 
-  const ribbonColor = RIBBON_COLORS[item.rank - 1];
+  const rankBadgeColor = RANK_BADGE_COLORS[item.rank - 1];
   const labelColor =
     colorScheme === 'dark'
       ? item.labelArea?.night_color || colors.light.hotLabel
@@ -82,12 +82,9 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
       style={[styles.row, surface]}
     >
       <View style={styles.rankColumn}>
-        {ribbonColor ? (
-          <View style={styles.ribbon}>
-            <Ionicons name="bookmark" size={22} color={ribbonColor} />
-            <Text style={styles.ribbonText} numberOfLines={1}>
-              {item.rank}
-            </Text>
+        {rankBadgeColor ? (
+          <View style={[styles.rankBadge, { backgroundColor: rankBadgeColor }]}>
+            <Text style={styles.rankBadgeText}>{item.rank}</Text>
           </View>
         ) : (
           <Text
@@ -141,22 +138,23 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   rankColumn: {
-    width: 24,
+    minWidth: 24,
     alignItems: 'center',
     gap: 4,
   },
-  ribbon: {
-    width: 24,
-    height: 22,
+  rankBadge: {
+    minWidth: 20,
+    minHeight: 20,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ribbonText: {
-    position: 'absolute',
-    top: 1,
+  rankBadgeText: {
     color: '#ffffff',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '800',
   },
   // 显式传给 Themed.Text，确保它按实际字号和行高应用阅读偏好。

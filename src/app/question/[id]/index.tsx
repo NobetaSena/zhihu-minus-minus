@@ -37,6 +37,7 @@ import {
 import { BouncyButton } from '@/components/BouncyButton';
 import { CollectionButton } from '@/components/CollectionButton';
 import { ContentActionButton } from '@/components/ContentActionButton';
+import { useContentCardSurface } from '@/components/contentCardSurface';
 import {
   DetailNavigationHeader,
   useDetailNavigationHeight,
@@ -101,6 +102,7 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
   const router = useRouter();
   const queryClient = useQueryClient();
   const secondaryColor = useThemeColor({}, 'textSecondary');
+  const surface = useContentCardSurface({ radius: 12, gap: 10 });
   const followMutation = useOptimisticToggle<
     InfiniteData<QuestionAnswersResponse, number | string>
   >({
@@ -166,7 +168,7 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
   };
 
   return (
-    <View type="surface" className="p-4 pb-2 mb-2.5 mx-1.5 rounded-xl">
+    <View style={surface} className="p-4 pb-2 mx-1.5">
       <View className="flex-row items-center mb-2 bg-transparent">
         <BouncyButton
           accessibilityRole="button"
