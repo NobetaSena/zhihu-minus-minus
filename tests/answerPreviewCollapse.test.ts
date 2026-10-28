@@ -118,6 +118,28 @@ test('a drag during the collapse ends the re-anchoring', async () => {
   expect(list.scrollToOffset).not.toHaveBeenCalled();
 });
 
+test('a drag during the scroll cancels pending re-anchoring', async () => {
+  const layouts = [layout(0, 800), layout(800, 4000)];
+  const { list, ref, offset } = createList(layouts, { value: 3000 });
+  const collapse = jest.fn();
+  const { result } = await renderHook(() =>
+    useAnswerPreviewCollapse({ listRef: ref, scope: 's', viewOffset: 116 }),
+  );
+  await act(async () => result.current.collapse(1, collapse));
+  await act(async () => result.current.onScrollBeginDrag());
+  expect(collapse).toHaveBeenCalledTimes(1);
+
+  offset.value = 500;
+  layouts[1] = layout(760, 600);
+  await act(async () => {
+    result.current.onScroll();
+    await jest.advanceTimersByTimeAsync(1500);
+    result.current.onCommitLayout();
+  });
+  expect(collapse).toHaveBeenCalledTimes(1);
+  expect(list.scrollToOffset).not.toHaveBeenCalled();
+});
+
 test('collapses at once when the answer start is already on screen', async () => {
   const { list, ref } = createList([layout(0, 800), layout(800, 3000)], {
     value: 600,

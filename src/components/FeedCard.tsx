@@ -407,14 +407,32 @@ const FeedCardComponent = ({
         className="p-4 pb-2 mx-1.5"
       >
         {/* 动态动作提示 (针对关注流) */}
-        {item.actionText && (
+        {item.actionText && item.hideAuthor && authorId ? (
+          <BouncyButton
+            accessibilityRole="link"
+            accessibilityLabel={`查看${item.author.name}的主页`}
+            onPress={() =>
+              router.push({
+                pathname: '/user/[id]',
+                params: { id: authorId, avatar: item.author.avatar },
+              })
+            }
+          >
+            <Text
+              type="secondary"
+              className="text-[13px] mb-2 text-tertiary dark:text-tertiary-dark"
+            >
+              {item.actionText}
+            </Text>
+          </BouncyButton>
+        ) : item.actionText ? (
           <Text
             type="secondary"
             className="text-[13px] mb-2 text-tertiary dark:text-tertiary-dark"
           >
             {item.actionText}
           </Text>
-        )}
+        ) : null}
 
         {/* 热区1：点击作者头像/姓名 -> 用户页 */}
         {item.hideAuthor ? null : (

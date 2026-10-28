@@ -236,6 +236,23 @@ test.each([
   });
 });
 
+test('the action line still opens the author profile when the author row is hidden', async () => {
+  const host = await render(
+    <FeedCard
+      item={{
+        ...baseItem,
+        actionText: '合成作者 回答了问题',
+        hideAuthor: true,
+      }}
+    />,
+  );
+  await fireEvent.press(host.getByRole('link', { name: '查看合成作者的主页' }));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/user/[id]',
+    params: { id: 'author', avatar: '' },
+  });
+});
+
 test('a context-menu vote remains attached to its original item after recycling and ignores duplicate taps', async () => {
   let finish: (result: Awaited<ReturnType<typeof voteContent>>) => void =
     () => {};
