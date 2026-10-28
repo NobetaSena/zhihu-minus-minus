@@ -83,9 +83,18 @@ npm test -- tests/altstoreSource.test.js --runInBand
 
 将版本号和日期替换为本次产物对应值；同一 IPA、commit、日期和配置会产生相同源文件。本地生成只校验元数据，不会上传 IPA 或公开订阅源；实际安装、更新与签名流程仍需用正式产物在侧载工具中验证。
 
-## Pull Request 检查
+## Pull Request 检查与预览构建
 
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) 会在 Pull Request 和 `main` push 时使用 Node.js 24 运行 `npm ci` 与 `npm run check`。建议在分支保护规则中将 **TypeScript, Biome and tests** job 设置为合并前必须通过。
+- **常规门禁**：[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) 会在 Pull Request 和 `main` push 时使用 Node.js 24 运行 `npm ci` 与 `npm run check`。建议在分支保护规则中将 **TypeScript, Biome and tests** job 设置为合并前必须通过。
+- **按需预览构建（ChatOps）**：[`.github/workflows/pr-build.yml`](../.github/workflows/pr-build.yml) 允许仓库维护者在任意 Pull Request 下通过评论指令按需触发完整正式包的构建并生成下载链接：
+  - `/build` 或 `/build-apk`：构建 4 个 Android 单 ABI APK（默认，耗时约 5 分钟）；
+  - `/build-ios`：在 macOS 26 上构建无签名 iOS IPA；
+  - `/build-all`：同时构建 Android APK 与 iOS IPA。
+  
+  权限与安全规则：
+  1. 仅具备仓库 `write` 或 `admin` 权限的协作者可以触发；非维护者触发会被自动驳回，防止外部 Fork PR 滥用 Actions 额度或访问 Secrets。
+  2. 指令触发时，机器人会先为该评论添加 🚀 表情响应；构建完成后会自动在 PR 回复包含该次 commit 对应 Artifacts 下载直达链接的说明（保留 7 天）。
+  3. 亦可在 GitHub Actions 页面选择 **PR Preview Build (ChatOps)**，输入 PR 编号并选择目标平台手动运行。
 
 ## 依赖更新策略
 

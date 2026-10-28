@@ -1,0 +1,505 @@
+name: PR Preview Build (ChatOps)
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR 编号（例如 152）"
+        required: true
+        type: string
+      platform:
+        description: "构建目标平台"
+        required: true
+        default: "android"
+        type: choice
+        options:
+          - android
+          - ios
+          - both
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-build-${{ github.event.issue.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 24.x
+  EAS_CLI_VERSION: 25.3.0
+  EAS_PROFILE: preview
+  SENTRY_DISABLE_AUTO_UPLOAD: "false"
+  SENTRY_ALLOW_FAILURE: "false"
+
+jobs:
+  setup:
+    name: Parse trigger & check permissions
+    # Only run on pull requests when triggered by issue_comment
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request != null && startsWith(github.event.comment.body, '/build'))
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.parse.outputs.authorized }}
+      pr_number: ${{ steps.parse.outputs.pr_number }}
+      platform: ${{ steps.parse.outputs.platform }}
+      pr_sha: ${{ steps.parse.outputs.pr_sha }}
+      pr_title: ${{ steps.parse.outputs.pr_title }}
+
+    steps:
+      - name: Parse command and authorize
+        uses: actions/github-script@v7
+        id: parse
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let prNumber;
+            let platform = 'android';
+
+            if (context.eventName === 'workflow_dispatch') {
+              prNumber = context.payload.inputs.pr_number.trim().replace(/^#/, '');
+              platform = context.payload.inputs.platform;
+            } else {
+              // Issue comment trigger
+              if (context.payload.issue.state !== 'open') {
+                console.log('PR is not open, skipping.');
+                core.setOutput('authorized', 'false');
+                return;
+              }
+
+              prNumber = String(context.payload.issue.number);
+              const body = context.payload.comment.body.trim();
+              const match = body.match(/^\/build(-apk|-android|-ios|-all)?(\s+(android|ios|both|all))?$/i);
+              if (!match) {
+                console.log(`Unrecognized command: ${body}`);
+                core.setOutput('authorized', 'false');
+                return;
+              }
+
+              const sub = (match[1] || '').toLowerCase();
+              const arg = (match[3] || '').toLowerCase();
+              if (sub === '-ios' || arg === 'ios') {
+                platform = 'ios';
+              } else if (sub === '-all' || arg === 'both' || arg === 'all') {
+                platform = 'both';
+              } else {
+                platform = 'android';
+              }
+
+              // Verify permissions
+              const username = context.payload.comment.user.login;
+              const permRes = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner,
+                repo,
+                username,
+              });
+              const perm = permRes.data.permission;
+              const isAllowed = ['admin', 'write'].includes(perm);
+
+              if (!isAllowed) {
+                console.log(`User @${username} (${perm}) is not authorized to trigger builds.`);
+                await github.rest.reactions.createForIssueComment({
+                  owner,
+                  repo,
+                  comment_id: context.payload.comment.id,
+                  content: '-1',
+                });
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: Number(prNumber),
+                  body: `❌ @${username} 只有仓库维护者（具备写权限）可通过 \`/build\` 指令触发打包。`,
+                });
+                core.setOutput('authorized', 'false');
+                return;
+              }
+
+              // Add rocket reaction to acknowledge trigger
+              await github.rest.reactions.createForIssueComment({
+                owner,
+                repo,
+                comment_id: context.payload.comment.id,
+                content: 'rocket',
+              });
+            }
+
+            // Fetch PR details to get head commit SHA
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: Number(prNumber),
+            });
+
+            core.setOutput('authorized', 'true');
+            core.setOutput('pr_number', prNumber);
+            core.setOutput('platform', platform);
+            core.setOutput('pr_sha', pr.data.head.sha);
+            core.setOutput('pr_title', pr.data.title);
+
+  quality:
+    name: Verify source
+    needs: setup
+    if: needs.setup.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: refs/pull/${{ needs.setup.outputs.pr_number }}/head
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run all checks
+        run: npm run check
+
+  build-android:
+    name: Build Android APKs
+    needs: [setup, quality]
+    if: |
+      needs.setup.outputs.authorized == 'true' &&
+      (needs.setup.outputs.platform == 'android' || needs.setup.outputs.platform == 'both')
+    runs-on: ubuntu-latest
+    env:
+      EAS_LOCAL_BUILD_SKIP_CLEANUP: 1
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: refs/pull/${{ needs.setup.outputs.pr_number }}/head
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: ${{ env.EAS_CLI_VERSION }}
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Android artifact
+        id: android-artifact
+        run: |
+          echo "archive=${RUNNER_TEMP}/android-apks.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "directory=${RUNNER_TEMP}/android-apks" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare telemetry config
+        env:
+          FIREBASE_ANDROID_JSON_B64: ${{ secrets.FIREBASE_ANDROID_JSON_B64 }}
+          FIREBASE_IOS_PLIST_B64: ${{ secrets.FIREBASE_IOS_PLIST_B64 }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${FIREBASE_ANDROID_JSON_B64:?Missing GitHub Secret FIREBASE_ANDROID_JSON_B64}"
+          : "${FIREBASE_IOS_PLIST_B64:?Missing GitHub Secret FIREBASE_IOS_PLIST_B64}"
+          : "${EXPO_PUBLIC_SENTRY_DSN:?Missing GitHub Secret EXPO_PUBLIC_SENTRY_DSN}"
+          : "${SENTRY_AUTH_TOKEN:?Missing GitHub Secret SENTRY_AUTH_TOKEN}"
+
+          decode_base64_secret() {
+            local secret_name="$1"
+            local encoded="$2"
+            local output_path="$3"
+            encoded="$(printf '%s' "$encoded" | tr -d '[:space:]')"
+            local -a decoder
+            if [[ "${RUNNER_OS:-Linux}" == "macOS" ]]; then
+              decoder=(base64 -D)
+            else
+              decoder=(base64 --decode)
+            fi
+            if ! printf '%s' "$encoded" | "${decoder[@]}" > "$output_path"; then
+              echo "Invalid base64 in GitHub Secret ${secret_name}. Store one-line base64 only, without backticks."
+              exit 1
+            fi
+          }
+
+          decode_base64_secret FIREBASE_ANDROID_JSON_B64 "$FIREBASE_ANDROID_JSON_B64" google-services.json
+          decode_base64_secret FIREBASE_IOS_PLIST_B64 "$FIREBASE_IOS_PLIST_B64" GoogleService-Info.plist
+
+          {
+            echo "EXPO_PUBLIC_FIREBASE_ANALYTICS_ENABLED=true"
+            echo "EXPO_PUBLIC_SENTRY_DSN=$EXPO_PUBLIC_SENTRY_DSN"
+            echo "SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN"
+            echo "GOOGLE_SERVICES_JSON=./google-services.json"
+            echo "GOOGLE_SERVICE_INFO_PLIST=./GoogleService-Info.plist"
+          } >> "$GITHUB_ENV"
+
+      - name: Build APKs
+        run: |
+          unset SENTRY_NO_UPLOAD SENTRY_RELEASE SENTRY_DIST
+          eas build --platform android --profile "$EAS_PROFILE" --local --non-interactive --output="${{ steps.android-artifact.outputs.archive }}"
+
+      - name: Extract, verify and name APKs
+        env:
+          ANDROID_ARCHIVE: ${{ steps.android-artifact.outputs.archive }}
+          ANDROID_OUTPUT_DIR: ${{ steps.android-artifact.outputs.directory }}
+        run: |
+          APP_VERSION=$(node -p "require('./package.json').version")
+          EXTRACT_DIR="${RUNNER_TEMP}/android-apks-raw"
+          mkdir -p "$EXTRACT_DIR" "$ANDROID_OUTPUT_DIR"
+          tar -xzf "$ANDROID_ARCHIVE" -C "$EXTRACT_DIR"
+
+          mapfile -t RAW_APKS < <(find "$EXTRACT_DIR" -type f -name "*.apk" | sort)
+          if [ "${#RAW_APKS[@]}" -ne 4 ]; then
+            echo "Expected four split APKs, found ${#RAW_APKS[@]}"
+            exit 1
+          fi
+
+          for APK_PATH in "${RAW_APKS[@]}"; do
+            mapfile -t PACKAGED_ABIS < <(
+              unzip -Z1 "$APK_PATH" |
+                sed -n 's#^lib/\([^/]*\)/.*#\1#p' |
+                sort -u
+            )
+            if [ "${#PACKAGED_ABIS[@]}" -ne 1 ]; then
+              echo "Expected one ABI in $APK_PATH, found: ${PACKAGED_ABIS[*]:-none}"
+              exit 1
+            fi
+
+            ABI="${PACKAGED_ABIS[0]}"
+            case "$ABI" in
+              arm64-v8a) ASSET_ARCH="arm64-v8a" ;;
+              armeabi-v7a|x86|x86_64) ASSET_ARCH="compat-${ABI}" ;;
+              *)
+                echo "Unexpected ABI in $APK_PATH: $ABI"
+                exit 1
+                ;;
+            esac
+
+            cp "$APK_PATH" "$ANDROID_OUTPUT_DIR/zhihu-minus-minus-pr${{ needs.setup.outputs.pr_number }}-v${APP_VERSION}-${ASSET_ARCH}.apk"
+          done
+
+          mapfile -t NAMED_APKS < <(find "$ANDROID_OUTPUT_DIR" -maxdepth 1 -type f -name "*.apk" | sort)
+          if [ "${#NAMED_APKS[@]}" -ne 4 ]; then
+            echo "Expected four uniquely named APKs, found ${#NAMED_APKS[@]}"
+            exit 1
+          fi
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks-pr-${{ needs.setup.outputs.pr_number }}
+          path: ${{ steps.android-artifact.outputs.directory }}/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  build-ios:
+    name: Build unsigned iOS IPA
+    needs: [setup, quality]
+    if: |
+      needs.setup.outputs.authorized == 'true' &&
+      (needs.setup.outputs.platform == 'ios' || needs.setup.outputs.platform == 'both')
+    runs-on: macos-26
+    env:
+      SENTRY_CLI_RN_XCODE_EXTRA_ARGS: --force-foreground --wait
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: refs/pull/${{ needs.setup.outputs.pr_number }}/head
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare telemetry config
+        env:
+          FIREBASE_ANDROID_JSON_B64: ${{ secrets.FIREBASE_ANDROID_JSON_B64 }}
+          FIREBASE_IOS_PLIST_B64: ${{ secrets.FIREBASE_IOS_PLIST_B64 }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${FIREBASE_ANDROID_JSON_B64:?Missing GitHub Secret FIREBASE_ANDROID_JSON_B64}"
+          : "${FIREBASE_IOS_PLIST_B64:?Missing GitHub Secret FIREBASE_IOS_PLIST_B64}"
+          : "${EXPO_PUBLIC_SENTRY_DSN:?Missing GitHub Secret EXPO_PUBLIC_SENTRY_DSN}"
+          : "${SENTRY_AUTH_TOKEN:?Missing GitHub Secret SENTRY_AUTH_TOKEN}"
+
+          decode_base64_secret() {
+            local secret_name="$1"
+            local encoded="$2"
+            local output_path="$3"
+            encoded="$(printf '%s' "$encoded" | tr -d '[:space:]')"
+            local -a decoder
+            if [[ "${RUNNER_OS:-Linux}" == "macOS" ]]; then
+              decoder=(base64 -D)
+            else
+              decoder=(base64 --decode)
+            fi
+            if ! printf '%s' "$encoded" | "${decoder[@]}" > "$output_path"; then
+              echo "Invalid base64 in GitHub Secret ${secret_name}. Store one-line base64 only, without backticks."
+              exit 1
+            fi
+          }
+
+          decode_base64_secret FIREBASE_ANDROID_JSON_B64 "$FIREBASE_ANDROID_JSON_B64" google-services.json
+          decode_base64_secret FIREBASE_IOS_PLIST_B64 "$FIREBASE_IOS_PLIST_B64" GoogleService-Info.plist
+
+          {
+            echo "EXPO_PUBLIC_FIREBASE_ANALYTICS_ENABLED=true"
+            echo "EXPO_PUBLIC_SENTRY_DSN=$EXPO_PUBLIC_SENTRY_DSN"
+            echo "SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN"
+            echo "GOOGLE_SERVICES_JSON=./google-services.json"
+            echo "GOOGLE_SERVICE_INFO_PLIST=./GoogleService-Info.plist"
+          } >> "$GITHUB_ENV"
+
+      - name: Expo prebuild iOS
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
+
+      - name: Build unsigned iOS app
+        run: |
+          unset SENTRY_NO_UPLOAD SENTRY_RELEASE SENTRY_DIST
+          cd ios
+          echo "export NODE_BINARY=$(which node)" > .xcode.env.local
+
+          WORKSPACE_PATH=$(find . -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+          WORKSPACE=$(basename "$WORKSPACE_PATH")
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Found workspace: $WORKSPACE, scheme: $SCHEME"
+
+          set +e
+          xcodebuild -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            SYMROOT="$GITHUB_WORKSPACE/build" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            clean build > xcodebuild.log 2>&1
+
+          EXIT_CODE=$?
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "xcodebuild failed with exit code $EXIT_CODE"
+            grep -i -E "error:|failed:|fatal:" xcodebuild.log | head -n 50
+            tail -n 100 xcodebuild.log
+            exit "$EXIT_CODE"
+          fi
+
+          if ! grep -Fq 'Source Map Upload Report' xcodebuild.log; then
+            echo "Sentry source map upload report missing from the iOS build."
+            exit 1
+          fi
+          echo "Sentry source map upload completed and server processing verified."
+
+      - name: Package unsigned IPA
+        id: ios-artifact
+        run: |
+          APP_VERSION=$(node -p "require('./package.json').version")
+          IPA_NAME="zhihu-minus-minus-pr${{ needs.setup.outputs.pr_number }}-v${APP_VERSION}-unsigned.ipa"
+          ARTIFACT_DIR="${RUNNER_TEMP}/ipa-build"
+          APP_PATH=$(find build -name "*.app" | head -n 1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "No compiled .app was found"
+            exit 1
+          fi
+
+          mkdir -p "${ARTIFACT_DIR}/Payload"
+          cp -R "$APP_PATH" "${ARTIFACT_DIR}/Payload/"
+          python3 scripts/strip-ios-app.py "${ARTIFACT_DIR}/Payload/$(basename "$APP_PATH")"
+          cd "$ARTIFACT_DIR"
+          zip -r "$IPA_NAME" Payload
+          echo "path=${ARTIFACT_DIR}/${IPA_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa-pr-${{ needs.setup.outputs.pr_number }}
+          path: ${{ steps.ios-artifact.outputs.path }}
+          if-no-files-found: error
+          retention-days: 7
+
+  report:
+    name: Post comment to PR
+    needs: [setup, build-android, build-ios]
+    if: |
+      always() &&
+      needs.setup.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report status to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = Number('${{ needs.setup.outputs.pr_number }}');
+            const prSha = '${{ needs.setup.outputs.pr_sha }}';
+            const shortSha = prSha.substring(0, 7);
+            const platform = '${{ needs.setup.outputs.platform }}';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const androidStatus = '${{ needs.build-android.result }}';
+            const iosStatus = '${{ needs.build-ios.result }}';
+
+            const androidBuilt = platform === 'android' || platform === 'both';
+            const iosBuilt = platform === 'ios' || platform === 'both';
+
+            const success = (
+              (!androidBuilt || androidStatus === 'success') &&
+              (!iosBuilt || iosStatus === 'success')
+            );
+
+            let body = '';
+            if (success) {
+              body = `### 🚀 PR Preview 构建成功！\n\n` +
+                `- **Commit**: \`${shortSha}\`\n` +
+                `- **目标平台**: \`${platform}\`\n` +
+                `- **构建记录与产物下载**: [查看 GitHub Actions 运行记录](${runUrl})\n\n` +
+                `#### 📦 下载方式\n` +
+                `点击上方链接，滑到页面底部 **Artifacts** 区域即可下载对应架构安装包（保留 7 天）：\n`;
+
+              if (androidBuilt) {
+                body += `- 📱 **Android**: \`android-apks-pr-${prNumber}\`（内含 \`arm64-v8a\` 主包及兼容包）\n`;
+              }
+              if (iosBuilt) {
+                body += `- 🍎 **iOS**: \`ios-ipa-pr-${prNumber}\`（未签名 IPA，支持 SideStore / AltStore 侧载）\n`;
+              }
+            } else {
+              body = `### ❌ PR Preview 构建失败\n\n` +
+                `- **Commit**: \`${shortSha}\`\n` +
+                `- **目标平台**: \`${platform}\`\n` +
+                `- **构建日志**: [点击查看错误详情](${runUrl})\n\n` +
+                `请检查上方构建日志中的报错信息。`;
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body,
+            });
