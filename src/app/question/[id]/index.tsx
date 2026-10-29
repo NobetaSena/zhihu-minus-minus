@@ -176,7 +176,17 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
           onPress={() => {
             const authorId = item.author.url_token || item.author.id;
             if (authorId)
-              router.push({ pathname: '/user/[id]', params: { id: authorId } });
+              router.push({
+                pathname: '/user/[id]',
+                params: {
+                  id: authorId,
+                  avatar: item.author.avatar_url,
+                  name: item.author.name,
+                  ...(item.author.headline
+                    ? { headline: item.author.headline }
+                    : {}),
+                },
+              });
           }}
           className="flex-row flex-1 items-center bg-transparent"
         >

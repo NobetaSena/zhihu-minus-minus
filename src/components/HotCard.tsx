@@ -4,7 +4,10 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors } from '@/constants/designTokens';
-import { useTitleTransition } from '@/features/adaptive-layout/TitleTransition';
+import {
+  useTitleTransition,
+  useTitleTransitionSource,
+} from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getCachedImageSource } from '@/utils/imageSource';
@@ -41,6 +44,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
   const router = useRouter();
   const transitionTitle = useTitleTransition();
   const titleRef = useRef<ViewInstance>(null);
+  const titleSource = useTitleTransitionSource(item.id);
   const currentId = useRef(item.id);
   currentId.current = item.id;
   const { cookies } = useAuthStore();
@@ -93,6 +97,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
               });
             },
             () => currentId.current === item.id,
+            titleSource.onSourceHiddenChange,
           );
         }
       }}
@@ -125,7 +130,11 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
         ) : null}
       </View>
       <View style={styles.textColumn}>
-        <View ref={titleRef} collapsable={false}>
+        <View
+          ref={titleRef}
+          collapsable={false}
+          style={titleSource.hidden ? { opacity: 0 } : undefined}
+        >
           <Text style={styles.title}>{item.title}</Text>
         </View>
         {item.hotValue ? (

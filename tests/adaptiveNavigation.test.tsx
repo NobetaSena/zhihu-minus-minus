@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler/jestSetup';
 import { Slot, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import type { NativeStackNavigationProp } from 'expo-router/native-stack';
+import { HeaderShownContext } from 'expo-router/react-navigation';
 import {
   act,
   fireEvent,
@@ -9,7 +10,7 @@ import {
   testRouter,
   waitFor,
 } from 'expo-router/testing-library';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useState } from 'react';
 import {
   Animated,
   BackHandler,
@@ -30,6 +31,7 @@ import {
 import {
   usePaneDimensions,
   usePaneVisible,
+  useProfileEntryProgress,
 } from '../src/features/adaptive-layout/PaneContext';
 import { usePaneRouter } from '../src/features/adaptive-layout/usePaneRouter';
 import { useRefreshAction } from '../src/hooks/useRefreshAction';
@@ -53,12 +55,20 @@ jest.mock('../src/components/Themed', () => ({
 const mounts: Record<string, number> = {};
 const cleanups: Record<string, number> = {};
 let finishRefresh: (() => void) | undefined;
+let profileProgress: Animated.Value | undefined;
+const profileHeaderStates: boolean[] = [];
 function Page({ name }: { name: string }) {
   const router = usePaneRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [draft, setDraft] = useState('');
   const [scroll, setScroll] = useState(0);
   const visible = usePaneVisible();
+  const entryProgress = useProfileEntryProgress();
+  const headerShown = useContext(HeaderShownContext);
+  if (name === 'user') {
+    profileProgress = entryProgress;
+    profileHeaderStates.push(headerShown);
+  }
   const { width } = usePaneDimensions();
   const identity = `${name}:${id ?? 'root'}`;
   useEffect(
@@ -147,14 +157,18 @@ async function setTwoPanes(enabled: boolean) {
   );
 }
 
-async function open(initialUrl = '/') {
+async function open(initialUrl = '/', defaultHeaders = false) {
   return renderRouter(
     {
       _layout: {
         default: () => (
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <AdaptiveStack screenOptions={{ headerShown: false }}>
+            <AdaptiveStack screenOptions={{ headerShown: defaultHeaders }}>
               <AdaptiveStack.Screen name="(tabs)" options={{ title: '首页' }} />
+              <AdaptiveStack.Screen
+                name="user/[id]/index"
+                options={{ headerShown: false }}
+              />
               <AdaptiveStack.Screen
                 name="about"
                 options={{
@@ -268,12 +282,31 @@ test('closing a detail does not fade the list pane or leave it partly transparen
 
 test('opening a profile does not move or scale the whole page', async () => {
   await setTwoPanes(false);
-  const result = await open();
+  const timing = jest.spyOn(Animated, 'timing');
+  try {
+    const result = await open();
+    timing.mockClear();
+    await testRouter.push('/user/u');
+    const key = appRoutes(result).at(-1)?.key;
+    expect(key).toBeDefined();
+    const profile = screen.getByTestId(`adaptive-route-${key}`);
+    expect(StyleSheet.flatten(profile.props.style).transform).toBeUndefined();
+    expect(profileProgress).toBeDefined();
+    expect(timing.mock.calls.some(([value]) => value === profileProgress)).toBe(
+      true,
+    );
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+test('profile never receives a default header even on its first render', async () => {
+  await setTwoPanes(false);
+  profileHeaderStates.length = 0;
+  await open('/', true);
   await testRouter.push('/user/u');
-  const key = appRoutes(result).at(-1)?.key;
-  expect(key).toBeDefined();
-  const profile = screen.getByTestId(`adaptive-route-${key}`);
-  expect(StyleSheet.flatten(profile.props.style).transform).toBeUndefined();
+  expect(profileHeaderStates.length).toBeGreaterThan(0);
+  expect(profileHeaderStates.every((shown) => !shown)).toBe(true);
 });
 
 test('rotation preserves route keys, draft state and full back order across both panes', async () => {

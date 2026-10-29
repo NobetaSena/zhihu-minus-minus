@@ -186,10 +186,7 @@ export function AdaptiveStackContent({
                 height={height}
                 visible={visible}
                 active={route.key === activeKey && !isList}
-                expand={
-                  route.name === 'question/[id]/index' ||
-                  route.name === 'answer/[id]'
-                }
+                expand={route.name !== 'user/[id]/index'}
                 transitionSequence={transition.current.sequence}
               >
                 <AdaptiveScreen
@@ -315,8 +312,9 @@ function RoutePane({
       visible,
       routeKey,
       twoPane,
+      profileEntryProgress: expand ? undefined : progress,
     }),
-    [frame.width, frame.height, visible, routeKey, twoPane],
+    [frame.width, frame.height, visible, routeKey, twoPane, expand, progress],
   );
   const webProps = Platform.OS === 'web' ? { inert: !visible } : {};
   return (
@@ -339,22 +337,16 @@ function RoutePane({
           opacity: visible
             ? progress.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0.01, 1],
+                outputRange: [0.15, 1],
               })
             : 0,
           ...(expand
             ? {
                 transform: [
                   {
-                    translateY: progress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [twoPane ? 4 : 10, 0],
-                    }),
-                  },
-                  {
                     scale: progress.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [twoPane ? 1 : 0.985, 1],
+                      outputRange: [twoPane ? 1.008 : 1.03, 1],
                     }),
                   },
                 ],

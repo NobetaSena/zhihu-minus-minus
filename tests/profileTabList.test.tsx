@@ -179,6 +179,19 @@ beforeEach(() => {
   mockMeasureContent.mockReset();
 });
 
+test('initial profile loading leaves the list empty until member details arrive', async () => {
+  const props = createProps({
+    query: createQuery({ isLoading: true }),
+    hideInitialLoadingIndicator: true,
+  });
+  const host = await render(<ProfileTabList {...props} />);
+  expect(mockListProps.ListEmptyComponent).toBeNull();
+  await host.rerender(
+    <ProfileTabList {...props} hideInitialLoadingIndicator={false} />,
+  );
+  expect(mockListProps.ListEmptyComponent).not.toBeNull();
+});
+
 test('restores an unmeasured tab after load without losing the request to initial native zero', async () => {
   const ref = createRef<ProfileTabListHandle>();
   const props = createProps();

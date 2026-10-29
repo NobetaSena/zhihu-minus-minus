@@ -232,7 +232,7 @@ test.each([
   await fireEvent.press(host.getByText('合成作者'));
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/user/[id]',
-    params: { id: author.url_token || author.id, avatar: '' },
+    params: { id: author.url_token || author.id, avatar: '', name: '合成作者' },
   });
 });
 
@@ -249,7 +249,32 @@ test('the action line still opens the author profile when the author row is hidd
   await fireEvent.press(host.getByRole('link', { name: '查看合成作者的主页' }));
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/user/[id]',
-    params: { id: 'author', avatar: '' },
+    params: { id: 'author', avatar: '', name: '合成作者' },
+  });
+});
+
+test('opening an author passes the known avatar, name and headline to the profile', async () => {
+  const host = await render(
+    <FeedCard
+      item={{
+        ...baseItem,
+        author: {
+          ...baseItem.author,
+          avatar: 'https://example.com/avatar.jpg',
+          headline: '合成简介',
+        },
+      }}
+    />,
+  );
+  await fireEvent.press(host.getByText('合成作者'));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/user/[id]',
+    params: {
+      id: 'author',
+      avatar: 'https://example.com/avatar.jpg',
+      name: '合成作者',
+      headline: '合成简介',
+    },
   });
 });
 

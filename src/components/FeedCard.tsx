@@ -6,7 +6,10 @@ import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
 import { FeedCardActionRow } from '@/components/FeedCardActionRow';
 import type { ActionSheetOption } from '@/components/overlays/ActionSheet';
-import { useTitleTransition } from '@/features/adaptive-layout/TitleTransition';
+import {
+  useTitleTransition,
+  useTitleTransitionSource,
+} from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useContentActions } from '@/hooks/useContentActions';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -148,6 +151,7 @@ const FeedCardComponent = ({
   const [voted, setVoted] = useState(item.voted || 0);
   const [voteCount, setVoteCount] = useState(item.voteCount || 0);
   const identity = `${item.type}:${item.videoSource || ''}:${item.id}`;
+  const titleSource = useTitleTransitionSource(identity);
   const currentIdentityRef = useRef(identity);
   currentIdentityRef.current = identity;
   const pendingVotesRef = useRef(new Set<string>());
@@ -411,6 +415,7 @@ const FeedCardComponent = ({
                 if (currentIdentityRef.current === identity) openDetail();
               },
               () => currentIdentityRef.current === identity,
+              titleSource.onSourceHiddenChange,
             );
           } else openDetail();
         }}
@@ -429,7 +434,14 @@ const FeedCardComponent = ({
             onPress={() =>
               router.push({
                 pathname: '/user/[id]',
-                params: { id: authorId, avatar: item.author.avatar },
+                params: {
+                  id: authorId,
+                  avatar: item.author.avatar,
+                  name: item.author.name,
+                  ...(item.author.headline
+                    ? { headline: item.author.headline }
+                    : {}),
+                },
               })
             }
           >
@@ -459,6 +471,10 @@ const FeedCardComponent = ({
                 params: {
                   id: authorId,
                   avatar: item.author.avatar,
+                  name: item.author.name,
+                  ...(item.author.headline
+                    ? { headline: item.author.headline }
+                    : {}),
                 },
               })
             }
@@ -516,6 +532,7 @@ const FeedCardComponent = ({
                     });
                   },
                   () => currentIdentityRef.current === identity,
+                  titleSource.onSourceHiddenChange,
                 );
                 return;
               }
@@ -528,11 +545,16 @@ const FeedCardComponent = ({
                     if (currentIdentityRef.current === identity) openDetail();
                   },
                   () => currentIdentityRef.current === identity,
+                  titleSource.onSourceHiddenChange,
                 );
               else openDetail();
             }}
           >
-            <RNView ref={titleRef} collapsable={false}>
+            <RNView
+              ref={titleRef}
+              collapsable={false}
+              style={titleSource.hidden ? { opacity: 0 } : undefined}
+            >
               <Animated.View
                 sharedTransitionTag={`title-${item.questionId || item.id}`}
                 sharedTransitionStyle={slowTransition}

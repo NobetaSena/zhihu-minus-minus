@@ -50,6 +50,7 @@ type TitleTransition = {
     text: string,
     navigate: () => void,
     isValid?: () => boolean,
+    onSourceHiddenChange?: (hidden: boolean) => void,
   ) => void;
   target: (id: string, ref: ViewInstance | null) => void;
 };
@@ -59,6 +60,8 @@ const VisibilityContext = createContext<{
   id: string;
   sourceRouteKey?: string;
   activeRouteKey?: string;
+  flight: Flight | null;
+  progress: Animated.Value;
 } | null>(null);
 const TARGET_WAIT_MS = 200;
 const validFrame = (frame: Frame) =>
@@ -79,6 +82,7 @@ export function TitleTransitionProvider({
 }) {
   const root = useRef<ViewInstance>(null);
   const pending = useRef<PendingTitle | null>(null);
+  const sourceRestore = useRef<(() => void) | null>(null);
   const targetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequence = useRef(0);
   const progress = useRef(new Animated.Value(0)).current;
@@ -96,6 +100,11 @@ export function TitleTransitionProvider({
   const colors = useRuntimeThemeColors();
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
   const lineHeightScale = useSettingsStore((state) => state.lineHeightScale);
+  const restoreSource = useCallback(() => {
+    const restore = sourceRestore.current;
+    sourceRestore.current = null;
+    restore?.();
+  }, []);
 
   useLayoutEffect(() => {
     if (previousRoute.current === activeRouteKey) return;
@@ -108,10 +117,11 @@ export function TitleTransitionProvider({
       if (targetTimer.current) clearTimeout(targetTimer.current);
       targetTimer.current = null;
       progress.stopAnimation();
+      restoreSource();
       setFlight(null);
       setWaiting(null);
     }
-  }, [activeRouteKey, progress]);
+  }, [activeRouteKey, progress, restoreSource]);
 
   useEffect(() => {
     let mounted = true;
@@ -123,6 +133,7 @@ export function TitleTransitionProvider({
         if (targetTimer.current) clearTimeout(targetTimer.current);
         targetTimer.current = null;
         progress.stopAnimation();
+        restoreSource();
         setFlight(null);
         setWaiting(null);
       }
@@ -138,17 +149,19 @@ export function TitleTransitionProvider({
       mounted = false;
       sequence.current += 1;
       if (targetTimer.current) clearTimeout(targetTimer.current);
+      restoreSource();
       subscription.remove();
     };
-  }, [progress]);
+  }, [progress, restoreSource]);
 
   const navigate = useCallback<TitleTransition['navigate']>(
-    (ref, id, text, open, isValid) => {
+    (ref, id, text, open, isValid, onSourceHiddenChange) => {
       const token = ++sequence.current;
       pending.current = null;
       if (targetTimer.current) clearTimeout(targetTimer.current);
       targetTimer.current = null;
       progress.stopAnimation();
+      restoreSource();
       setFlight(null);
       setWaiting(null);
       if (
@@ -188,6 +201,10 @@ export function TitleTransitionProvider({
             x: source.x - rootX,
             y: source.y - rootY,
           };
+          if (onSourceHiddenChange) {
+            sourceRestore.current = () => onSourceHiddenChange(false);
+            onSourceHiddenChange(true);
+          }
           progress.setValue(0);
           setWaiting({ id, sourceRouteKey: currentRoute.current });
           setFlight({
@@ -201,6 +218,7 @@ export function TitleTransitionProvider({
             if (token !== sequence.current) return;
             pending.current = null;
             targetTimer.current = null;
+            restoreSource();
             setWaiting(null);
             setFlight(null);
           }, TARGET_WAIT_MS);
@@ -215,55 +233,59 @@ export function TitleTransitionProvider({
         });
       });
     },
-    [progress],
+    [progress, restoreSource],
   );
 
-  const target = useCallback<TitleTransition['target']>((id, ref) => {
-    const current = pending.current;
-    if (!current || current.id !== id || !ref || current.measuring) return;
-    if (
-      Date.now() > current.expires ||
-      reducedMotion.current ||
-      (current.isValid && !current.isValid())
-    ) {
-      pending.current = null;
-      if (targetTimer.current) clearTimeout(targetTimer.current);
-      targetTimer.current = null;
-      setWaiting(null);
-      setFlight(null);
-      return;
-    }
-    current.measuring = true;
-    const token = sequence.current;
-    ref.measureInWindow((x, y, width, height) => {
-      const destination = { x, y, width, height };
+  const target = useCallback<TitleTransition['target']>(
+    (id, ref) => {
+      const current = pending.current;
+      if (!current || current.id !== id || !ref || current.measuring) return;
       if (
-        !validFrame(destination) ||
-        token !== sequence.current ||
-        pending.current !== current ||
         Date.now() > current.expires ||
+        reducedMotion.current ||
         (current.isValid && !current.isValid())
-      )
+      ) {
+        pending.current = null;
+        if (targetTimer.current) clearTimeout(targetTimer.current);
+        targetTimer.current = null;
+        restoreSource();
+        setWaiting(null);
+        setFlight(null);
         return;
-      if (targetTimer.current) clearTimeout(targetTimer.current);
-      targetTimer.current = null;
-      setFlight({
-        text: current.text,
-        source: {
-          ...current.source,
-          x: current.source.x - current.rootX,
-          y: current.source.y - current.rootY,
-        },
-        target: {
-          ...destination,
-          x: destination.x - current.rootX,
-          y: destination.y - current.rootY,
-        },
-        moving: true,
-        token,
+      }
+      current.measuring = true;
+      const token = sequence.current;
+      ref.measureInWindow((x, y, width, height) => {
+        const destination = { x, y, width, height };
+        if (
+          !validFrame(destination) ||
+          token !== sequence.current ||
+          pending.current !== current ||
+          Date.now() > current.expires ||
+          (current.isValid && !current.isValid())
+        )
+          return;
+        if (targetTimer.current) clearTimeout(targetTimer.current);
+        targetTimer.current = null;
+        setFlight({
+          text: current.text,
+          source: {
+            ...current.source,
+            x: current.source.x - current.rootX,
+            y: current.source.y - current.rootY,
+          },
+          target: {
+            ...destination,
+            x: destination.x - current.rootX,
+            y: destination.y - current.rootY,
+          },
+          moving: true,
+          token,
+        });
       });
-    });
-  }, []);
+    },
+    [restoreSource],
+  );
 
   useLayoutEffect(() => {
     if (!flight?.moving) return;
@@ -277,17 +299,18 @@ export function TitleTransitionProvider({
     animation.start(({ finished }) => {
       if (finished && flight.token === sequence.current) {
         pending.current = null;
+        restoreSource();
         setWaiting(null);
         setFlight(null);
       }
     });
     return () => animation.stop();
-  }, [flight, progress]);
+  }, [flight, progress, restoreSource]);
 
   const api = useMemo(() => ({ navigate, target }), [navigate, target]);
   const visibility = useMemo(
-    () => (waiting ? { ...waiting, activeRouteKey } : null),
-    [waiting, activeRouteKey],
+    () => (waiting ? { ...waiting, activeRouteKey, flight, progress } : null),
+    [waiting, activeRouteKey, flight, progress],
   );
 
   return (
@@ -295,7 +318,7 @@ export function TitleTransitionProvider({
       <VisibilityContext.Provider value={visibility}>
         <View ref={root} collapsable={false} style={styles.root}>
           {children}
-          {flight ? (
+          {flight && !flight.moving ? (
             <Animated.Text
               accessible={false}
               importantForAccessibility="no-hide-descendants"
@@ -369,6 +392,32 @@ export function useTitleTransition() {
   );
 }
 
+/** Keep a recycled card's new title visible if an older flight is still ending. */
+export function useTitleTransitionSource(identity: string) {
+  const [state, setState] = useState({ identity, hidden: false });
+  if (state.identity !== identity) setState({ identity, hidden: false });
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const onSourceHiddenChange = useCallback(
+    (hidden: boolean) => {
+      if (!mounted.current) return;
+      setState((current) =>
+        current.identity === identity ? { identity, hidden } : current,
+      );
+    },
+    [identity],
+  );
+  return {
+    hidden: state.identity === identity && state.hidden,
+    onSourceHiddenChange,
+  };
+}
+
 export function TitleTransitionTarget({
   id,
   children,
@@ -383,18 +432,57 @@ export function TitleTransitionTarget({
   const routeKey = useContext(PaneContext)?.routeKey;
   const visible = usePaneVisible();
   const ref = useRef<ViewInstance>(null);
+  const isTarget = Boolean(
+    transition?.id === id &&
+      transition.sourceRouteKey !== transition.activeRouteKey &&
+      (!routeKey || routeKey === transition.activeRouteKey) &&
+      visible,
+  );
+  const flight =
+    isTarget && transition?.flight?.moving ? transition.flight : null;
+  const progress = transition?.progress;
+  const motion = useMemo(() => {
+    if (!flight || !progress) return undefined;
+    // Move the real destination title, so the last frame is its actual layout.
+    const initialScale = 0.82;
+    return {
+      transform: [
+        {
+          translateX: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [
+              flight.source.x -
+                flight.target.x -
+                (flight.target.width * (1 - initialScale)) / 2,
+              0,
+            ],
+          }),
+        },
+        {
+          translateY: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [
+              flight.source.y -
+                flight.target.y -
+                (flight.target.height * (1 - initialScale)) / 2,
+              0,
+            ],
+          }),
+        },
+        {
+          scale: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [initialScale, 1],
+          }),
+        },
+      ],
+    };
+  }, [flight, progress]);
   return (
-    <View
+    <Animated.View
       ref={ref}
       collapsable={false}
-      style={
-        transition?.id === id &&
-        transition.sourceRouteKey !== transition.activeRouteKey &&
-        (!routeKey || routeKey === transition.activeRouteKey) &&
-        visible
-          ? { opacity: 0 }
-          : undefined
-      }
+      style={isTarget && !flight ? { opacity: 0 } : motion}
       onLayout={(event) => {
         onLayout?.(event);
         if (visible && (!routeKey || routeKey === transition?.activeRouteKey))
@@ -402,7 +490,7 @@ export function TitleTransitionTarget({
       }}
     >
       {children}
-    </View>
+    </Animated.View>
   );
 }
 

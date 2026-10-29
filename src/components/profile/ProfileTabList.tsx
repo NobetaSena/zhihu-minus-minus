@@ -60,6 +60,8 @@ export interface ProfileTabListProps {
   keyExtractor: (item: unknown) => string;
   listHeader?: ReactNode;
   emptyState?: ReactNode;
+  /** Keep initial profile placeholders still while the member details load. */
+  hideInitialLoadingIndicator?: boolean;
 }
 
 interface PendingScroll {
@@ -86,6 +88,7 @@ export const ProfileTabList = forwardRef<
     keyExtractor,
     listHeader,
     emptyState,
+    hideInitialLoadingIndicator = false,
   },
   ref,
 ) {
@@ -322,7 +325,9 @@ export const ProfileTabList = forwardRef<
       }
       ListEmptyComponent={
         query.isLoading ? (
-          <ActivityIndicator style={{ margin: 32 }} color={primaryColor} />
+          hideInitialLoadingIndicator ? null : (
+            <ActivityIndicator style={{ margin: 32 }} color={primaryColor} />
+          )
         ) : query.isError ? (
           <QueryErrorView
             message={`${label}加载失败`}

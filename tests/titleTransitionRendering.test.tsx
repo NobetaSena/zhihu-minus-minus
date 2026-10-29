@@ -11,6 +11,7 @@ import {
   TitleTransitionProvider,
   TitleTransitionTarget,
   useTitleTransition,
+  useTitleTransitionSource,
 } from '../src/features/adaptive-layout/TitleTransition';
 
 jest.mock('react-native', () => {
@@ -26,7 +27,17 @@ jest.mock('react-native', () => {
     },
   );
   return new Proxy(native, {
-    get: (target, key) => (key === 'View' ? ViewWithMeasurement : target[key]),
+    get: (target, key) => {
+      if (key === 'View') return ViewWithMeasurement;
+      const value = target[key];
+      if (key === 'Animated' && value) {
+        return new Proxy(value, {
+          get: (animated, prop) =>
+            prop === 'View' ? ViewWithMeasurement : animated[prop],
+        });
+      }
+      return value;
+    },
   });
 });
 
@@ -54,6 +65,166 @@ function Example() {
     </View>
   );
 }
+
+function PersistentSource() {
+  const ref = useRef<ViewInstance>(null);
+  const [identity, setIdentity] = useState('one');
+  const [opened, setOpened] = useState(false);
+  const source = useTitleTransitionSource(identity);
+  const transition = useTitleTransition();
+  return (
+    <View>
+      <View ref={ref} style={source.hidden ? { opacity: 0 } : undefined}>
+        <Text testID="source-title">来源标题 {identity}</Text>
+      </View>
+      <Text
+        onPress={() =>
+          transition(
+            ref,
+            'question-1',
+            '来源标题',
+            () => setOpened(true),
+            undefined,
+            source.onSourceHiddenChange,
+          )
+        }
+      >
+        打开来源
+      </Text>
+      <Text
+        onPress={() =>
+          setIdentity((current) => (current === 'one' ? 'two' : 'one'))
+        }
+      >
+        复用卡片
+      </Text>
+      {opened ? (
+        <TitleTransitionTarget id="question-1">
+          <Text>详情标题</Text>
+        </TitleTransitionTarget>
+      ) : null}
+    </View>
+  );
+}
+
+test('the selected source title stays hidden while the destination title moves and is restored afterward', async () => {
+  let finish: ((result: { finished: boolean }) => void) | undefined;
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn((callback) => {
+      finish = callback;
+    }),
+    stop: jest.fn(),
+    reset: jest.fn(),
+  });
+  try {
+    const host = await render(
+      <TitleTransitionProvider activeRouteKey="source">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    expect(host.getByTestId('source-title')).toBeVisible();
+    await fireEvent.press(host.getByText('打开来源'));
+    expect(host.getByTestId('source-title')).not.toBeVisible();
+    await host.rerender(
+      <TitleTransitionProvider activeRouteKey="destination">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    expect(host.getByText('详情标题')).not.toBeVisible();
+    expect(
+      host.getByText('来源标题', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    const target = host.getByText('详情标题').parent;
+    await act(() => {
+      if (target)
+        fireEvent(target, 'layout', {
+          nativeEvent: { layout: { x: 0, y: 0, width: 180, height: 24 } },
+        });
+    });
+    expect(host.getByTestId('source-title')).not.toBeVisible();
+    expect(host.getByText('详情标题')).toBeVisible();
+    expect(
+      host.queryByText('来源标题', { includeHiddenElements: true }),
+    ).toBeNull();
+    await act(() => finish?.({ finished: true }));
+    expect(host.getByTestId('source-title')).toBeVisible();
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+test('a recycled card is visible and a timed-out flight restores the original source', async () => {
+  jest.useFakeTimers();
+  try {
+    const host = await render(
+      <TitleTransitionProvider activeRouteKey="source">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    await fireEvent.press(host.getByText('打开来源'));
+    expect(host.getByTestId('source-title')).not.toBeVisible();
+    await fireEvent.press(host.getByText('复用卡片'));
+    expect(host.getByText('来源标题 two')).toBeVisible();
+    await fireEvent.press(host.getByText('复用卡片'));
+    expect(host.getByText('来源标题 one')).toBeVisible();
+    await act(() => jest.advanceTimersByTime(250));
+    expect(host.getByText('来源标题 one')).toBeVisible();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('a timed-out title handoff restores the original source', async () => {
+  jest.useFakeTimers();
+  try {
+    const host = await render(
+      <TitleTransitionProvider activeRouteKey="source">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    await fireEvent.press(host.getByText('打开来源'));
+    expect(host.getByTestId('source-title')).not.toBeVisible();
+    await act(() => jest.advanceTimersByTime(250));
+    expect(host.getByTestId('source-title')).toBeVisible();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('returning during a handoff restores the source title', async () => {
+  const timing = jest
+    .spyOn(Animated, 'timing')
+    .mockReturnValue({ start: jest.fn(), stop: jest.fn(), reset: jest.fn() });
+  try {
+    const host = await render(
+      <TitleTransitionProvider activeRouteKey="source">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    await fireEvent.press(host.getByText('打开来源'));
+    await host.rerender(
+      <TitleTransitionProvider activeRouteKey="destination">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    const target = host.getByText('详情标题').parent;
+    await act(() => {
+      if (target)
+        fireEvent(target, 'layout', {
+          nativeEvent: { layout: { x: 0, y: 0, width: 180, height: 24 } },
+        });
+    });
+    expect(host.getByTestId('source-title')).not.toBeVisible();
+    await host.rerender(
+      <TitleTransitionProvider activeRouteKey="source">
+        <PersistentSource />
+      </TitleTransitionProvider>,
+    );
+    expect(host.getByTestId('source-title')).toBeVisible();
+  } finally {
+    timing.mockRestore();
+  }
+});
 
 test('a measured matching destination starts a temporary title handoff', async () => {
   let finish: ((result: { finished: boolean }) => void) | undefined;
@@ -90,9 +261,9 @@ test('a measured matching destination starts a temporary title handoff', async (
       });
   });
   expect(
-    host.getByText('卡片标题', { includeHiddenElements: true }),
-  ).toBeTruthy();
-  expect(host.getByText('详情标题')).not.toBeVisible();
+    host.queryByText('卡片标题', { includeHiddenElements: true }),
+  ).toBeNull();
+  expect(host.getByText('详情标题')).toBeVisible();
   await act(() => finish?.({ finished: true }));
   expect(host.getByText('详情标题')).toBeVisible();
   expect(

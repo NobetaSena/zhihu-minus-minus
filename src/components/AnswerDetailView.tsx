@@ -483,7 +483,20 @@ export const AnswerDetailView = ({
 
   const goToProfile = () => {
     const token = answer?.author?.url_token || answer?.author?.id;
-    if (token) router.push(`/user/${token}`);
+    if (token)
+      router.push({
+        pathname: '/user/[id]',
+        params: {
+          id: token,
+          ...(answer?.author?.avatar_url
+            ? { avatar: answer.author.avatar_url }
+            : {}),
+          ...(answer?.author?.name ? { name: answer.author.name } : {}),
+          ...(answer?.author?.headline
+            ? { headline: answer.author.headline }
+            : {}),
+        },
+      });
   };
 
   const linkColor = useThemeColor({}, 'link');
