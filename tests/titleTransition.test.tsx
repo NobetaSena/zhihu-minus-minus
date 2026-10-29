@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react-native';
-import type { ReactNode, RefObject } from 'react';
+import { type ReactNode, type RefObject, useState } from 'react';
 import type { ViewInstance } from 'react-native';
 import {
   TitleTransitionProvider,
@@ -69,3 +69,36 @@ test('a later tap cancels the earlier pending measurement', async () => {
   expect(openFirst).not.toHaveBeenCalled();
   expect(openSecond).toHaveBeenCalledTimes(1);
 });
+
+test.each(['measurement', 'timeout'] as const)(
+  'a route change cancels a pending source %s without blocking the next tap',
+  async (completion) => {
+    let setRoute: ((route: string) => void) | undefined;
+    function RoutedWrapper({ children }: { children: ReactNode }) {
+      const [route, updateRoute] = useState('source');
+      setRoute = updateRoute;
+      return (
+        <TitleTransitionProvider activeRouteKey={route}>
+          {children}
+        </TitleTransitionProvider>
+      );
+    }
+    const { result } = await renderHook(() => useTitleTransition(), {
+      wrapper: RoutedWrapper,
+    });
+    const stale = measuredRef();
+    const openStale = jest.fn();
+    await act(() => result.current(stale.ref, 'one', '旧标题', openStale));
+    await act(() => setRoute?.('other'));
+    if (completion === 'measurement') await act(() => stale.complete());
+    await act(() => jest.advanceTimersByTime(100));
+    if (completion === 'timeout') await act(() => stale.complete());
+    expect(openStale).not.toHaveBeenCalled();
+
+    const next = measuredRef();
+    const openNext = jest.fn();
+    await act(() => result.current(next.ref, 'two', '新标题', openNext));
+    await act(() => jest.advanceTimersByTime(100));
+    expect(openNext).toHaveBeenCalledTimes(1);
+  },
+);

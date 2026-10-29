@@ -123,6 +123,9 @@ export function TitleTransitionProvider({
       restoreSource();
       setFlight(null);
       setWaiting(null);
+    } else {
+      // A source measurement can still be in progress before pending is set.
+      sequence.current += 1;
     }
   }, [activeRouteKey, progress, restoreSource]);
 
