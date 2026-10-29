@@ -64,6 +64,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
   const labelText =
     item.labelArea?.type === 'text' ? item.labelArea.text : undefined;
   const hasTrend = item.labelArea?.type === 'trend';
+  const sourceTitle = <Text style={styles.title}>{item.title}</Text>;
 
   return (
     <BouncyButton
@@ -98,6 +99,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
             },
             () => currentId.current === item.id,
             titleSource.onSourceHiddenChange,
+            sourceTitle,
           );
         }
       }}
@@ -135,7 +137,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
           collapsable={false}
           style={titleSource.hidden ? { opacity: 0 } : undefined}
         >
-          <Text style={styles.title}>{item.title}</Text>
+          {sourceTitle}
         </View>
         {item.hotValue ? (
           <Text type="secondary" style={styles.hotValue} numberOfLines={1}>

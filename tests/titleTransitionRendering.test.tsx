@@ -86,6 +86,7 @@ function PersistentSource() {
             () => setOpened(true),
             undefined,
             source.onSourceHiddenChange,
+            <Text testID="source-placeholder">来源标题</Text>,
           )
         }
       >
@@ -125,6 +126,9 @@ test('the selected source title stays hidden while the destination title moves a
     expect(host.getByTestId('source-title')).toBeVisible();
     await fireEvent.press(host.getByText('打开来源'));
     expect(host.getByTestId('source-title')).not.toBeVisible();
+    expect(
+      host.getByTestId('source-placeholder', { includeHiddenElements: true }),
+    ).toBeTruthy();
     await host.rerender(
       <TitleTransitionProvider activeRouteKey="destination">
         <PersistentSource />
@@ -145,6 +149,9 @@ test('the selected source title stays hidden while the destination title moves a
     expect(host.getByText('详情标题')).toBeVisible();
     expect(
       host.queryByText('来源标题', { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(
+      host.queryByTestId('source-placeholder', { includeHiddenElements: true }),
     ).toBeNull();
     await act(() => finish?.({ finished: true }));
     expect(host.getByTestId('source-title')).toBeVisible();

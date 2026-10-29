@@ -285,6 +285,10 @@ export const ProfileTabList = forwardRef<
       });
   };
 
+  // Mount with the measured spacer from the first frame, so cached cards do
+  // not appear underneath the overlay and then jump down after onLayout.
+  if (headerHeight <= 0) return null;
+
   return (
     <AnimatedFlashList
       ref={listRef}

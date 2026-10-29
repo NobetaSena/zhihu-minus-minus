@@ -16,6 +16,7 @@ import {
   Easing,
   type LayoutChangeEvent,
   StyleSheet,
+  Text,
   View,
   type ViewInstance,
 } from 'react-native';
@@ -38,6 +39,7 @@ type PendingTitle = {
 };
 type Flight = {
   text: string;
+  sourceTitle?: ReactNode;
   source: Frame;
   target: Frame;
   moving: boolean;
@@ -51,6 +53,7 @@ type TitleTransition = {
     navigate: () => void,
     isValid?: () => boolean,
     onSourceHiddenChange?: (hidden: boolean) => void,
+    sourceTitle?: ReactNode,
   ) => void;
   target: (id: string, ref: ViewInstance | null) => void;
 };
@@ -161,7 +164,7 @@ export function TitleTransitionProvider({
   }, [progress, restoreSource]);
 
   const navigate = useCallback<TitleTransition['navigate']>(
-    (ref, id, text, open, isValid, onSourceHiddenChange) => {
+    (ref, id, text, open, isValid, onSourceHiddenChange, sourceTitle) => {
       const token = ++sequence.current;
       pending.current = null;
       if (targetTimer.current) clearTimeout(targetTimer.current);
@@ -215,6 +218,7 @@ export function TitleTransitionProvider({
           setWaiting({ id, sourceRouteKey: currentRoute.current });
           setFlight({
             text,
+            sourceTitle,
             source: relative,
             target: relative,
             moving: false,
@@ -325,59 +329,33 @@ export function TitleTransitionProvider({
         <View ref={root} collapsable={false} style={styles.root}>
           {children}
           {flight && !flight.moving ? (
-            <Animated.Text
+            <View
               accessible={false}
               importantForAccessibility="no-hide-descendants"
               pointerEvents="none"
-              numberOfLines={2}
               style={[
                 styles.title,
                 {
-                  color: colors.text,
-                  fontSize: 18 * fontSizeScale,
-                  lineHeight: (24 * fontSizeScale * lineHeightScale) / 1.5,
                   left: flight.source.x,
                   top: flight.source.y,
                   width: flight.source.width,
-                  opacity: progress.interpolate({
-                    inputRange: [0, 0.7, 1],
-                    outputRange: [1, 1, 0],
-                  }),
-                  transform: [
-                    {
-                      translateX: progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [
-                          0,
-                          flight.target.x -
-                            flight.source.x +
-                            flight.source.width * 0.1,
-                        ],
-                      }),
-                    },
-                    {
-                      translateY: progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [
-                          0,
-                          flight.target.y -
-                            flight.source.y +
-                            flight.source.height * 0.1,
-                        ],
-                      }),
-                    },
-                    {
-                      scale: progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.2],
-                      }),
-                    },
-                  ],
                 },
               ]}
             >
-              {flight.text}
-            </Animated.Text>
+              {flight.sourceTitle ?? (
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    color: colors.text,
+                    fontSize: 18 * fontSizeScale,
+                    lineHeight: (24 * fontSizeScale * lineHeightScale) / 1.5,
+                    fontWeight: '700',
+                  }}
+                >
+                  {flight.text}
+                </Text>
+              )}
+            </View>
           ) : null}
         </View>
       </VisibilityContext.Provider>
@@ -502,5 +480,5 @@ export function TitleTransitionTarget({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  title: { position: 'absolute', fontWeight: '700' },
+  title: { position: 'absolute' },
 });

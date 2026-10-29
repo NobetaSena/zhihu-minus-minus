@@ -169,6 +169,14 @@ const FeedCardComponent = ({
 
   const cleanTitle =
     typeof item.title === 'string' ? item.title : item.titleString || '';
+  const sourceTitle = (
+    <Text
+      className="text-lg font-bold leading-6 text-foreground dark:text-foreground-dark"
+      numberOfLines={2}
+    >
+      {item.title}
+    </Text>
+  );
   const authorAvatarSource = useMemo(
     () => getCachedImageSource(item.author.avatar),
     [item.author.avatar],
@@ -416,6 +424,7 @@ const FeedCardComponent = ({
               },
               () => currentIdentityRef.current === identity,
               titleSource.onSourceHiddenChange,
+              sourceTitle,
             );
           } else openDetail();
         }}
@@ -533,6 +542,7 @@ const FeedCardComponent = ({
                   },
                   () => currentIdentityRef.current === identity,
                   titleSource.onSourceHiddenChange,
+                  sourceTitle,
                 );
                 return;
               }
@@ -546,6 +556,7 @@ const FeedCardComponent = ({
                   },
                   () => currentIdentityRef.current === identity,
                   titleSource.onSourceHiddenChange,
+                  sourceTitle,
                 );
               else openDetail();
             }}
@@ -559,12 +570,7 @@ const FeedCardComponent = ({
                 sharedTransitionTag={`title-${item.questionId || item.id}`}
                 sharedTransitionStyle={slowTransition}
               >
-                <Text
-                  className="text-lg font-bold leading-6 text-foreground dark:text-foreground-dark"
-                  numberOfLines={2}
-                >
-                  {item.title}
-                </Text>
+                {sourceTitle}
               </Animated.View>
             </RNView>
           </BouncyButton>

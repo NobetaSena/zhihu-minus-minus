@@ -317,8 +317,9 @@ function RoutePane({
     [frame.width, frame.height, visible, routeKey, twoPane, expand, progress],
   );
   const webProps = Platform.OS === 'web' ? { inert: !visible } : {};
+  // Keep visibility independent of native-driven opacity on retained routes.
   return (
-    <Animated.View
+    <View
       {...webProps}
       testID={testID}
       onFocusCapture={() => {
@@ -330,35 +331,37 @@ function RoutePane({
       pointerEvents={visible ? 'auto' : 'none'}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
-      style={[
-        styles.route,
-        frame,
-        {
-          opacity: visible
-            ? progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.15, 1],
-              })
-            : 0,
-          ...(expand
-            ? {
-                transform: [
-                  {
-                    scale: progress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [twoPane ? 1.008 : 1.03, 1],
-                    }),
-                  },
-                ],
-              }
-            : {}),
-        },
-      ]}
+      style={[styles.route, frame, { opacity: visible ? 1 : 0 }]}
     >
-      <PaneContext.Provider value={value}>
-        <SafeAreaProviderCompat>{children}</SafeAreaProviderCompat>
-      </PaneContext.Provider>
-    </Animated.View>
+      <Animated.View
+        testID={`${testID}-transition`}
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            opacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.15, 1],
+            }),
+            ...(expand
+              ? {
+                  transform: [
+                    {
+                      scale: progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [twoPane ? 1.008 : 1.03, 1],
+                      }),
+                    },
+                  ],
+                }
+              : {}),
+          },
+        ]}
+      >
+        <PaneContext.Provider value={value}>
+          <SafeAreaProviderCompat>{children}</SafeAreaProviderCompat>
+        </PaneContext.Provider>
+      </Animated.View>
+    </View>
   );
 }
 

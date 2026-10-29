@@ -261,6 +261,37 @@ test('single-pane navigation animates both opening and returning to a mounted pa
   }
 });
 
+test('returning from comments keeps the older profile hidden throughout the answer entrance', async () => {
+  await setTwoPanes(false);
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+    reset: jest.fn(),
+  });
+  try {
+    const result = await open();
+    await testRouter.push('/user/u');
+    const profileKey = appRoutes(result).at(-1)?.key;
+    await testRouter.push('/answer/a');
+    const answerKey = appRoutes(result).at(-1)?.key;
+    await testRouter.push('/comments/a?type=answer');
+    await testRouter.back('/answer/a');
+    const profile = screen.getByTestId(`adaptive-route-${profileKey}`, {
+      includeHiddenElements: true,
+    });
+    const answer = screen.getByTestId(`adaptive-route-${answerKey}`);
+    const answerTransition = screen.getByTestId(
+      `adaptive-route-${answerKey}-transition`,
+    );
+    expect(profile).toHaveStyle({ opacity: 0 });
+    expect(answer).toHaveStyle({ opacity: 1 });
+    expect(answerTransition).not.toHaveStyle({ opacity: 1 });
+    expect(screen.getByText('answer:a')).toBeVisible();
+  } finally {
+    timing.mockRestore();
+  }
+});
+
 test('closing a detail does not fade the list pane or leave it partly transparent', async () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
@@ -289,7 +320,7 @@ test('opening a profile does not move or scale the whole page', async () => {
     await testRouter.push('/user/u');
     const key = appRoutes(result).at(-1)?.key;
     expect(key).toBeDefined();
-    const profile = screen.getByTestId(`adaptive-route-${key}`);
+    const profile = screen.getByTestId(`adaptive-route-${key}-transition`);
     expect(StyleSheet.flatten(profile.props.style).transform).toBeUndefined();
     expect(profileProgress).toBeDefined();
     expect(timing.mock.calls.some(([value]) => value === profileProgress)).toBe(
