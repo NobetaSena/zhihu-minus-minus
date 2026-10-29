@@ -38,7 +38,7 @@ index 161bac2..d67c227 100644
              window?.let {
                  WindowCompat.setDecorFitsSystemWindows(it, false)
 diff --git a/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/GaleriaModule.kt b/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/GaleriaModule.kt
-index aa1f067..aa0697a 100644
+index aa1f067..a5a7a50 100644
 --- a/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/GaleriaModule.kt
 +++ b/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/GaleriaModule.kt
 @@ -1,9 +1,23 @@
@@ -65,14 +65,24 @@ index aa1f067..aa0697a 100644
      // Each module class must implement the definition function. The definition consists of components
      // that describes the module's functionality and behavior.
      // See https://docs.expo.dev/modules/module-api for more details about available components.
-@@ -13,6 +27,106 @@ class GaleriaModule : Module() {
+@@ -13,6 +27,116 @@ class GaleriaModule : Module() {
          // The module will be accessible from `requireNativeModule('Galeria')` in JavaScript.
          Name("Galeria")
  
-+        // Runs on the module's background queue: it downloads and decodes.
-+        AsyncFunction("cropLongImage") { url: String, maxAspect: Double, targetWidth: Int ->
-+            val context = appContext.reactContext ?: return@AsyncFunction null
-+            LongImageCrop.crop(context, url, maxAspect, targetWidth)
++        // Downloads and decodes on LongImageCrop's own threads.
++        AsyncFunction("cropLongImage") { url: String, maxAspect: Double, targetWidth: Int, promise: Promise ->
++            val context = appContext.reactContext
++            if (context == null) {
++                promise.resolve(null)
++                return@AsyncFunction
++            }
++            LongImageCrop.executor.execute {
++                try {
++                    promise.resolve(LongImageCrop.crop(context, url, maxAspect, targetWidth))
++                } catch (error: Throwable) {
++                    promise.reject("ERR_LONG_IMAGE_CROP", error.message, error)
++                }
++            }
 +        }
 +
 +        // Viewer events carry the session ID `open` resolved with, so a late event from a closed
@@ -187,10 +197,10 @@ index 34a7e0d..607ec13 100644
  }
 diff --git a/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/LongImageCrop.kt b/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/LongImageCrop.kt
 new file mode 100644
-index 0000000..0838b68
+index 0000000..b26e7c7
 --- /dev/null
 +++ b/node_modules/@nandorojo/galeria/android/src/main/java/nandorojo/modules/galeria/LongImageCrop.kt
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,102 @@
 +package nandorojo.modules.galeria
 +
 +import android.content.Context
@@ -202,6 +212,8 @@ index 0000000..0838b68
 +import com.bumptech.glide.Glide
 +import java.io.File
 +import java.security.MessageDigest
++import java.util.concurrent.ExecutorService
++import java.util.concurrent.Executors
 +import kotlin.math.roundToInt
 +
 +/**
@@ -212,15 +224,28 @@ index 0000000..0838b68
 +object LongImageCrop {
 +    private const val CACHE_DIR = "galeria-long-images"
 +    private const val JPEG_QUALITY = 92
++    private const val THREADS = 2
++
++    /**
++     * Crops block on the download, so they run here rather than on the Expo modules queue,
++     * which is a single thread shared with every other module's async calls.
++     */
++    val executor: ExecutorService by lazy {
++        Executors.newFixedThreadPool(THREADS) { task ->
++            Thread(task, "galeria-long-image").apply { isDaemon = true }
++        }
++    }
 +
 +    /** Blocking; call off the main thread. Returns null when the file is not a decodable image. */
 +    fun crop(context: Context, url: String, maxAspect: Double, targetWidth: Int): Map<String, Any>? {
 +        val dir = File(context.cacheDir, CACHE_DIR).apply { mkdirs() }
 +        val out = File(dir, "${digest("$url|$maxAspect|$targetWidth")}.jpg")
++        // The size file is renamed into place before the image, so an existing image always
++        // has a complete size file next to it.
 +        val metaFile = File(dir, "${out.name}.size")
-+        if (out.exists() && metaFile.exists()) {
-+            val (width, height) = metaFile.readText().split('x').map { it.toInt() }
-+            return result(out, width, height)
++        if (out.exists()) {
++            val size = metaFile.takeIf { it.exists() }?.readText()?.split('x')?.mapNotNull { it.toIntOrNull() }
++            if (size?.size == 2) return result(out, size[0], size[1])
 +        }
 +
 +        val source = Glide.with(context.applicationContext).downloadOnly().load(url).submit().get()
@@ -242,14 +267,23 @@ index 0000000..0838b68
 +        } finally {
 +            decoder.recycle()
 +        }
++        // Two calls for the same image can run at once, so each writes its own temporary files;
++        // renames replace atomically and both write the same bytes.
++        val partialImage = File.createTempFile(out.name, ".part", dir)
++        val partialMeta = File.createTempFile(metaFile.name, ".part", dir)
 +        try {
-+            val partial = File(dir, "${out.name}.part")
-+            partial.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
-+            partial.renameTo(out)
++            val written = try {
++                partialImage.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
++            } finally {
++                bitmap.recycle()
++            }
++            if (!written) return null
++            partialMeta.writeText("${width}x$height")
++            if (!partialMeta.renameTo(metaFile) || !partialImage.renameTo(out)) return null
 +        } finally {
-+            bitmap.recycle()
++            partialImage.delete()
++            partialMeta.delete()
 +        }
-+        metaFile.writeText("${width}x$height")
 +        return result(out, width, height)
 +    }
 +
