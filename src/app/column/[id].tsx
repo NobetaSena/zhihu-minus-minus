@@ -123,6 +123,7 @@ export default function ColumnDetail() {
       <View type="surface" className="pb-4 border-b" style={{ borderColor }}>
         <View className="flex-row p-5 items-center bg-transparent">
           <Image
+            fadeDuration={0}
             source={getCachedImageSource(column.image_url)}
             className="w-16 h-16 rounded-xl"
             resizeMode="cover"
@@ -219,6 +220,7 @@ export default function ColumnDetail() {
               </Text>
             </View>
             <Image
+              fadeDuration={0}
               source={getCachedImageSource(thumbnail)}
               className="w-24 h-16 rounded"
               resizeMode="cover"

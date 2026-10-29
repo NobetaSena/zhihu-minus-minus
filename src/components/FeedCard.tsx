@@ -490,6 +490,7 @@ const FeedCardComponent = ({
             className="flex-row items-center mb-2"
           >
             <Animated.Image
+              fadeDuration={0}
               source={authorAvatarSource}
               className="w-[22px] h-[22px] rounded-full"
               sharedTransitionTag={`avatar-${item.author.url_token || item.author.id}`}
@@ -587,6 +588,7 @@ const FeedCardComponent = ({
           </View>
           {item.image && (
             <Animated.Image
+              fadeDuration={0}
               source={thumbnailSource}
               className="w-[100px] h-[75px] rounded-md ml-2.5 mt-1"
               sharedTransitionTag={`image-${item.id}`}

@@ -204,6 +204,34 @@ const baseItem: FeedItem = {
   voted: 0,
 };
 
+test('recycled feed images switch sources without replaying the Android fade', async () => {
+  const first = {
+    ...baseItem,
+    author: { ...baseItem.author, avatar: 'https://example.test/a.jpg' },
+    image: 'https://example.test/first.jpg',
+  };
+  const host = await render(<FeedCard item={first} />);
+  const images = () => host.container.queryAll((node) => node.type === 'Image');
+  expect(images().map((image) => image.props.fadeDuration)).toEqual([0, 0]);
+  expect(images().map((image) => image.props.source?.uri)).toEqual([
+    first.author.avatar,
+    first.image,
+  ]);
+
+  const second = {
+    ...first,
+    id: 'next',
+    author: { ...first.author, avatar: 'https://example.test/b.jpg' },
+    image: 'https://example.test/second.jpg',
+  };
+  await host.rerender(<FeedCard item={second} />);
+  expect(images().map((image) => image.props.source?.uri)).toEqual([
+    second.author.avatar,
+    second.image,
+  ]);
+  expect(images().map((image) => image.props.fadeDuration)).toEqual([0, 0]);
+});
+
 test('an anonymous author without an identity cannot open an empty profile route', async () => {
   const host = await render(
     <FeedCard

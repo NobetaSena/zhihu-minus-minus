@@ -147,6 +147,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
       </View>
       {imageSource ? (
         <Animated.Image
+          fadeDuration={0}
           source={imageSource}
           sharedTransitionTag={`image-${item.id}`}
           style={styles.image}

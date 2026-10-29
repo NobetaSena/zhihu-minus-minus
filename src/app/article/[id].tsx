@@ -400,6 +400,7 @@ export default function ArticleDetail() {
             {isDaily ? (
               <View className="w-full h-[300px] relative">
                 <Image
+                  fadeDuration={0}
                   source={getCachedImageSource(dailyData?.image)}
                   className="w-full h-full"
                 />
@@ -491,6 +492,7 @@ export default function ArticleDetail() {
                   }}
                 >
                   <Image
+                    fadeDuration={0}
                     source={getCachedImageSource(columnCard.image_url)}
                     className="w-12 h-12 rounded-lg"
                   />
