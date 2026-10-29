@@ -1,6 +1,12 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { useRef, useState } from 'react';
-import { Animated, Text, View, type ViewInstance } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  Text,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import {
   TitleTransitionProvider,
   TitleTransitionTarget,
@@ -50,6 +56,89 @@ function Example() {
 }
 
 test('a measured matching destination starts a temporary title handoff', async () => {
+  let finish: ((result: { finished: boolean }) => void) | undefined;
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn((callback) => {
+      finish = callback;
+    }),
+    stop: jest.fn(),
+    reset: jest.fn(),
+  });
+  const host = await render(
+    <TitleTransitionProvider activeRouteKey="source">
+      <Example />
+    </TitleTransitionProvider>,
+  );
+  await fireEvent.press(host.getByText('打开'));
+  await host.rerender(
+    <TitleTransitionProvider activeRouteKey="destination">
+      <Example />
+    </TitleTransitionProvider>,
+  );
+  const target = host.getByText('详情标题', {
+    includeHiddenElements: true,
+  }).parent;
+  expect(target).not.toBeNull();
+  expect(host.getByText('详情标题')).not.toBeVisible();
+  expect(
+    host.getByText('卡片标题', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  await act(() => {
+    if (target)
+      fireEvent(target, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 180, height: 24 } },
+      });
+  });
+  expect(
+    host.getByText('卡片标题', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  expect(host.getByText('详情标题')).not.toBeVisible();
+  await act(() => finish?.({ finished: true }));
+  expect(host.getByText('详情标题')).toBeVisible();
+  expect(
+    host.queryByText('卡片标题', { includeHiddenElements: true }),
+  ).toBeNull();
+  timing.mockRestore();
+});
+
+test('a late destination falls back to its real title without a delayed handoff', async () => {
+  jest.useFakeTimers();
+  const timing = jest.spyOn(Animated, 'timing');
+  try {
+    const host = await render(
+      <TitleTransitionProvider activeRouteKey="source">
+        <Example />
+      </TitleTransitionProvider>,
+    );
+    await fireEvent.press(host.getByText('打开'));
+    await host.rerender(
+      <TitleTransitionProvider activeRouteKey="destination">
+        <Example />
+      </TitleTransitionProvider>,
+    );
+    const target = host.getByText('详情标题', {
+      includeHiddenElements: true,
+    }).parent;
+    expect(host.getByText('详情标题')).not.toBeVisible();
+    await act(() => jest.advanceTimersByTime(250));
+    expect(host.getByText('详情标题')).toBeVisible();
+    await act(() => {
+      if (target)
+        fireEvent(target, 'layout', {
+          nativeEvent: { layout: { x: 0, y: 0, width: 180, height: 24 } },
+        });
+    });
+    expect(timing).not.toHaveBeenCalled();
+    expect(
+      host.queryByText('卡片标题', { includeHiddenElements: true }),
+    ).toBeNull();
+  } finally {
+    timing.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+test('returning during the title handoff reveals the actual title', async () => {
   const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
     start: jest.fn(),
     stop: jest.fn(),
@@ -66,17 +155,15 @@ test('a measured matching destination starts a temporary title handoff', async (
       <Example />
     </TitleTransitionProvider>,
   );
-  const target = host.getByText('详情标题').parent;
-  expect(target).not.toBeNull();
+  const target = host.getByText('详情标题', {
+    includeHiddenElements: true,
+  }).parent;
   await act(() => {
     if (target)
       fireEvent(target, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 180, height: 24 } },
       });
   });
-  expect(
-    host.getByText('卡片标题', { includeHiddenElements: true }),
-  ).toBeTruthy();
   await host.rerender(
     <TitleTransitionProvider activeRouteKey="source">
       <Example />
@@ -85,5 +172,31 @@ test('a measured matching destination starts a temporary title handoff', async (
   expect(
     host.queryByText('卡片标题', { includeHiddenElements: true }),
   ).toBeNull();
+  expect(host.getByText('详情标题')).toBeVisible();
   timing.mockRestore();
+});
+
+test('reduced motion opens the destination without hiding its title', async () => {
+  const reducedMotion = jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+  try {
+    const host = await render(
+      <TitleTransitionProvider activeRouteKey="source">
+        <Example />
+      </TitleTransitionProvider>,
+    );
+    await fireEvent.press(host.getByText('打开'));
+    await host.rerender(
+      <TitleTransitionProvider activeRouteKey="destination">
+        <Example />
+      </TitleTransitionProvider>,
+    );
+    expect(host.getByText('详情标题')).toBeVisible();
+    expect(
+      host.queryByText('卡片标题', { includeHiddenElements: true }),
+    ).toBeNull();
+  } finally {
+    reducedMotion.mockRestore();
+  }
 });

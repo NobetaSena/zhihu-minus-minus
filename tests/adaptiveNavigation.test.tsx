@@ -16,6 +16,7 @@ import {
   Dimensions,
   Keyboard,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -244,6 +245,35 @@ test('single-pane navigation animates both opening and returning to a mounted pa
   } finally {
     timing.mockRestore();
   }
+});
+
+test('closing a detail does not fade the list pane or leave it partly transparent', async () => {
+  const timing = jest.spyOn(Animated, 'timing').mockReturnValue({
+    start: jest.fn(),
+    stop: jest.fn(),
+    reset: jest.fn(),
+  });
+  try {
+    const result = await open();
+    const listKey = appRoutes(result)[0].key;
+    await fireEvent.press(screen.getByText('open-a-home:root'));
+    await testRouter.back('/');
+    expect(screen.getByTestId(`adaptive-route-${listKey}`)).toHaveStyle({
+      opacity: 1,
+    });
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+test('opening a profile does not move or scale the whole page', async () => {
+  await setTwoPanes(false);
+  const result = await open();
+  await testRouter.push('/user/u');
+  const key = appRoutes(result).at(-1)?.key;
+  expect(key).toBeDefined();
+  const profile = screen.getByTestId(`adaptive-route-${key}`);
+  expect(StyleSheet.flatten(profile.props.style).transform).toBeUndefined();
 });
 
 test('rotation preserves route keys, draft state and full back order across both panes', async () => {

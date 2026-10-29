@@ -185,7 +185,11 @@ export function AdaptiveStackContent({
                 width={paneWidth}
                 height={height}
                 visible={visible}
-                active={route.key === activeKey}
+                active={route.key === activeKey && !isList}
+                expand={
+                  route.name === 'question/[id]/index' ||
+                  route.name === 'answer/[id]'
+                }
                 transitionSequence={transition.current.sequence}
               >
                 <AdaptiveScreen
@@ -225,6 +229,7 @@ function RoutePane({
   height,
   visible,
   active,
+  expand,
   transitionSequence,
   children,
 }: {
@@ -236,6 +241,7 @@ function RoutePane({
   height: number;
   visible: boolean;
   active: boolean;
+  expand: boolean;
   transitionSequence: number;
   children: ReactNode;
 }) {
@@ -277,7 +283,10 @@ function RoutePane({
       useNativeDriver: true,
     });
     animation.start();
-    return () => animation.stop();
+    return () => {
+      animation.stop();
+      progress.setValue(1);
+    };
   }, [active, progress, transitionSequence, visible]);
   useEffect(() => {
     if (!visible && focused.current) {
@@ -333,20 +342,24 @@ function RoutePane({
                 outputRange: [0.01, 1],
               })
             : 0,
-          transform: [
-            {
-              translateY: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [twoPane ? 4 : 10, 0],
-              }),
-            },
-            {
-              scale: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [twoPane ? 1 : 0.985, 1],
-              }),
-            },
-          ],
+          ...(expand
+            ? {
+                transform: [
+                  {
+                    translateY: progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [twoPane ? 4 : 10, 0],
+                    }),
+                  },
+                  {
+                    scale: progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [twoPane ? 1 : 0.985, 1],
+                    }),
+                  },
+                ],
+              }
+            : {}),
         },
       ]}
     >
