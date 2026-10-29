@@ -55,6 +55,7 @@ import { ShareMenu } from '@/components/ShareMenu';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import { TitleTransitionTarget } from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { RICH_CONTENT_STALE_TIME } from '@/features/rich-content';
 import { useDetailHeaderState } from '@/hooks/useDetailHeaderState';
@@ -175,7 +176,17 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
           onPress={() => {
             const authorId = item.author.url_token || item.author.id;
             if (authorId)
-              router.push({ pathname: '/user/[id]', params: { id: authorId } });
+              router.push({
+                pathname: '/user/[id]',
+                params: {
+                  id: authorId,
+                  avatar: item.author.avatar_url,
+                  name: item.author.name,
+                  ...(item.author.headline
+                    ? { headline: item.author.headline }
+                    : {}),
+                },
+              });
           }}
           className="flex-row flex-1 items-center bg-transparent"
         >
@@ -475,24 +486,28 @@ export default function QuestionDetail() {
             borderBottomRightRadius: 20,
           }}
         >
-          <Reanimated.View
-            sharedTransitionTag={`title-${id}`}
-            sharedTransitionStyle={slowTransition}
+          <TitleTransitionTarget
+            id={String(id)}
             onLayout={({ nativeEvent }) => {
               const { y, height } = nativeEvent.layout;
               onHeaderLayout(Math.max(1, y + height - navigationHeight));
             }}
           >
-            <Text
-              style={{
-                fontSize: 22,
-                lineHeight: 30,
-                fontWeight: '700',
-              }}
+            <Reanimated.View
+              sharedTransitionTag={`title-${id}`}
+              sharedTransitionStyle={slowTransition}
             >
-              {question?.title || initialTitle || '加载中...'}
-            </Text>
-          </Reanimated.View>
+              <Text
+                style={{
+                  fontSize: 22,
+                  lineHeight: 30,
+                  fontWeight: '700',
+                }}
+              >
+                {question?.title || initialTitle || '加载中...'}
+              </Text>
+            </Reanimated.View>
+          </TitleTransitionTarget>
           {qLoading && !question ? (
             <View className="h-[100px] justify-center">
               <ActivityIndicator size="small" color={primaryColor} />

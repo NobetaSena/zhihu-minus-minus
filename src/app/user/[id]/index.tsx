@@ -7,8 +7,8 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
+  Animated,
   View as NativeView,
   ScrollView,
   type ScrollViewInstance,
@@ -63,6 +63,7 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { useProfileEntryProgress } from '@/features/adaptive-layout/PaneContext';
 import { useUserAnswersVotedByMe } from '@/hooks/useUserAnswersVotedByMe';
 import { useUserColumns } from '@/hooks/useUserColumns';
 import { useUserCreations } from '@/hooks/useUserCreations';
@@ -167,9 +168,15 @@ const AnimatedPagerView = Reanimated.createAnimatedComponent(PagerView);
 
 type ProfileRouteParams = {
   id: string;
-  avatar?: string;
+  avatar?: string | string[];
+  name?: string | string[];
+  headline?: string | string[];
   tab?: string;
 };
+
+function profileRouteText(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export default function UserDetailScreen() {
   const params = useLocalSearchParams<ProfileRouteParams>();
@@ -179,7 +186,26 @@ export default function UserDetailScreen() {
 function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const { id, avatar: initialAvatar, tab: initialTabParam } = params;
+  const profileEntry = useProfileEntryProgress();
+  const profileEntryStyle = useMemo(
+    () =>
+      profileEntry && {
+        transformOrigin: '50% 0%',
+        transform: [
+          {
+            scale: profileEntry.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1.06, 1],
+            }),
+          },
+        ],
+      },
+    [profileEntry],
+  );
+  const { id, tab: initialTabParam } = params;
+  const initialAvatar = profileRouteText(params.avatar);
+  const initialName = profileRouteText(params.name);
+  const initialHeadline = profileRouteText(params.headline);
   const router = useRouter();
   const queryClient = useQueryClient();
   const initialTab = getInitialProfileTab(initialTabParam);
@@ -694,22 +720,36 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     }
   };
 
+  const headerUser: ZhihuMember | undefined =
+    user ??
+    (isUserLoading
+      ? {
+          id,
+          name: initialName ?? '',
+          avatar_url: initialAvatar ?? '',
+          headline: initialHeadline,
+          type: 'people',
+        }
+      : undefined);
   const renderHeader = () =>
-    user ? (
+    headerUser ? (
       <ProfileHeader
-        user={user}
+        user={headerUser}
         initialAvatar={initialAvatar}
+        initialName={initialName}
+        initialHeadline={initialHeadline}
+        isLoading={!user}
         isMe={isMe}
         followLoading={followLoading}
         topInset={navigationHeight}
         onFollow={() => void handleFollow()}
         onFollowers={() =>
-          router.push(`/user/${user.url_token || id}/followers`)
+          router.push(`/user/${user?.url_token || id}/followers`)
         }
         onFollowing={() =>
-          router.push(`/user/${user.url_token || id}/following`)
+          router.push(`/user/${user?.url_token || id}/following`)
         }
-        onMutual={() => router.push(`/user/${user.url_token || id}/mutual`)}
+        onMutual={() => router.push(`/user/${user?.url_token || id}/mutual`)}
       />
     ) : null;
 
@@ -995,13 +1035,12 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
       onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
     >
       <Stack.Screen
-        options={{ headerShown: false, title: user?.name || '个人主页' }}
+        options={{
+          headerShown: false,
+          title: user?.name || initialName || '个人主页',
+        }}
       />
-      {isUserLoading ? (
-        <View className="flex-1 items-center justify-center bg-transparent">
-          <ActivityIndicator color={primaryColor} />
-        </View>
-      ) : !user ? (
+      {!user && !isUserLoading ? (
         <View style={{ paddingTop: navigationHeight }}>
           <QueryErrorView
             message="用户资料加载失败"
@@ -1009,7 +1048,11 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
           />
         </View>
       ) : (
-        <>
+        <Animated.View
+          testID="profile-entry-content"
+          pointerEvents="box-none"
+          style={[StyleSheet.absoluteFill, profileEntryStyle]}
+        >
           <NativeView style={StyleSheet.absoluteFill}>
             <AnimatedPagerView
               ref={pagerRef}
@@ -1065,6 +1108,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
                       headerHeight={headerHeight}
                       collapseDistance={collapseDistance}
                       viewportHeight={viewportHeight}
+                      hideInitialLoadingIndicator={isUserLoading && !user}
                       bottomInset={insets.bottom}
                       offsets={scrollOffsets}
                       active={activeTab === tab.key}
@@ -1143,7 +1187,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
             {renderHeader()}
             {renderTabsSelector()}
           </Reanimated.View>
-        </>
+        </Animated.View>
       )}
       <NativeView
         pointerEvents="box-none"
@@ -1156,18 +1200,27 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
           paddingTop: insets.top,
         }}
       >
-        {user ? (
-          <ProfileToolbarBackground
-            coverUrl={user.cover_url}
-            navigationHeight={navigationHeight}
-            headerOffset={headerOffset}
-          />
+        {headerUser ? (
+          <Animated.View
+            testID="profile-entry-toolbar-background"
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, profileEntryStyle]}
+          >
+            <ProfileToolbarBackground
+              coverUrl={user?.cover_url}
+              navigationHeight={navigationHeight}
+              headerOffset={headerOffset}
+            />
+          </Animated.View>
         ) : null}
         <NativeView
           pointerEvents="box-none"
-          onLayout={(event) =>
-            setNavigationRowHeight(event.nativeEvent.layout.height)
-          }
+          testID="profile-toolbar-row"
+          onLayout={(event) => {
+            const height = event.nativeEvent.layout.height;
+            if (Number.isFinite(height) && height > 0)
+              setNavigationRowHeight(height);
+          }}
           style={{
             minHeight: 56,
             flexDirection: 'row',
@@ -1206,9 +1259,9 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
               toolbarIdentityStyle,
             ]}
           >
-            {user?.avatar_url ? (
+            {headerUser?.avatar_url ? (
               <StableAvatar
-                uri={user.avatar_url}
+                uri={headerUser.avatar_url}
                 style={{ width: 30, height: 30, borderRadius: 15 }}
               />
             ) : null}
@@ -1221,7 +1274,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
                   fontWeight: '700',
                 }}
               >
-                {user?.name || '个人主页'}
+                {headerUser?.name || initialName || '个人主页'}
               </Text>
               <Text
                 numberOfLines={1}

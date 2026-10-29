@@ -221,7 +221,17 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
         onPress={() => {
           const memberId = item.author.url_token || item.author.id;
           if (memberId)
-            router.push({ pathname: '/user/[id]', params: { id: memberId } });
+            router.push({
+              pathname: '/user/[id]',
+              params: {
+                id: memberId,
+                avatar: item.author.avatar_url,
+                name: item.author.name,
+                ...(item.author.headline
+                  ? { headline: item.author.headline }
+                  : {}),
+              },
+            });
         }}
       >
         <StableAvatar

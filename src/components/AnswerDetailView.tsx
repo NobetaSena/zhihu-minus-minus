@@ -48,6 +48,7 @@ import { Text, ThemedIcon, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
+import { TitleTransitionTarget } from '@/features/adaptive-layout/TitleTransition';
 import {
   isRichTextNativeAvailable,
   type RichContentLoadingPhase,
@@ -482,7 +483,20 @@ export const AnswerDetailView = ({
 
   const goToProfile = () => {
     const token = answer?.author?.url_token || answer?.author?.id;
-    if (token) router.push(`/user/${token}`);
+    if (token)
+      router.push({
+        pathname: '/user/[id]',
+        params: {
+          id: token,
+          ...(answer?.author?.avatar_url
+            ? { avatar: answer.author.avatar_url }
+            : {}),
+          ...(answer?.author?.name ? { name: answer.author.name } : {}),
+          ...(answer?.author?.headline
+            ? { headline: answer.author.headline }
+            : {}),
+        },
+      });
   };
 
   const linkColor = useThemeColor({}, 'link');
@@ -568,20 +582,24 @@ export const AnswerDetailView = ({
                     color={secondaryColor}
                   />
                 </View>
-                <Reanimated.View
-                  sharedTransitionTag={`title-${questionId || answer?.question?.id || id}`}
-                  sharedTransitionStyle={slowTransition}
+                <TitleTransitionTarget
+                  id={String(questionId || answer?.question?.id || id)}
                 >
-                  <Text
-                    style={{
-                      fontSize: 21,
-                      lineHeight: 29,
-                      fontWeight: '700',
-                    }}
+                  <Reanimated.View
+                    sharedTransitionTag={`title-${questionId || answer?.question?.id || id}`}
+                    sharedTransitionStyle={slowTransition}
                   >
-                    {answer?.question?.title || initialTitle || '加载中...'}
-                  </Text>
-                </Reanimated.View>
+                    <Text
+                      style={{
+                        fontSize: 21,
+                        lineHeight: 29,
+                        fontWeight: '700',
+                      }}
+                    >
+                      {answer?.question?.title || initialTitle || '加载中...'}
+                    </Text>
+                  </Reanimated.View>
+                </TitleTransitionTarget>
               </BouncyButton>
               <View className="flex-row items-center pt-4 pb-5 justify-between gap-3 bg-transparent">
                 <BouncyButton
