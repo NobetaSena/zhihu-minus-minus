@@ -24,11 +24,15 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
   Keyboard,
   Platform,
   StyleSheet,
@@ -48,6 +52,7 @@ import { PaneContext, usePaneDimensions } from './PaneContext';
 import { PaneDivider } from './PaneDivider';
 import { PaneStackRouter } from './PaneStackRouter';
 import { resolvePaneDetailHref } from './selection';
+import { TitleTransitionProvider } from './TitleTransition';
 import { PaneSelectionContext } from './usePaneRouter';
 
 type StackEvents = {
@@ -93,6 +98,14 @@ export function AdaptiveStackContent({
   const width = size?.width ?? dimensions.width;
   const height = size?.height ?? dimensions.height;
   const panes = getVisiblePanes(state.routes, state.index, enabled);
+  const activeKey = state.routes[state.index]?.key;
+  const transition = useRef({ key: activeKey, sequence: 0 });
+  if (transition.current.key !== activeKey) {
+    transition.current = {
+      key: activeKey,
+      sequence: transition.current.sequence + 1,
+    };
+  }
   const selectDetail = useCallback(
     (sourceKey: string, href: Href) => {
       if (!enabled || sourceKey !== panes.listKey) return false;
@@ -122,79 +135,83 @@ export function AdaptiveStackContent({
 
   return (
     <PaneSelectionContext.Provider value={selectDetail}>
-      <View
-        style={[styles.container, { backgroundColor: colors.background }]}
-        testID="adaptive-stack"
-        onLayout={({ nativeEvent: { layout } }) => {
-          if (layout.width > 0 && layout.height > 0) {
-            setMeasurement((previous) =>
-              previous?.width === layout.width &&
-              previous.height === layout.height &&
-              previous.windowWidth === dimensions.width &&
-              previous.windowHeight === dimensions.height
-                ? previous
-                : {
-                    width: layout.width,
-                    height: layout.height,
-                    windowWidth: dimensions.width,
-                    windowHeight: dimensions.height,
-                  },
-            );
-          }
-        }}
-      >
-        {panes.listKey && !panes.detailKey ? (
-          <View
-            style={[styles.empty, { left: detailLeft }]}
-            testID="adaptive-empty-detail"
-          >
-            <Text style={{ color: colors.textSecondary }}>选择左侧内容</Text>
-          </View>
-        ) : null}
-        {state.routes.map((route, index) => {
-          const descriptor = descriptors[route.key];
-          const isList = route.key === panes.listKey;
-          const isDetail = route.key === panes.detailKey;
-          const visible = isList || isDetail || route.key === panes.fullKey;
-          const paneWidth = isList
-            ? listWidth
-            : isDetail
-              ? width - detailLeft
-              : width;
-          return (
-            <RoutePane
-              key={route.key}
-              routeKey={route.key}
-              twoPane={!!panes.listKey}
-              testID={`adaptive-route-${route.key}`}
-              left={isDetail ? detailLeft : 0}
-              width={paneWidth}
-              height={height}
-              visible={visible}
+      <TitleTransitionProvider activeRouteKey={activeKey}>
+        <View
+          style={[styles.container, { backgroundColor: colors.background }]}
+          testID="adaptive-stack"
+          onLayout={({ nativeEvent: { layout } }) => {
+            if (layout.width > 0 && layout.height > 0) {
+              setMeasurement((previous) =>
+                previous?.width === layout.width &&
+                previous.height === layout.height &&
+                previous.windowWidth === dimensions.width &&
+                previous.windowHeight === dimensions.height
+                  ? previous
+                  : {
+                      width: layout.width,
+                      height: layout.height,
+                      windowWidth: dimensions.width,
+                      windowHeight: dimensions.height,
+                    },
+              );
+            }
+          }}
+        >
+          {panes.listKey && !panes.detailKey ? (
+            <View
+              style={[styles.empty, { left: detailLeft }]}
+              testID="adaptive-empty-detail"
             >
-              <AdaptiveScreen
-                options={descriptor.options}
-                canGoBack={state.index > 0}
-                onBack={actions.back}
-                previousTitle={
-                  descriptors[state.routes[index - 1]?.key]?.options.title
-                }
+              <Text style={{ color: colors.textSecondary }}>选择左侧内容</Text>
+            </View>
+          ) : null}
+          {state.routes.map((route, index) => {
+            const descriptor = descriptors[route.key];
+            const isList = route.key === panes.listKey;
+            const isDetail = route.key === panes.detailKey;
+            const visible = isList || isDetail || route.key === panes.fullKey;
+            const paneWidth = isList
+              ? listWidth
+              : isDetail
+                ? width - detailLeft
+                : width;
+            return (
+              <RoutePane
+                key={route.key}
+                routeKey={route.key}
+                twoPane={!!panes.listKey}
+                testID={`adaptive-route-${route.key}`}
+                left={isDetail ? detailLeft : 0}
+                width={paneWidth}
+                height={height}
+                visible={visible}
+                active={route.key === activeKey}
+                transitionSequence={transition.current.sequence}
               >
-                {descriptor.render()}
-              </AdaptiveScreen>
-            </RoutePane>
-          );
-        })}
-        {panes.listKey ? (
-          <PaneDivider
-            width={width}
-            ratio={ratio}
-            onChange={setRatio}
-            onCommit={commitRatio}
-            onCancel={cancelResize}
-          />
-        ) : null}
-      </View>
+                <AdaptiveScreen
+                  options={descriptor.options}
+                  canGoBack={state.index > 0}
+                  onBack={actions.back}
+                  previousTitle={
+                    descriptors[state.routes[index - 1]?.key]?.options.title
+                  }
+                >
+                  {descriptor.render()}
+                </AdaptiveScreen>
+              </RoutePane>
+            );
+          })}
+          {panes.listKey ? (
+            <PaneDivider
+              width={width}
+              ratio={ratio}
+              onChange={setRatio}
+              onCommit={commitRatio}
+              onCancel={cancelResize}
+            />
+          ) : null}
+        </View>
+      </TitleTransitionProvider>
     </PaneSelectionContext.Provider>
   );
 }
@@ -207,6 +224,8 @@ function RoutePane({
   width,
   height,
   visible,
+  active,
+  transitionSequence,
   children,
 }: {
   routeKey: string;
@@ -216,9 +235,50 @@ function RoutePane({
   width: number;
   height: number;
   visible: boolean;
+  active: boolean;
+  transitionSequence: number;
   children: ReactNode;
 }) {
   const focused = useRef(false);
+  const progress = useRef(new Animated.Value(1)).current;
+  const lastTransition = useRef(0);
+  const reduceMotion = useRef(false);
+  useEffect(() => {
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) reduceMotion.current = enabled;
+    });
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (enabled) => {
+        reduceMotion.current = enabled;
+      },
+    );
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (!visible || !active || lastTransition.current === transitionSequence) {
+      return;
+    }
+    lastTransition.current = transitionSequence;
+    progress.stopAnimation();
+    if (reduceMotion.current) {
+      progress.setValue(1);
+      return;
+    }
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [active, progress, transitionSequence, visible]);
   useEffect(() => {
     if (!visible && focused.current) {
       focused.current = false;
@@ -251,7 +311,7 @@ function RoutePane({
   );
   const webProps = Platform.OS === 'web' ? { inert: !visible } : {};
   return (
-    <View
+    <Animated.View
       {...webProps}
       testID={testID}
       onFocusCapture={() => {
@@ -263,12 +323,37 @@ function RoutePane({
       pointerEvents={visible ? 'auto' : 'none'}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
-      style={[styles.route, frame, { opacity: visible ? 1 : 0 }]}
+      style={[
+        styles.route,
+        frame,
+        {
+          opacity: visible
+            ? progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.01, 1],
+              })
+            : 0,
+          transform: [
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [twoPane ? 4 : 10, 0],
+              }),
+            },
+            {
+              scale: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [twoPane ? 1 : 0.985, 1],
+              }),
+            },
+          ],
+        },
+      ]}
     >
       <PaneContext.Provider value={value}>
         <SafeAreaProviderCompat>{children}</SafeAreaProviderCompat>
       </PaneContext.Provider>
-    </View>
+    </Animated.View>
   );
 }
 

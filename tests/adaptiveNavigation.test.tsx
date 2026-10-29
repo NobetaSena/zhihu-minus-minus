@@ -11,6 +11,7 @@ import {
 } from 'expo-router/testing-library';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
+  Animated,
   BackHandler,
   Dimensions,
   Keyboard,
@@ -226,6 +227,23 @@ test('layout projection keeps chronological history and never crosses a full-scr
     getVisiblePanes([{ key: 'login', name: 'login/index' }, routes[1]], 1, true)
       .fullKey,
   ).toBe('a');
+});
+
+test('single-pane navigation animates both opening and returning to a mounted page', async () => {
+  await setTwoPanes(false);
+  const timing = jest.spyOn(Animated, 'timing');
+  try {
+    await open();
+    timing.mockClear();
+    await testRouter.push('/answer/a');
+    expect(timing).toHaveBeenCalled();
+    timing.mockClear();
+    await testRouter.back('/');
+    expect(timing).toHaveBeenCalled();
+    expect(screen.getByTestId('instance-home:root').props.children).toBe(1);
+  } finally {
+    timing.mockRestore();
+  }
 });
 
 test('rotation preserves route keys, draft state and full back order across both panes', async () => {

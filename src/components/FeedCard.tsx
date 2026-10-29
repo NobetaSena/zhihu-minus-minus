@@ -6,6 +6,7 @@ import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
 import { FeedCardActionRow } from '@/components/FeedCardActionRow';
 import type { ActionSheetOption } from '@/components/overlays/ActionSheet';
+import { useTitleTransition } from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useContentActions } from '@/hooks/useContentActions';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -129,6 +130,8 @@ const FeedCardComponent = ({
   onUninterested,
 }: FeedCardProps) => {
   const router = useRouter();
+  const transitionTitle = useTitleTransition();
+  const titleRef = useRef<ViewInstance>(null);
   const queryClient = useQueryClient();
   const { cookies } = useAuthStore();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -398,7 +401,19 @@ const FeedCardComponent = ({
             },
           );
         }}
-        onPress={openDetail}
+        onPress={() => {
+          if (item.type === 'answers' || item.type === 'questions') {
+            transitionTitle(
+              titleRef,
+              String(item.questionId || item.id),
+              cleanTitle,
+              () => {
+                if (currentIdentityRef.current === identity) openDetail();
+              },
+              () => currentIdentityRef.current === identity,
+            );
+          } else openDetail();
+        }}
         style={[
           surface,
           { opacity: previewVisible ? 0 : 1 },
@@ -488,23 +503,48 @@ const FeedCardComponent = ({
           <BouncyButton
             onPress={() => {
               if (item.type === 'answers' && item.questionId) {
-                router.push(`/question/${item.questionId}`);
+                const questionId = String(item.questionId);
+                transitionTitle(
+                  titleRef,
+                  questionId,
+                  cleanTitle,
+                  () => {
+                    if (currentIdentityRef.current !== identity) return;
+                    router.push({
+                      pathname: '/question/[id]',
+                      params: { id: questionId, title: cleanTitle },
+                    });
+                  },
+                  () => currentIdentityRef.current === identity,
+                );
                 return;
               }
-              openDetail();
+              if (item.type === 'questions')
+                transitionTitle(
+                  titleRef,
+                  String(item.questionId || item.id),
+                  cleanTitle,
+                  () => {
+                    if (currentIdentityRef.current === identity) openDetail();
+                  },
+                  () => currentIdentityRef.current === identity,
+                );
+              else openDetail();
             }}
           >
-            <Animated.View
-              sharedTransitionTag={`title-${item.questionId || item.id}`}
-              sharedTransitionStyle={slowTransition}
-            >
-              <Text
-                className="text-lg font-bold leading-6 text-foreground dark:text-foreground-dark"
-                numberOfLines={2}
+            <RNView ref={titleRef} collapsable={false}>
+              <Animated.View
+                sharedTransitionTag={`title-${item.questionId || item.id}`}
+                sharedTransitionStyle={slowTransition}
               >
-                {item.title}
-              </Text>
-            </Animated.View>
+                <Text
+                  className="text-lg font-bold leading-6 text-foreground dark:text-foreground-dark"
+                  numberOfLines={2}
+                >
+                  {item.title}
+                </Text>
+              </Animated.View>
+            </RNView>
           </BouncyButton>
         ) : null}
 
