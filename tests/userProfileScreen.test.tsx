@@ -47,9 +47,9 @@ const member: ZhihuMember = {
 let mockRoute: {
   id: string;
   tab?: string;
-  name?: string;
-  avatar?: string;
-  headline?: string;
+  name?: string | string[];
+  avatar?: string | string[];
+  headline?: string | string[];
 };
 let mockAuthState: { cookies: string; me: ZhihuMember | null };
 let mockSessionVersion: number;
@@ -439,6 +439,43 @@ test('profile opens from the card before a slow request and does not replay when
   } finally {
     timing.mockRestore();
   }
+});
+
+test('repeated profile identity parameters use the first value while loading and after the response', async () => {
+  client.removeQueries({ queryKey: ['user-detail', mockRoute.id] });
+  mockRoute.name = ['卡片作者', '其他作者'];
+  mockRoute.avatar = [
+    'https://example.com/avatar.jpg',
+    'https://example.com/other.jpg',
+  ];
+  mockRoute.headline = ['卡片简介', '其他简介'];
+  let finish: ((value: ZhihuMember) => void) | undefined;
+  jest.mocked(getMemberWithFallback).mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const host = await render(screen());
+  await flushQueries();
+  const identity = {
+    initialName: '卡片作者',
+    initialAvatar: 'https://example.com/avatar.jpg',
+    initialHeadline: '卡片简介',
+  };
+  expect(mockProfileHeader).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      ...identity,
+      isLoading: true,
+      user: expect.objectContaining({ name: '卡片作者', headline: '卡片简介' }),
+    }),
+  );
+  await act(async () => finish?.(member));
+  await flushQueries();
+  expect(mockProfileHeader).toHaveBeenLastCalledWith(
+    expect.objectContaining({ ...identity, isLoading: false, user: member }),
+  );
+  expect(host.getByTestId('profile-entry-content')).toBeVisible();
+  await host.unmount();
 });
 
 test('a failed initial profile request replaces the placeholder with a retry', async () => {

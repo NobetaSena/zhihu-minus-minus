@@ -93,10 +93,8 @@ export function TitleTransitionProvider({
     sourceRouteKey?: string;
   } | null>(null);
   const flightRef = useRef(flight);
-  flightRef.current = flight;
   const previousRoute = useRef(activeRouteKey);
   const currentRoute = useRef(activeRouteKey);
-  currentRoute.current = activeRouteKey;
   const colors = useRuntimeThemeColors();
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
   const lineHeightScale = useSettingsStore((state) => state.lineHeightScale);
@@ -105,6 +103,11 @@ export function TitleTransitionProvider({
     sourceRestore.current = null;
     restore?.();
   }, []);
+
+  useLayoutEffect(() => {
+    flightRef.current = flight;
+    currentRoute.current = activeRouteKey;
+  }, [flight, activeRouteKey]);
 
   useLayoutEffect(() => {
     if (previousRoute.current === activeRouteKey) return;

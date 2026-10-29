@@ -168,11 +168,15 @@ const AnimatedPagerView = Reanimated.createAnimatedComponent(PagerView);
 
 type ProfileRouteParams = {
   id: string;
-  avatar?: string;
-  name?: string;
-  headline?: string;
+  avatar?: string | string[];
+  name?: string | string[];
+  headline?: string | string[];
   tab?: string;
 };
+
+function profileRouteText(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export default function UserDetailScreen() {
   const params = useLocalSearchParams<ProfileRouteParams>();
@@ -198,13 +202,10 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
       },
     [profileEntry],
   );
-  const {
-    id,
-    avatar: initialAvatar,
-    name: initialName,
-    headline: initialHeadline,
-    tab: initialTabParam,
-  } = params;
+  const { id, tab: initialTabParam } = params;
+  const initialAvatar = profileRouteText(params.avatar);
+  const initialName = profileRouteText(params.name);
+  const initialHeadline = profileRouteText(params.headline);
   const router = useRouter();
   const queryClient = useQueryClient();
   const initialTab = getInitialProfileTab(initialTabParam);
@@ -724,10 +725,9 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
     (isUserLoading
       ? {
           id,
-          name: typeof initialName === 'string' ? initialName : '',
-          avatar_url: typeof initialAvatar === 'string' ? initialAvatar : '',
-          headline:
-            typeof initialHeadline === 'string' ? initialHeadline : undefined,
+          name: initialName ?? '',
+          avatar_url: initialAvatar ?? '',
+          headline: initialHeadline,
           type: 'people',
         }
       : undefined);

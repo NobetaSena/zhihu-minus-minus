@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { useRef, useState } from 'react';
+import { Suspense, startTransition, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -224,6 +224,40 @@ test('returning during a handoff restores the source title', async () => {
   } finally {
     timing.mockRestore();
   }
+});
+
+test('a suspended route change does not change the source of a title handoff', async () => {
+  let setRoute: ((route: string) => void) | undefined;
+  let suspendedRenders = 0;
+  const never = new Promise<void>(() => {});
+  function SuspendRoute({ route }: { route: string }) {
+    if (route === 'uncommitted') {
+      suspendedRenders += 1;
+      throw never;
+    }
+    return null;
+  }
+  function App() {
+    const [route, updateRoute] = useState('source');
+    setRoute = updateRoute;
+    return (
+      <Suspense fallback={<Text>加载中</Text>}>
+        <TitleTransitionProvider activeRouteKey={route}>
+          <PersistentSource />
+          <SuspendRoute route={route} />
+        </TitleTransitionProvider>
+      </Suspense>
+    );
+  }
+  const host = await render(<App />);
+  await act(() => {
+    startTransition(() => setRoute?.('uncommitted'));
+  });
+  expect(suspendedRenders).toBeGreaterThan(0);
+  await fireEvent.press(host.getByText('打开来源'));
+  // The old route is still committed, so its matching title is not a destination.
+  expect(host.getByText('详情标题')).toBeVisible();
+  await host.unmount();
 });
 
 test('a measured matching destination starts a temporary title handoff', async () => {
