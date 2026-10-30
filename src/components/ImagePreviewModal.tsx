@@ -38,6 +38,7 @@ function renderCachedImage(props: ImageProps) {
   return (
     <Image
       {...rest}
+      fadeDuration={0}
       source={cachedSource ?? source}
       onLoad={(event) => {
         const { width, height } = event.nativeEvent.source;

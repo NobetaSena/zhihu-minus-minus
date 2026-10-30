@@ -14,6 +14,9 @@ import { PROFILE_COVER_SCROLL_DISTANCE } from '@/utils/profileScroll';
 interface ProfileHeaderProps {
   user: ZhihuMember;
   initialAvatar?: string;
+  initialName?: string;
+  initialHeadline?: string;
+  isLoading?: boolean;
   isMe: boolean;
   followLoading: boolean;
   topInset: number;
@@ -27,6 +30,9 @@ interface ProfileHeaderProps {
 export function ProfileHeader({
   user,
   initialAvatar,
+  initialName,
+  initialHeadline,
+  isLoading = false,
   isMe,
   followLoading,
   topInset,
@@ -45,13 +51,14 @@ export function ProfileHeader({
   const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
   const identity = user.id || user.url_token || '';
   const isExpanded = expandedProfile === identity;
-  const headline = user.headline?.trim();
+  const headline = (user.headline ?? initialHeadline)?.trim();
   const description = user.description?.trim();
   const hasDescription = !!description && description !== headline;
   const canExpandDescription =
     !!description &&
     (description.length > 110 || description.split('\n').length > 3);
   const avatarUri = user.avatar_url || initialAvatar;
+  const name = user.name || initialName || '';
 
   return (
     <View
@@ -76,7 +83,7 @@ export function ProfileHeader({
             ]}
             accessible
             accessibilityRole="image"
-            accessibilityLabel={`${user.name || '用户'}的头像`}
+            accessibilityLabel={`${name || '用户'}的头像`}
           >
             {avatarUri ? (
               <StableAvatar uri={avatarUri} style={styles.avatar} />
@@ -84,7 +91,7 @@ export function ProfileHeader({
               <Ionicons name="person" size={34} color={colors.textTertiary} />
             )}
           </View>
-          {!isMe && (
+          {!isMe && !isLoading && (
             <FollowButton
               following={Boolean(user.is_following)}
               loading={followLoading}
@@ -101,9 +108,15 @@ export function ProfileHeader({
 
         <Text
           pointerEvents="none"
-          style={[styles.name, { color: colors.text }]}
+          style={[
+            styles.name,
+            { color: colors.text },
+            isLoading && !name
+              ? { minHeight: (30 * fontSizeScale * lineHeightScale) / 1.5 }
+              : undefined,
+          ]}
         >
-          {user.name}
+          {name}
         </Text>
         {!!user.url_token && (
           <Text
@@ -154,45 +167,56 @@ export function ProfileHeader({
           </View>
         )}
 
-        <View pointerEvents="box-none" style={styles.stats}>
-          <BouncyButton
-            accessibilityRole="button"
-            accessibilityLabel={`${user.following_count || 0} 关注`}
-            onPress={onFollowing}
-            style={styles.stat}
+        {isLoading ? (
+          <View
+            pointerEvents="none"
+            style={styles.stats}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           >
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {formatCount(user.following_count)}
-              </Text>{' '}
-              关注
-            </Text>
-          </BouncyButton>
-          <BouncyButton
-            accessibilityRole="button"
-            accessibilityLabel={`${user.follower_count || 0} 关注者`}
-            onPress={onFollowers}
-            style={styles.stat}
-          >
-            <Text style={[styles.statText, { color: colors.textSecondary }]}>
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {formatCount(user.follower_count)}
-              </Text>{' '}
-              关注者
-            </Text>
-          </BouncyButton>
-          <View pointerEvents="none" style={styles.stat}>
-            <Text
-              style={[styles.statText, { color: colors.textSecondary }]}
-              accessibilityLabel={`${user.voteup_count || 0} 获赞`}
-            >
-              <Text style={[styles.statValue, { color: colors.text }]}>
-                {formatCount(user.voteup_count)}
-              </Text>{' '}
-              获赞
-            </Text>
+            <View style={styles.stat} />
           </View>
-        </View>
+        ) : (
+          <View pointerEvents="box-none" style={styles.stats}>
+            <BouncyButton
+              accessibilityRole="button"
+              accessibilityLabel={`${user.following_count || 0} 关注`}
+              onPress={onFollowing}
+              style={styles.stat}
+            >
+              <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {formatCount(user.following_count)}
+                </Text>{' '}
+                关注
+              </Text>
+            </BouncyButton>
+            <BouncyButton
+              accessibilityRole="button"
+              accessibilityLabel={`${user.follower_count || 0} 关注者`}
+              onPress={onFollowers}
+              style={styles.stat}
+            >
+              <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {formatCount(user.follower_count)}
+                </Text>{' '}
+                关注者
+              </Text>
+            </BouncyButton>
+            <View pointerEvents="none" style={styles.stat}>
+              <Text
+                style={[styles.statText, { color: colors.textSecondary }]}
+                accessibilityLabel={`${user.voteup_count || 0} 获赞`}
+              >
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {formatCount(user.voteup_count)}
+                </Text>{' '}
+                获赞
+              </Text>
+            </View>
+          </View>
+        )}
 
         {!isMe && (user.mutual_followees_count || 0) > 0 && (
           <BouncyButton

@@ -6,6 +6,10 @@ import { hasAuthenticationCookie } from '@/api/client';
 import { type FeedItem, getVoteSuccessMessage, voteContent } from '@/api/zhihu';
 import { FeedCardActionRow } from '@/components/FeedCardActionRow';
 import type { ActionSheetOption } from '@/components/overlays/ActionSheet';
+import {
+  useTitleTransition,
+  useTitleTransitionSource,
+} from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useContentActions } from '@/hooks/useContentActions';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -129,6 +133,8 @@ const FeedCardComponent = ({
   onUninterested,
 }: FeedCardProps) => {
   const router = useRouter();
+  const transitionTitle = useTitleTransition();
+  const titleRef = useRef<ViewInstance>(null);
   const queryClient = useQueryClient();
   const { cookies } = useAuthStore();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -145,6 +151,7 @@ const FeedCardComponent = ({
   const [voted, setVoted] = useState(item.voted || 0);
   const [voteCount, setVoteCount] = useState(item.voteCount || 0);
   const identity = `${item.type}:${item.videoSource || ''}:${item.id}`;
+  const titleSource = useTitleTransitionSource(identity);
   const currentIdentityRef = useRef(identity);
   currentIdentityRef.current = identity;
   const pendingVotesRef = useRef(new Set<string>());
@@ -156,6 +163,14 @@ const FeedCardComponent = ({
 
   const cleanTitle =
     typeof item.title === 'string' ? item.title : item.titleString || '';
+  const sourceTitle = (
+    <Text
+      className="text-lg font-bold leading-6 text-foreground dark:text-foreground-dark"
+      numberOfLines={2}
+    >
+      {item.title}
+    </Text>
+  );
   const authorAvatarSource = useMemo(
     () => getCachedImageSource(item.author.avatar),
     [item.author.avatar],
@@ -409,7 +424,21 @@ const FeedCardComponent = ({
             },
           );
         }}
-        onPress={openDetail}
+        onPress={() => {
+          if (item.type === 'answers' || item.type === 'questions') {
+            transitionTitle(
+              titleRef,
+              String(item.questionId || item.id),
+              cleanTitle,
+              () => {
+                if (currentIdentityRef.current === identity) openDetail();
+              },
+              () => currentIdentityRef.current === identity,
+              titleSource.onSourceHiddenChange,
+              sourceTitle,
+            );
+          } else openDetail();
+        }}
         style={[
           surface,
           { opacity: previewVisible ? 0 : 1 },
@@ -425,7 +454,14 @@ const FeedCardComponent = ({
             onPress={() =>
               router.push({
                 pathname: '/user/[id]',
-                params: { id: authorId, avatar: item.author.avatar },
+                params: {
+                  id: authorId,
+                  avatar: item.author.avatar,
+                  name: item.author.name,
+                  ...(item.author.headline
+                    ? { headline: item.author.headline }
+                    : {}),
+                },
               })
             }
           >
@@ -455,12 +491,17 @@ const FeedCardComponent = ({
                 params: {
                   id: authorId,
                   avatar: item.author.avatar,
+                  name: item.author.name,
+                  ...(item.author.headline
+                    ? { headline: item.author.headline }
+                    : {}),
                 },
               })
             }
             className="flex-row items-center mb-2"
           >
             <Animated.Image
+              fadeDuration={0}
               source={authorAvatarSource}
               className="w-[22px] h-[22px] rounded-full"
               sharedTransitionTag={`avatar-${item.author.url_token || item.author.id}`}
@@ -499,23 +540,51 @@ const FeedCardComponent = ({
           <BouncyButton
             onPress={() => {
               if (item.type === 'answers' && item.questionId) {
-                router.push(`/question/${item.questionId}`);
+                const questionId = String(item.questionId);
+                transitionTitle(
+                  titleRef,
+                  questionId,
+                  cleanTitle,
+                  () => {
+                    if (currentIdentityRef.current !== identity) return;
+                    router.push({
+                      pathname: '/question/[id]',
+                      params: { id: questionId, title: cleanTitle },
+                    });
+                  },
+                  () => currentIdentityRef.current === identity,
+                  titleSource.onSourceHiddenChange,
+                  sourceTitle,
+                );
                 return;
               }
-              openDetail();
+              if (item.type === 'questions')
+                transitionTitle(
+                  titleRef,
+                  String(item.questionId || item.id),
+                  cleanTitle,
+                  () => {
+                    if (currentIdentityRef.current === identity) openDetail();
+                  },
+                  () => currentIdentityRef.current === identity,
+                  titleSource.onSourceHiddenChange,
+                  sourceTitle,
+                );
+              else openDetail();
             }}
           >
-            <Animated.View
-              sharedTransitionTag={`title-${item.questionId || item.id}`}
-              sharedTransitionStyle={slowTransition}
+            <RNView
+              ref={titleRef}
+              collapsable={false}
+              style={titleSource.hidden ? { opacity: 0 } : undefined}
             >
-              <Text
-                className="text-lg font-bold leading-6 text-foreground dark:text-foreground-dark"
-                numberOfLines={2}
+              <Animated.View
+                sharedTransitionTag={`title-${item.questionId || item.id}`}
+                sharedTransitionStyle={slowTransition}
               >
-                {item.title}
-              </Text>
-            </Animated.View>
+                {sourceTitle}
+              </Animated.View>
+            </RNView>
           </BouncyButton>
         ) : null}
 
@@ -530,6 +599,7 @@ const FeedCardComponent = ({
           </View>
           {item.image && (
             <Animated.Image
+              fadeDuration={0}
               source={thumbnailSource}
               className="w-[100px] h-[75px] rounded-md ml-2.5 mt-1"
               sharedTransitionTag={`image-${item.id}`}

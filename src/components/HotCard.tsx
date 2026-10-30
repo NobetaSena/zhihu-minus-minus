@@ -1,9 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors } from '@/constants/designTokens';
+import {
+  useTitleTransition,
+  useTitleTransitionSource,
+} from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getCachedImageSource } from '@/utils/imageSource';
@@ -38,6 +42,11 @@ const RANK_BADGE_COLORS = [
 
 const HotCardComponent = ({ item }: { item: HotItem }) => {
   const router = useRouter();
+  const transitionTitle = useTitleTransition();
+  const titleRef = useRef<ViewInstance>(null);
+  const titleSource = useTitleTransitionSource(item.id);
+  const currentId = useRef(item.id);
+  currentId.current = item.id;
   const { cookies } = useAuthStore();
   const colorScheme = useColorScheme();
   const surface = useContentCardSurface({ radius: 14, gap: 8 });
@@ -55,6 +64,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
   const labelText =
     item.labelArea?.type === 'text' ? item.labelArea.text : undefined;
   const hasTrend = item.labelArea?.type === 'trend';
+  const sourceTitle = <Text style={styles.title}>{item.title}</Text>;
 
   return (
     <BouncyButton
@@ -76,7 +86,21 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
             },
           });
         } else {
-          router.push(`/question/${item.questionId}`);
+          transitionTitle(
+            titleRef,
+            item.questionId,
+            item.title,
+            () => {
+              if (currentId.current !== item.id) return;
+              router.push({
+                pathname: '/question/[id]',
+                params: { id: item.questionId, title: item.title },
+              });
+            },
+            () => currentId.current === item.id,
+            titleSource.onSourceHiddenChange,
+            sourceTitle,
+          );
         }
       }}
       style={[styles.row, surface]}
@@ -108,7 +132,13 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
         ) : null}
       </View>
       <View style={styles.textColumn}>
-        <Text style={styles.title}>{item.title}</Text>
+        <View
+          ref={titleRef}
+          collapsable={false}
+          style={titleSource.hidden ? { opacity: 0 } : undefined}
+        >
+          {sourceTitle}
+        </View>
         {item.hotValue ? (
           <Text type="secondary" style={styles.hotValue} numberOfLines={1}>
             {item.hotValue}
@@ -117,6 +147,7 @@ const HotCardComponent = ({ item }: { item: HotItem }) => {
       </View>
       {imageSource ? (
         <Animated.Image
+          fadeDuration={0}
           source={imageSource}
           sharedTransitionTag={`image-${item.id}`}
           style={styles.image}

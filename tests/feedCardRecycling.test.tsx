@@ -205,6 +205,34 @@ const baseItem: FeedItem = {
   voted: 0,
 };
 
+test('recycled feed images switch sources without replaying the Android fade', async () => {
+  const first = {
+    ...baseItem,
+    author: { ...baseItem.author, avatar: 'https://example.test/a.jpg' },
+    image: 'https://example.test/first.jpg',
+  };
+  const host = await render(<FeedCard item={first} />);
+  const images = () => host.container.queryAll((node) => node.type === 'Image');
+  expect(images().map((image) => image.props.fadeDuration)).toEqual([0, 0]);
+  expect(images().map((image) => image.props.source?.uri)).toEqual([
+    first.author.avatar,
+    first.image,
+  ]);
+
+  const second = {
+    ...first,
+    id: 'next',
+    author: { ...first.author, avatar: 'https://example.test/b.jpg' },
+    image: 'https://example.test/second.jpg',
+  };
+  await host.rerender(<FeedCard item={second} />);
+  expect(images().map((image) => image.props.source?.uri)).toEqual([
+    second.author.avatar,
+    second.image,
+  ]);
+  expect(images().map((image) => image.props.fadeDuration)).toEqual([0, 0]);
+});
+
 test('an anonymous author without an identity cannot open an empty profile route', async () => {
   const host = await render(
     <FeedCard
@@ -233,7 +261,7 @@ test.each([
   await fireEvent.press(host.getByText('合成作者'));
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/user/[id]',
-    params: { id: author.url_token || author.id, avatar: '' },
+    params: { id: author.url_token || author.id, avatar: '', name: '合成作者' },
   });
 });
 
@@ -274,7 +302,32 @@ test('the action line still opens the author profile when the author row is hidd
   await fireEvent.press(host.getByRole('link', { name: '查看合成作者的主页' }));
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/user/[id]',
-    params: { id: 'author', avatar: '' },
+    params: { id: 'author', avatar: '', name: '合成作者' },
+  });
+});
+
+test('opening an author passes the known avatar, name and headline to the profile', async () => {
+  const host = await render(
+    <FeedCard
+      item={{
+        ...baseItem,
+        author: {
+          ...baseItem.author,
+          avatar: 'https://example.com/avatar.jpg',
+          headline: '合成简介',
+        },
+      }}
+    />,
+  );
+  await fireEvent.press(host.getByText('合成作者'));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/user/[id]',
+    params: {
+      id: 'author',
+      avatar: 'https://example.com/avatar.jpg',
+      name: '合成作者',
+      headline: '合成简介',
+    },
   });
 });
 

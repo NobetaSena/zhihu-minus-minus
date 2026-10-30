@@ -15,6 +15,7 @@ import {
   QUESTION_DETAIL_TEXT_STYLE,
   QuestionDetailContent,
 } from '@/components/QuestionDetailContent';
+import { TitleTransitionTarget } from '@/features/adaptive-layout/TitleTransition';
 import { RICH_CONTENT_STALE_TIME } from '@/features/rich-content';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
@@ -94,14 +95,16 @@ export function AnswerPreviewQuestionHeader({
         marginBottom: 8,
       }}
     >
-      <Text
-        style={{ fontSize: 22, lineHeight: 31, fontWeight: '700' }}
+      <TitleTransitionTarget
+        id={id}
         onLayout={({ nativeEvent: { layout } }) =>
           onTitleLayout?.(layout.y + layout.height)
         }
       >
-        {questionTitle}
-      </Text>
+        <Text style={{ fontSize: 22, lineHeight: 31, fontWeight: '700' }}>
+          {questionTitle}
+        </Text>
+      </TitleTransitionTarget>
       {isPending ? (
         <ActivityIndicator color={colors.link} style={{ marginTop: 12 }} />
       ) : isError && !question ? (

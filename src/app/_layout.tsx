@@ -280,6 +280,12 @@ function RootLayout() {
                   }}
                 />
 
+                {/* 个人页有自己的顶部栏，首次渲染也不能预留默认标题栏。 */}
+                <Stack.Screen
+                  name="user/[id]/index"
+                  options={{ headerShown: false }}
+                />
+
                 {/* 回答详情页 */}
                 <Stack.Screen
                   name="answer/[id]"

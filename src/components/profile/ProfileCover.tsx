@@ -61,6 +61,7 @@ export function ProfileCover({
       <View style={[styles.line, { backgroundColor: `${colors.primary}20` }]} />
       {showCover && (
         <Image
+          fadeDuration={0}
           source={source}
           resizeMode="cover"
           style={StyleSheet.absoluteFill}
@@ -71,6 +72,7 @@ export function ProfileCover({
         <Reanimated.View style={[StyleSheet.absoluteFill, blurredStyle]}>
           {/* Keep the blur radius fixed; scrolling only animates opacity. */}
           <Image
+            fadeDuration={0}
             source={source}
             resizeMode="cover"
             blurRadius={20}
