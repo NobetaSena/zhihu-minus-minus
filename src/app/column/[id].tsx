@@ -17,6 +17,7 @@ import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
+import { useListPreload } from '@/hooks/useListPreload';
 import { useOptimisticToggle } from '@/hooks/useOptimisticToggle';
 import { useRefreshAction } from '@/hooks/useRefreshAction';
 import { useZhihuInfiniteQuery } from '@/hooks/useZhihuInfiniteQuery';
@@ -29,6 +30,7 @@ import { refreshInfiniteQuery } from '@/utils/query';
 export default function ColumnDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const listPreload = useListPreload(0.5);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
 
@@ -281,7 +283,7 @@ export default function ColumnDetail() {
           !isFetchNextPageError &&
           fetchNextPage()
         }
-        onEndReachedThreshold={0.5}
+        {...listPreload}
         onRefresh={refresh}
         refreshing={refreshing}
         ListEmptyComponent={() => (

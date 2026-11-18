@@ -23,6 +23,11 @@ import {
 } from '@/hooks/useCollapsibleChromeScroll';
 import { useEndReachedPagination } from '@/hooks/useEndReachedPagination';
 import {
+  useListPreload,
+  useListPreloadEnabled,
+  useLoadMoreNearEnd,
+} from '@/hooks/useListPreload';
+import {
   type DailyListItem,
   flattenDailyPages,
   getDailyNextPageParam,
@@ -183,6 +188,8 @@ export const DailyList = React.forwardRef<
     [data],
   );
 
+  const listPreload = useListPreload(0.5);
+  const listPreloadEnabled = useListPreloadEnabled();
   const isBusy =
     isFetching ||
     isRefreshing ||
@@ -202,9 +209,16 @@ export const DailyList = React.forwardRef<
       onFetchNextPage: handleFetchNextPage,
       itemCount: flattenedData.length,
       listRef: flashListRef,
-      endReachedThreshold: 0.5,
+      endReachedThreshold: listPreload.onEndReachedThreshold,
     });
   cancelPendingIntentRef.current = cancelPendingIntent;
+  useLoadMoreNearEnd({
+    enabled: listPreloadEnabled,
+    listRef: flashListRef,
+    threshold: listPreload.onEndReachedThreshold,
+    loading: isBusy,
+    loadMore: handleEndReached,
+  });
 
   const scrollHandler = useCollapsibleChromeScroll(chrome);
 
@@ -280,7 +294,7 @@ export const DailyList = React.forwardRef<
         }
         getItemType={(item) => item.type}
         onEndReached={handleEndReached}
-        onEndReachedThreshold={0.5}
+        {...listPreload}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{

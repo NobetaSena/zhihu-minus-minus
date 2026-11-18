@@ -20,6 +20,11 @@ import { QueryErrorView } from '@/components/QueryErrorView';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { ThemedLoadingIndicator } from '@/components/ThemedLoadingIndicator';
 import { useEndReachedPagination } from '@/hooks/useEndReachedPagination';
+import {
+  useListPreload,
+  useListPreloadEnabled,
+  useLoadMoreNearEnd,
+} from '@/hooks/useListPreload';
 import { useRefreshAction } from '@/hooks/useRefreshAction';
 import {
   getProfileMinContentHeight,
@@ -285,6 +290,8 @@ export const ProfileTabList = forwardRef<
         ? query.pageCount
         : query.data.length;
 
+  const listPreload = useListPreload(0.4);
+  const listPreloadEnabled = useListPreloadEnabled();
   const { handleEndReached, isPendingIntent, cancelPendingIntent } =
     useEndReachedPagination({
       isActive: active,
@@ -295,8 +302,15 @@ export const ProfileTabList = forwardRef<
       onFetchNextPage,
       itemCount: query.data.length,
       listRef,
-      endReachedThreshold: 0.4,
+      endReachedThreshold: listPreload.onEndReachedThreshold,
     });
+  useLoadMoreNearEnd({
+    enabled: listPreloadEnabled,
+    listRef,
+    threshold: listPreload.onEndReachedThreshold,
+    loading: isBusy,
+    loadMore: handleEndReached,
+  });
 
   const handleRefresh = () => {
     if (!active || refreshPending.current) return;
@@ -343,7 +357,7 @@ export const ProfileTabList = forwardRef<
         applyPendingScroll();
       }}
       onEndReached={handleEndReached}
-      onEndReachedThreshold={0.4}
+      {...listPreload}
       onRefresh={handleRefresh}
       refreshing={refreshing}
       progressViewOffset={headerHeight}

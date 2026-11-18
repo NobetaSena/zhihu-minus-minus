@@ -10,6 +10,7 @@ import type { PropsWithChildren } from 'react';
 import type { RawFeedItem } from '../src/api/zhihu/feed';
 import { touchAnswersRead } from '../src/api/zhihu/lastRead';
 import { useFeedPageReadTouch } from '../src/hooks/useFeedPageReadTouch';
+import { useFeedReadTouchOnPass } from '../src/hooks/useFeedReadTouchOnPass';
 import { getNextUnvisitedFeedPage } from '../src/utils/feedPagination';
 import {
   createFeedReadTouchBatch,
@@ -51,6 +52,7 @@ interface FeedProps {
   scope: string;
   enabled: boolean;
   active: boolean;
+  reportOnPass?: boolean;
 }
 
 const clients: QueryClient[] = [];
@@ -113,7 +115,7 @@ async function setup(
     },
   );
   const host = await renderHook(
-    ({ scope, enabled, active }: FeedProps) => {
+    ({ scope, enabled, active, reportOnPass = false }: FeedProps) => {
       mockActive = active;
       const queryKey = ['feed-touch', scope];
       const query = useInfiniteQuery({
@@ -135,8 +137,14 @@ async function setup(
         getNextPageParam: (lastPage, _pages, _lastParam, pageParams) =>
           getNextUnvisitedFeedPage(lastPage.nextUrl, pageParams),
       });
-      const next = useFeedPageReadTouch(queryKey, query.fetchNextPage, enabled);
-      return { ...query, next };
+      const next = useFeedPageReadTouch(
+        queryKey,
+        query.fetchNextPage,
+        enabled,
+        reportOnPass,
+      );
+      const passed = useFeedReadTouchOnPass(queryKey, enabled && reportOnPass);
+      return { ...query, next, passed };
     },
     {
       initialProps: { ...initialProps, ...options.props },
@@ -438,4 +446,107 @@ test('returns descriptive status for started, blocked, and ended pagination outc
   // 3. Reached end of feed (nextUrl: null) -> ended (exhausted)
   const exhaustedResult = await act(() => host.result.current.next());
   expect(exhaustedResult).toEqual({ status: 'ended', reason: 'exhausted' });
+});
+
+describe('reporting on pass (list preloading)', () => {
+  const batchesBefore = (
+    pages: FeedPage[] | undefined,
+    index: number,
+  ): Array<FeedReadTouchBatch | null | undefined> =>
+    (pages ?? []).slice(0, index).map((page) => page.readTouchBatch);
+
+  test('requesting pages ahead reports nothing; passing a page reports it once', async () => {
+    const { host } = await setup({ props: { reportOnPass: true } });
+    await act(() => host.result.current.next());
+    await waitFor(() =>
+      expect(host.result.current.data?.pages).toHaveLength(2),
+    );
+    await act(() => host.result.current.next());
+    await waitFor(() =>
+      expect(host.result.current.data?.pages).toHaveLength(3),
+    );
+    expect(touchAnswersRead).not.toHaveBeenCalled();
+
+    // A card from the second page is on screen: only the first page was passed.
+    await act(async () =>
+      host.result.current.passed(
+        batchesBefore(host.result.current.data?.pages, 1),
+      ),
+    );
+    expect(touchAnswersRead).toHaveBeenCalledTimes(1);
+    expect(touchAnswersRead).toHaveBeenCalledWith(['101', '102'], {
+      sessionVersion: 1,
+    });
+
+    await act(async () =>
+      host.result.current.passed(
+        batchesBefore(host.result.current.data?.pages, 2),
+      ),
+    );
+    expect(touchAnswersRead).toHaveBeenCalledTimes(2);
+    expect(touchAnswersRead).toHaveBeenLastCalledWith(['201', '202'], {
+      sessionVersion: 1,
+    });
+  });
+
+  test('a failed report is retried when the reader passes the page again', async () => {
+    const { host } = await setup({ props: { reportOnPass: true } });
+    await act(() => host.result.current.next());
+    await waitFor(() =>
+      expect(host.result.current.data?.pages).toHaveLength(2),
+    );
+    jest
+      .mocked(touchAnswersRead)
+      .mockRejectedValueOnce(new Error('synthetic feedback failure'));
+    const passed = batchesBefore(host.result.current.data?.pages, 1);
+
+    await act(async () => host.result.current.passed(passed));
+    await act(async () => host.result.current.passed(passed));
+
+    expect(touchAnswersRead).toHaveBeenCalledTimes(2);
+  });
+
+  test.each([
+    { active: false, enabled: true },
+    { active: true, enabled: false },
+  ])(
+    'inactive or disabled lists do not report passed pages: %j',
+    async (props) => {
+      const { host } = await setup({ props: { reportOnPass: true } });
+      await act(() => host.result.current.next());
+      await waitFor(() =>
+        expect(host.result.current.data?.pages).toHaveLength(2),
+      );
+      const passed = batchesBefore(host.result.current.data?.pages, 1);
+
+      await host.rerender({ ...initialProps, ...props, reportOnPass: true });
+      await act(async () => host.result.current.passed(passed));
+      expect(touchAnswersRead).not.toHaveBeenCalled();
+    },
+  );
+
+  test('old-account batches are not reported after a session switch', async () => {
+    const { host } = await setup({ props: { reportOnPass: true } });
+    await act(() => host.result.current.next());
+    await waitFor(() =>
+      expect(host.result.current.data?.pages).toHaveLength(2),
+    );
+    const passed = batchesBefore(host.result.current.data?.pages, 1);
+    mockSessionVersion = 2;
+    await host.rerender({ ...initialProps, reportOnPass: true });
+
+    await act(async () => host.result.current.passed(passed));
+
+    expect(touchAnswersRead).not.toHaveBeenCalled();
+  });
+
+  test('without preloading, passing a page reports nothing', async () => {
+    const { host } = await setup();
+    await act(async () =>
+      host.result.current.passed(
+        batchesBefore(host.result.current.data?.pages, 1),
+      ),
+    );
+    expect(touchAnswersRead).not.toHaveBeenCalled();
+  });
 });

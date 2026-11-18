@@ -25,11 +25,16 @@ export type FeedPageReadTouchResult =
       reason: 'exhausted' | 'duplicate_cursor' | 'session_mismatch';
     };
 
-/** Only explicit forward pagination reports the preceding API response batch. */
+/**
+ * Only explicit forward pagination reports the preceding API response batch.
+ * With `reportOnPass` (list preloading) pages are requested screens ahead, so
+ * requesting reports nothing and `useFeedReadTouchOnPass` reports instead.
+ */
 export function useFeedPageReadTouch(
   queryKey: QueryKey,
   fetchNextPage: (options: { cancelRefetch: false }) => Promise<unknown>,
   enabled: boolean,
+  reportOnPass = false,
 ): () => Promise<FeedPageReadTouchResult> {
   const queryClient = useQueryClient();
   const active = useActiveScreen();
@@ -43,8 +48,8 @@ export function useFeedPageReadTouch(
     }),
     [scope, sessionVersion],
   );
-  const current = useRef({ enabled, active, recorded });
-  current.current = { enabled, active, recorded };
+  const current = useRef({ enabled, active, recorded, reportOnPass });
+  current.current = { enabled, active, recorded, reportOnPass };
 
   return useCallback(async (): Promise<FeedPageReadTouchResult> => {
     if (!current.current.enabled) {
@@ -86,6 +91,7 @@ export function useFeedPageReadTouch(
 
     const batch = lastPage.readTouchBatch;
     if (
+      !current.current.reportOnPass &&
       batch &&
       batch.sessionVersion === sessionVersion &&
       batch.answerIds.length > 0 &&

@@ -25,6 +25,7 @@ import type { UserCardMember } from '@/components/UserCard';
 import { UserCard } from '@/components/UserCard';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { useListPreload } from '@/hooks/useListPreload';
 import { getZhihuNextOffset } from '@/hooks/useZhihuInfiniteQuery';
 import { useSearchStore } from '@/store/useSearchStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -225,6 +226,7 @@ function renderHighlightedText(text: string): React.ReactNode {
 
 export default function SearchScreen() {
   const colorScheme = useColorScheme();
+  const listPreload = useListPreload(0.5);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
@@ -772,7 +774,7 @@ export default function SearchScreen() {
               !isFetching &&
               !isFetchNextPageError &&
               fetchNextPage({ cancelRefetch: false }),
-            onEndReachedThreshold: 0.5,
+            ...listPreload,
             ListFooterComponent: isFetchingNextPage ? (
               <ActivityIndicator style={{ padding: 20 }} color={tintColor} />
             ) : isFetchNextPageError ? (

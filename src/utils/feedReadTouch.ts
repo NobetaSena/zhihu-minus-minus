@@ -26,3 +26,36 @@ export function createFeedReadTouchBatch(
   }
   return { batchId: nextBatchId++, sessionVersion, answerIds: [...ids] };
 }
+
+interface ReadTouchPage<T> {
+  items: readonly T[];
+  readTouchBatch?: FeedReadTouchBatch | null;
+}
+
+/** Which loaded page each card came from. */
+export function indexFeedPageCards<T>(
+  pages: readonly ReadTouchPage<T>[],
+): Map<T, number> {
+  const pageOf = new Map<T, number>();
+  pages.forEach((page, index) => {
+    for (const item of page.items) pageOf.set(item, index);
+  });
+  return pageOf;
+}
+
+/**
+ * The response batches a reader has scrolled past: every page before the
+ * furthest page with a card on screen. Cards from no loaded page are ignored.
+ */
+export function getPassedReadTouchBatches<T>(
+  pages: readonly ReadTouchPage<T>[],
+  pageOf: ReadonlyMap<T, number>,
+  cardsOnScreen: Iterable<T>,
+): Array<FeedReadTouchBatch | null | undefined> {
+  let furthest = 0;
+  for (const card of cardsOnScreen) {
+    const page = pageOf.get(card);
+    if (page !== undefined && page > furthest) furthest = page;
+  }
+  return pages.slice(0, furthest).map((page) => page.readTouchBatch);
+}

@@ -47,6 +47,7 @@ import Colors from '@/constants/Colors';
 import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
 import { useCommentKeyboardLayout } from '@/hooks/useCommentKeyboardLayout';
 import { useCommentListQuery } from '@/hooks/useCommentQueries';
+import { useListPreload } from '@/hooks/useListPreload';
 import { getAuthSessionVersion } from '@/store/useAuthStore';
 import { serializeParentComment } from '@/utils/commentRoute';
 import { formatDate } from '@/utils/date';
@@ -67,6 +68,7 @@ export default function CommentScreen() {
     }>();
   const router = useRouter();
   const parentSessionVersion = React.useRef(getAuthSessionVersion()).current;
+  const listPreload = useListPreload(0.3);
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(
     null,
@@ -435,7 +437,7 @@ export default function CommentScreen() {
             !isFetchNextPageError &&
             fetchNextPage()
           }
-          onEndReachedThreshold={0.3}
+          {...listPreload}
           keyboardDismissMode="on-drag"
           contentContainerStyle={{
             paddingBottom: inputBarHeight + 20,

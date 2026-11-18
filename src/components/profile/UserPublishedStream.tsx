@@ -19,6 +19,7 @@ import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 import { useFixedHeaderEntryProgress } from '@/features/adaptive-layout/PaneContext';
+import { useListPreload } from '@/hooks/useListPreload';
 import { useUserCreations } from '@/hooks/useUserCreations';
 import {
   type AnswerReadingContext,
@@ -63,6 +64,7 @@ export function UserPublishedStream({
   navigation,
 }: UserPublishedStreamProps) {
   const router = useRouter();
+  const listPreload = useListPreload(0.5);
   const insets = useSafeAreaInsets();
   const entryProgress = useFixedHeaderEntryProgress();
   const contentEntryStyle = useMemo(
@@ -294,7 +296,7 @@ export function UserPublishedStream({
               )
                 void fetchNextPage();
             }}
-            onEndReachedThreshold={0.5}
+            {...listPreload}
             ListEmptyComponent={
               isLoading ? (
                 <ActivityIndicator
