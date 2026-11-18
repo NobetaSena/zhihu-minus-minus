@@ -53,3 +53,55 @@ test('turning it off or unmounting aborts every queued request', async () => {
   await unmount();
   expect(signals.get('p2+1')?.aborted).toBe(true);
 });
+
+describe('around a pull-to-refresh, which keeps the old pages until it succeeds', () => {
+  const relay = (fetchPage: jest.Mock) => ({
+    fetchPage,
+    key: (url: string) => url,
+    depth: 1,
+  });
+
+  test('clearing the queue when a refresh starts requests the next page twice if the refresh fails', async () => {
+    const fetchPage = jest.fn(async (url: string) => url);
+    const { result, rerender } = await renderHook(
+      ({ nextUrl }: { nextUrl: string }) =>
+        usePageQueue(relay(fetchPage), { enabled: true, nextUrl }),
+      { initialProps: { nextUrl: 'old-p2' } },
+    );
+    result.current.clear(); // what a refresh used to do first
+    await rerender({ nextUrl: 'old-p2' }); // the failed refresh restores the pages
+    await result.current.take('old-p2');
+    expect(fetchPage.mock.calls.map(([url]) => url)).toEqual([
+      'old-p2',
+      'old-p2',
+    ]);
+  });
+
+  test('left alone, a failed refresh hands over the page already requested', async () => {
+    const fetchPage = jest.fn(async (url: string) => url);
+    const { result, rerender } = await renderHook(
+      ({ nextUrl }: { nextUrl: string }) =>
+        usePageQueue(relay(fetchPage), { enabled: true, nextUrl }),
+      { initialProps: { nextUrl: 'old-p2' } },
+    );
+    await rerender({ nextUrl: 'old-p2' });
+    await expect(result.current.take('old-p2')).resolves.toBe('old-p2');
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
+  test('left alone, a successful refresh aborts the old session page as the new one is queued', async () => {
+    const signals = new Map<string, AbortSignal>();
+    const fetchPage = jest.fn(async (url: string, signal: AbortSignal) => {
+      signals.set(url, signal);
+      return url;
+    });
+    const { result, rerender } = await renderHook(
+      ({ nextUrl }: { nextUrl: string }) =>
+        usePageQueue(relay(fetchPage), { enabled: true, nextUrl }),
+      { initialProps: { nextUrl: 'old-p2' } },
+    );
+    await rerender({ nextUrl: 'new-p2' });
+    expect(signals.get('old-p2')?.aborted).toBe(true);
+    expect(result.current.pending).toEqual(['new-p2']);
+  });
+});

@@ -1226,8 +1226,9 @@ const FeedList = React.forwardRef<
 
       cancelPendingIntentRef.current();
       refreshInFlightRef.current = true;
-      // Queued pages continue the session this refresh replaces.
-      recommendQueue.clear();
+      // The relay queue is left alone: a refresh keeps the old pages until it
+      // succeeds, so a failed one still needs the page already requested, and
+      // a successful one names a new next page, which aborts the old request.
       const startedAt = Date.now();
       setIsRefreshing(true);
       onRefreshStateChange?.(true);
@@ -1272,7 +1273,6 @@ const FeedList = React.forwardRef<
       onRefreshStateChange,
       queryClient,
       feedQueryKey,
-      recommendQueue,
       refetch,
       setRecentExposureKeys,
       tab,

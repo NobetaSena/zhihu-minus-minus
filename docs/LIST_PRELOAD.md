@@ -23,14 +23,14 @@
 ## 推荐流的阅读反馈与请求接力
 
 - **已读上报**：上游在请求下一页时上报上一页的回答（`lastread/touch`）。预加载提前好几屏请求，这样会把没看到的内容报成已读，所以开启预加载时 `useFeedPageReadTouch(…, reportOnPass)` 不在请求时上报，改由 `useFeedReadTouchOnPass` 处理：后一页的卡片出现在屏幕上（露出一半且停留 800ms，折叠行按其第一张卡片算）时，上报它之前各页的整批回答。
-- **请求接力**：推荐游标带 `session_token`，可能参与服务端的推荐会话状态，所以队列只提前请求上一页 `paging.next` 给出的那一页，不推测、不乱序。服务端收到的请求和关闭开关时相同、顺序相同，只是更早发出。只有当前显示的列表维持队列；下拉刷新、关闭开关、切换账号、卸载时清空队列。
+- **请求接力**：推荐游标带 `session_token`，可能参与服务端的推荐会话状态，所以队列只提前请求上一页 `paging.next` 给出的那一页，不推测、不乱序。服务端收到的请求和关闭开关时相同、顺序相同，只是更早发出。只有当前显示的列表维持队列；关闭开关、切换账号、卸载时清空队列。下拉刷新不清空队列：刷新成功前旧页面保留，刷新失败时继续使用已经请求到的下一页，避免同一游标请求两次；刷新成功后会排入新的下一页，旧会话的请求随之中止。
 
 ## 已知代价
 
-- 每个推荐会话结束时（刷新、退出），最后一页已经提前请求、但没有展示。服务端可能把这页算作已下发。
-- 列表的查询被取消时，已从队列取走的那页会被丢弃，下次会用同一游标再请求一次。
+- 每个推荐会话结束时（刷新成功、退出），最后一页已经提前请求、但没有展示。服务端可能把这页算作已下发。
+- 列表的查询被取消时（例如刷新开始时取消正在翻的页），被取消的那页会再请求一次。这和上游一样：被中止的请求可能已经到达服务端。
 - 个人主页 3 页并发更容易触发知乎风控（40362）。
 
 ## 回归
 
-`listPreload`、`pageQueue`、`usePageQueue`、`parallelPaging`、`feedReadTouchPass`、`feedPageReadTouch`（reporting on pass）、`userProfileScreen`（多页同时加载）、`featureSettings`、`settings-renderer-migration`。真机需检查开启后快速滑动是否转圈、掉帧（`dumpsys gfxinfo`），以及有没有重复的分页请求。
+`listPreload`、`listPreloadPagination`（按 FlashList 的边沿触发模拟阅读：只调阈值会在第 2 页后停住）、`pageQueue`、`usePageQueue`、`parallelPaging`、`feedReadTouchPass`、`feedPageReadTouch`（reporting on pass）、`userProfileScreen`（多页同时加载）、`featureSettings`、`settings-renderer-migration`。真机需检查开启后快速滑动是否转圈、掉帧（`dumpsys gfxinfo`），以及有没有重复的分页请求。
