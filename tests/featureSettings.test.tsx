@@ -71,7 +71,7 @@ test.each([
   ['列表预加载', '提前加载下一页，会略微增加流量和耗电。'],
   [
     '多页同时加载',
-    '个人主页的列表一次请求三页，推荐流提前请求下一页。会略微增加流量和耗电，也可能更容易触发知乎验证。',
+    '个人主页的列表一次请求三页；未开列表预加载时，推荐流提前请求下一页。会略微增加流量和耗电，也可能更容易触发知乎验证。',
   ],
 ])('the %s question mark shows and hides its note', async (label, note) => {
   const host = await render(<FeatureSettings />);

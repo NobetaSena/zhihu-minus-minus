@@ -123,6 +123,7 @@ import type { PageQueue } from '@/utils/pageQueue';
 import {
   RECOMMEND_QUEUE_DEPTH,
   recommendPageKey,
+  shouldRelayRecommendations,
 } from '@/utils/parallelPaging';
 import { refreshInfiniteQuery, shouldRetryQuery } from '@/utils/query';
 import { normalizeAnswerType, parseRecommendData } from '@/utils/recommendFeed';
@@ -1085,10 +1086,15 @@ const FeedList = React.forwardRef<
     const parallelPaging = useSettingsStore(
       (state) => state.enableParallelPaging,
     );
+    const listPreloadEnabled = useListPreloadEnabled();
     // 多页同时加载: recommendation pages are requested ahead of the list and
-    // handed over when the list asks for them.
-    const queueRecommendations =
-      parallelPaging && tab === 'recommend' && !isGuestRecommend;
+    // handed over when the list asks for them; only without 列表预加载.
+    const queueRecommendations = shouldRelayRecommendations({
+      parallelPaging,
+      listPreload: listPreloadEnabled,
+      tab,
+      guest: isGuestRecommend,
+    });
     const {
       data,
       fetchNextPage: fetchNextFeedPage,
@@ -1201,7 +1207,6 @@ const FeedList = React.forwardRef<
     // Preloading requests pages screens ahead of the reader, so a page is
     // reported read once the reader scrolls past it, not when the next is
     // requested.
-    const listPreloadEnabled = useListPreloadEnabled();
     const fetchNextPage = useFeedPageReadTouch(
       feedQueryKey,
       fetchNextFeedPage,

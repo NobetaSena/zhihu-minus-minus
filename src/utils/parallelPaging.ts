@@ -88,6 +88,25 @@ const RECOMMEND_CURSOR_KEYS = [
 export const RECOMMEND_QUEUE_DEPTH = 1;
 
 /**
+ * Whether the signed-in recommendation feed runs the relay. 列表预加载 already
+ * asks for the next page about when the relay would, and measured no shorter
+ * wait with both on, so the relay runs only without it.
+ */
+export function shouldRelayRecommendations(options: {
+  parallelPaging: boolean;
+  listPreload: boolean;
+  tab: string;
+  guest: boolean;
+}) {
+  return (
+    options.parallelPaging &&
+    !options.listPreload &&
+    options.tab === 'recommend' &&
+    !options.guest
+  );
+}
+
+/**
  * Identity of a recommendation page: its session and cursor, whatever the
  * scheme (`next` arrives as http) or parameter order. Other URLs are their own
  * identity.

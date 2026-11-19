@@ -82,7 +82,7 @@ export default function FeatureSettings() {
             label="多页同时加载"
             icon="layers-outline"
             colorScheme={colorScheme}
-            help="个人主页的列表一次请求三页，推荐流提前请求下一页。会略微增加流量和耗电，也可能更容易触发知乎验证。"
+            help="个人主页的列表一次请求三页；未开列表预加载时，推荐流提前请求下一页。会略微增加流量和耗电，也可能更容易触发知乎验证。"
           >
             <ThemedSwitch
               accessibilityLabel="多页同时加载"

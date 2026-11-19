@@ -2,6 +2,7 @@ import {
   fetchOffsetPages,
   RECOMMEND_QUEUE_DEPTH,
   recommendPageKey,
+  shouldRelayRecommendations,
 } from '../src/utils/parallelPaging';
 
 jest.mock('../src/api/client', () => ({ __esModule: true, default: {} }));
@@ -73,6 +74,48 @@ test('the recommendation relay requests only the next page the server named', ()
   // Later cursors may belong to the server's recommendation session, so they
   // are never guessed.
   expect(RECOMMEND_QUEUE_DEPTH).toBe(1);
+});
+
+test('the recommendation relay runs only when list preloading is off', () => {
+  const signedIn = { tab: 'recommend', guest: false };
+  expect(
+    shouldRelayRecommendations({
+      ...signedIn,
+      parallelPaging: true,
+      listPreload: false,
+    }),
+  ).toBe(true);
+  // Preloading already requests the next page; the relay would add nothing.
+  expect(
+    shouldRelayRecommendations({
+      ...signedIn,
+      parallelPaging: true,
+      listPreload: true,
+    }),
+  ).toBe(false);
+  expect(
+    shouldRelayRecommendations({
+      ...signedIn,
+      parallelPaging: false,
+      listPreload: false,
+    }),
+  ).toBe(false);
+  expect(
+    shouldRelayRecommendations({
+      tab: 'recommend',
+      guest: true,
+      parallelPaging: true,
+      listPreload: false,
+    }),
+  ).toBe(false);
+  expect(
+    shouldRelayRecommendations({
+      tab: 'following',
+      guest: false,
+      parallelPaging: true,
+      listPreload: false,
+    }),
+  ).toBe(false);
 });
 
 test('an empty extra offset page is requested again on its own', async () => {
