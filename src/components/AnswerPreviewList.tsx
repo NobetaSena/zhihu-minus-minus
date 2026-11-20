@@ -42,7 +42,6 @@ import { QueryErrorView } from '@/components/QueryErrorView';
 import { ShareMenu } from '@/components/ShareMenu';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useRuntimeThemeColors, View } from '@/components/Themed';
-import { TitleTransitionTarget } from '@/features/adaptive-layout/TitleTransition';
 import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 import { ZhihuStructuredContent } from '@/features/rich-content';
 import { useAnswerPreviewAutoLoad } from '@/hooks/useAnswerPreviewAutoLoad';
@@ -206,19 +205,14 @@ const AnswerPreviewCard = React.memo(function AnswerPreviewCard({
             })
           }
         >
-          {/* Opened from a feed card there is no question header, so the
-              card's title flies here; without a target its copy would wait
-              over this page until the flight times out. */}
-          <TitleTransitionTarget id={String(item.question.id)}>
-            <Text
-              className="text-lg font-bold mb-3"
-              onLayout={({ nativeEvent: { layout } }) =>
-                onQuestionTitleLayout?.(12 + layout.y + layout.height)
-              }
-            >
-              {item.question.title}
-            </Text>
-          </TitleTransitionTarget>
+          <Text
+            className="text-lg font-bold mb-3"
+            onLayout={({ nativeEvent: { layout } }) =>
+              onQuestionTitleLayout?.(12 + layout.y + layout.height)
+            }
+          >
+            {item.question.title}
+          </Text>
         </BouncyButton>
       ) : null}
       <BouncyButton
