@@ -179,6 +179,25 @@ jest.mock('../src/components/AnswerPreviewFloatingBar', () => ({
 jest.mock('../src/components/AnswerPreviewQuestionHeader', () => ({
   AnswerPreviewQuestionHeader: () => null,
 }));
+jest.mock('../src/features/adaptive-layout/TitleTransition', () => {
+  const react = jest.requireActual<typeof import('react')>('react');
+  const native =
+    jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    TitleTransitionTarget: ({
+      id,
+      children,
+    }: {
+      id: string;
+      children: ReactNode;
+    }) =>
+      react.createElement(
+        native.View,
+        { testID: `title-transition-target:${id}` },
+        children,
+      ),
+  };
+});
 jest.mock('../src/components/FeedCardActionRow', () => ({
   FeedCardActionRow: (props: ComponentProps<typeof FeedCardActionRow>) =>
     mockRenderCardActions(props),
@@ -483,6 +502,16 @@ test('starts the selected answer expanded and lets the floating bar collapse it 
   );
   expectExpandedIds(['selected-answer', 'following-answer']);
   await waitFor(() => expectExpandedIds(['selected-answer']));
+  await host.unmount();
+});
+
+test('a card question title receives the title flight from the feed card', async () => {
+  // Opened from a feed card, the list has no question header; without a target
+  // the card's title copy waits over the new page until the flight times out.
+  const { element } = createHost();
+  const host = await render(element);
+  const target = host.getByTestId('title-transition-target:synthetic-question');
+  expect(target).toHaveTextContent('合成问题');
   await host.unmount();
 });
 
