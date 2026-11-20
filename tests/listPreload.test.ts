@@ -94,7 +94,7 @@ describe('useLoadMoreNearEnd', () => {
     expect(loadMore).not.toHaveBeenCalled();
   });
 
-  test('stops after a few follow-ups while the list rests at one offset', async () => {
+  test('stops after a few follow-ups that add nothing at one offset', async () => {
     const loadMore = jest.fn();
     const geometry = { offset: 5000, content: 6000 };
     const finishLoad = await settle(geometry, loadMore);
@@ -104,5 +104,18 @@ describe('useLoadMoreNearEnd', () => {
     geometry.offset = 5100;
     await finishLoad();
     expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS + 1);
+  });
+
+  test('keeps asking while each load makes the list longer at one offset', async () => {
+    // Short pages arriving while the reader rests: still inside the zone after
+    // more follow-ups than the limit, and scrolling on would never re-enter it.
+    const loadMore = jest.fn();
+    const geometry = { offset: 0, content: 500 };
+    const finishLoad = await settle(geometry, loadMore);
+    for (let i = 0; i < MAX_RESTING_FOLLOW_UPS + 2; i += 1) {
+      geometry.content += 300;
+      await finishLoad();
+    }
+    expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS + 2);
   });
 });

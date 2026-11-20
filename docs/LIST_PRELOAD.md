@@ -16,7 +16,7 @@
 上游推荐流、日报、个人主页用 `useEndReachedPagination`：触底时只发一次请求，忙时排队，加载后列表没变长才最多补请求 3 次。预加载在它之上只改两处：
 
 1. **触发距离**：`endReachedThreshold` 与 FlashList 的 `onEndReachedThreshold` 都改用 `useListPreload` 给出的值。
-2. **补请求**：FlashList 只在列表“进入”底部区域时调用一次 `onEndReached`。8 屏的区域能装下好几页，新页到达时阅读位置往往还在区域内，不会再触发，上游的补请求又只在列表没变长时才发，所以分页会停住，直到用户滑到真正的底部。`useLoadMoreNearEnd` 在预加载开启时，每次加载结束后只要仍在区域内就调用上游的 `handleEndReached`，同一滚动位置最多补 3 次。
+2. **补请求**：FlashList 只在列表“进入”底部区域时调用一次 `onEndReached`。8 屏的区域能装下好几页，新页到达时阅读位置往往还在区域内，不会再触发，上游的补请求又只在列表没变长时才发，所以分页会停住，直到用户滑到真正的底部。`useLoadMoreNearEnd` 在预加载开启时，每次加载结束后只要仍在区域内就调用上游的 `handleEndReached`。列表变长了就继续补；只有同一滚动位置连续加载都没让列表变长时，才最多补 3 次，避免空页无限请求。早先不论列表是否变长都限 3 次：页面短（过滤、折叠）且读者停着时，3 次用完列表还在区域里，之后往下读不会再进入区域，读到底就停在「继续上滑加载」。
 
 其余 10 个普通列表没有接入上游的 hook，只改了触发距离。
 
@@ -49,9 +49,10 @@
 
 ## 回归
 
-`listPreload`、`listPreloadPagination`（按 FlashList 的边沿触发模拟阅读：只调阈值会在第 2 页后停住）、`pageQueue`、`usePageQueue`、`parallelPaging`（含接力只在预加载关闭时运行）、`feedReadTouchPass`、`feedPageReadTouch`（reporting on pass）、`userProfileScreen`（多页同时加载、双倍页不重复）、`userProfile`（`flattenUniquePages`）、`featureSettings`、`settings-renderer-migration`。真机需检查开启后快速滑动是否转圈、掉帧（`dumpsys gfxinfo`），以及有没有重复的分页请求。
+`listPreload`、`listPreloadPagination`（按 FlashList 的边沿触发模拟阅读：只调阈值会在第 2 页后停住；短页加读者停顿不会停在底部）、`pageQueue`、`usePageQueue`、`parallelPaging`（含接力只在预加载关闭时运行）、`feedReadTouchPass`、`feedPageReadTouch`（reporting on pass）、`userProfileScreen`（多页同时加载、双倍页不重复）、`userProfile`（`flattenUniquePages`）、`featureSettings`、`settings-renderer-migration`。真机需检查开启后快速滑动是否转圈、掉帧（`dumpsys gfxinfo`），以及有没有重复的分页请求。
 
 ## 历史记录
 
 - 2026-11-19 · 开列表预加载时不再启用推荐流接力 · 模拟器实测两者叠加触底等待没有差别（上表）
 - 2026-11-19 · 个人主页跨页拼接按 id 去重 · 接口的"双倍页"会和下一页重叠 20 条
+- 2026-11-20 · 补请求只对没让列表变长的加载限 3 次 · 真机读到底停在「继续上滑加载」，模拟复现：短页 + 停顿 5 秒后只加载 5 页

@@ -21,11 +21,13 @@ const LAST_PAGE = 30;
 function simulate({
   threshold,
   followUp,
+  pageHeight = PAGE_HEIGHT,
 }: {
   threshold: number;
   followUp: boolean;
+  pageHeight?: number;
 }) {
-  const geometry = { offset: 0, content: PAGE_HEIGHT };
+  const geometry = { offset: 0, content: pageHeight };
   const list = {
     getAbsoluteLastScrollOffset: () => geometry.offset,
     getWindowSize: () => ({ width: 400, height: VIEWPORT }),
@@ -46,7 +48,7 @@ function simulate({
       setBusy(true);
       const promise = new Promise<void>((resolve) =>
         setTimeout(() => {
-          geometry.content += PAGE_HEIGHT;
+          geometry.content += pageHeight;
           setPages((count) => count + 1);
           setBusy(false);
           resolve();
@@ -82,12 +84,17 @@ async function read({
   threshold,
   followUp,
   seconds,
+  pageHeight,
+  pauseSeconds = 0,
 }: {
   threshold: number;
   followUp: boolean;
   seconds: number;
+  pageHeight?: number;
+  /** The reader first rests at the top while pages arrive. */
+  pauseSeconds?: number;
 }) {
-  const sim = simulate({ threshold, followUp });
+  const sim = simulate({ threshold, followUp, pageHeight });
   const host = await renderHook(sim.useFeed);
   let pendingEndReached = false;
   const checkBounds = () => {
@@ -102,6 +109,10 @@ async function read({
   // Reading at two screens a second, one scroll event per 100ms.
   let stepsAtBottom = 0;
   await act(async () => checkBounds());
+  for (let step = 0; step < pauseSeconds * 10; step += 1) {
+    await act(async () => jest.advanceTimersByTime(100));
+    await act(async () => checkBounds());
+  }
   for (let step = 0; step < seconds * 10; step += 1) {
     const bottom = sim.geometry.content - VIEWPORT;
     sim.geometry.offset = Math.min(sim.geometry.offset + 200, bottom);
@@ -147,5 +158,21 @@ describe('preloaded pagination over FlashList edge-triggered onEndReached', () =
     expect(loadedScreens - 40).toBeLessThan(8 + PAGE_HEIGHT / VIEWPORT + 1);
     // One request per page: follow-ups never repeat a cursor.
     expect(result.requests).toBe(result.pages - 1);
+  });
+
+  test('short pages loaded while the reader rests keep loading once reading resumes', async () => {
+    // Filtered or collapsed pages: one screen each. Resting at the top uses up
+    // the follow-ups while the list is still inside the 8-screen zone.
+    const result = await read({
+      threshold: 8,
+      followUp: true,
+      seconds: 10,
+      pageHeight: 1000,
+      pauseSeconds: 5,
+    });
+    // 20 screens read, of 30 available.
+    expect(result.stepsAtBottom).toBe(0);
+    // One request per page, with at most the last one still in flight.
+    expect(result.requests - (result.pages - 1)).toBeLessThanOrEqual(1);
   });
 });

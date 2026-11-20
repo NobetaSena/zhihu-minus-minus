@@ -44,9 +44,11 @@ export function useListPreloadEnabled(): boolean {
  * preload threshold that zone spans several pages, so a page that arrives while
  * the reader is inside it does not trigger the next one, and paging stalls
  * until the reader hits the real bottom. After each load settles, ask again
- * while the list is still in the end zone, whether or not the page added
- * anything. Without a scroll in between, at most MAX_RESTING_FOLLOW_UPS such
- * loads run.
+ * while the list is still in the end zone. A load that made the list longer
+ * may always ask again; only loads that added nothing at one scroll offset
+ * are limited, to MAX_RESTING_FOLLOW_UPS. A limit on growing loads could stop
+ * inside the zone, and scrolling further never re-enters it, so the reader
+ * would reach the bottom with nothing left to start the next page.
  *
  * The upstream pagination hook only follows up a load that added nothing,
  * which is enough at its half-screen threshold; this runs only while
@@ -67,7 +69,11 @@ export function useLoadMoreNearEnd({
 }) {
   const loadMoreRef = useRef(loadMore);
   loadMoreRef.current = loadMore;
-  const resting = useRef({ offset: Number.NaN, followUps: 0 });
+  const resting = useRef({
+    offset: Number.NaN,
+    content: Number.NaN,
+    followUps: 0,
+  });
 
   useEffect(() => {
     if (!enabled || loading) return;
@@ -75,8 +81,13 @@ export function useLoadMoreNearEnd({
       const list = listRef.current;
       if (!list || !isNearEnd(list, threshold)) return;
       const offset = list.getAbsoluteLastScrollOffset?.() ?? 0;
-      if (offset !== resting.current.offset)
-        resting.current = { offset, followUps: 0 };
+      const content = list.getChildContainerDimensions?.().height ?? 0;
+      // NaN at first: any content counts as growth.
+      if (
+        offset !== resting.current.offset ||
+        !(content <= resting.current.content)
+      )
+        resting.current = { offset, content, followUps: 0 };
       if (resting.current.followUps >= MAX_RESTING_FOLLOW_UPS) return;
       resting.current.followUps += 1;
       loadMoreRef.current();
