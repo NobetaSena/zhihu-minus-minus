@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import { NavigationInteractionSettings } from '../src/components/settings/NavigationInteractionSettings';
 import { useSettingsStore } from '../src/store/useSettingsStore';
 
@@ -30,18 +31,44 @@ beforeEach(() => {
   useSettingsStore.getState().resetSettings();
 });
 
-test('the single pane switch applies both changes immediately', async () => {
+afterEach(() => jest.restoreAllMocks());
+
+test('Android 14 offers predictive back and applies the switch immediately', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
   const host = await render(<NavigationInteractionSettings />);
-  expect(host.getByText('双栏布局（试验性）')).toBeVisible();
-  expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', false);
+  const control = host.getByLabelText('预测性返回');
+  expect(control).toHaveProp('on', true);
+  await fireEvent(control, 'change', { nativeEvent: { value: false } });
+  expect(useSettingsStore.getState().androidPredictiveBackEnabled).toBe(false);
+  expect(control).toHaveProp('on', false);
+  await fireEvent(control, 'change', { nativeEvent: { value: true } });
+  expect(useSettingsStore.getState().androidPredictiveBackEnabled).toBe(true);
+});
 
-  await fireEvent(host.getByLabelText('启用双栏布局'), 'valueChange', true);
-  expect(useSettingsStore.getState().enableLargeScreenLayout).toBe(true);
-  expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', true);
+test.each(['android', 'ios', 'web'] as const)(
+  'hides the predictive back switch on unsupported platforms (%s)',
+  async (platform) => {
+    jest.replaceProperty(Platform, 'OS', platform);
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(33);
+    const host = await render(<NavigationInteractionSettings />);
+    expect(host.queryByLabelText('预测性返回')).toBeNull();
+  },
+);
 
-  await fireEvent(host.getByLabelText('启用双栏布局'), 'valueChange', false);
-  expect(useSettingsStore.getState().enableLargeScreenLayout).toBe(false);
-  expect(host.getByLabelText('启用双栏布局')).toHaveProp('value', false);
+test('layout mode starts automatic and applies each manual choice', async () => {
+  const host = await render(<NavigationInteractionSettings />);
+  expect(host.getByRole('radio', { name: '自动' })).toBeChecked();
+  for (const [label, mode] of [
+    ['单栏', 'single'],
+    ['双栏', 'dual'],
+    ['自动', 'auto'],
+  ] as const) {
+    const option = host.getByRole('radio', { name: label });
+    await fireEvent.press(option);
+    expect(option).toBeChecked();
+    expect(useSettingsStore.getState().largeScreenLayoutMode).toBe(mode);
+  }
 });
 
 test('iOS liquid glass switch toggles useNativeIOSBottomTabs under dedicated material section', async () => {

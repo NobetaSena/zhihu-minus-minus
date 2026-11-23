@@ -37,7 +37,38 @@ import { useContentCardSurface } from './contentCardSurface';
 import { FeedCardPreview } from './FeedCardPreview';
 import { FeedExcerpt } from './FeedExcerpt';
 import { type ShareContentType, ShareMenu } from './ShareMenu';
-import { Text, View } from './Themed';
+import { Text, useThemeColor, View } from './Themed';
+
+function FeedThumbnail({ uri }: { uri: string }) {
+  const manual = useSettingsStore(
+    (state) => state.imageLoadingMode === 'manual',
+  );
+  const [requested, setRequested] = useState(false);
+  const backgroundColor = useThemeColor({}, 'controlBackground');
+  const frame = 'w-[100px] h-[75px] rounded-md ml-2.5 mt-1';
+  if (manual && !requested) {
+    return (
+      <BouncyButton
+        accessibilityRole="button"
+        accessibilityLabel="加载缩略图"
+        onPress={() => setRequested(true)}
+        className={`${frame} items-center justify-center`}
+        style={{ backgroundColor }}
+      >
+        <Text type="secondary" className="text-xs">
+          加载图片
+        </Text>
+      </BouncyButton>
+    );
+  }
+  return (
+    <Animated.Image
+      fadeDuration={0}
+      source={getCachedImageSource(uri)}
+      className={frame}
+    />
+  );
+}
 
 interface FeedCardProps {
   item: FeedItem;
@@ -185,10 +216,6 @@ const FeedCardComponent = ({
     [item.author.avatar],
   );
   const authorId = item.author.url_token || item.author.id;
-  const thumbnailSource = useMemo(
-    () => getCachedImageSource(item.image),
-    [item.image],
-  );
   const isAuthenticated = hasAuthenticationCookie(cookies);
 
   useEffect(() => {
@@ -340,7 +367,7 @@ const FeedCardComponent = ({
 
   const menuOptions: MenuOption[] = [
     ...(engagementType
-      ? [
+      ? ([
           {
             key: 'like',
             title:
@@ -351,7 +378,7 @@ const FeedCardComponent = ({
                 : isPinType
                   ? '点赞'
                   : '赞同',
-            icon: voted === 1 ? 'caret-up' : 'caret-up-outline',
+            icon: voted === 1 ? 'vote-up-active' : 'vote-up',
             onPress: async () => {
               if (pendingVotesRef.current.has(identity)) return;
               pendingVotesRef.current.add(identity);
@@ -401,7 +428,7 @@ const FeedCardComponent = ({
           {
             key: 'comment',
             title: '评论',
-            icon: 'chatbubble-outline',
+            icon: 'comment-bubble',
             onPress: () => {
               const type =
                 item.type === 'articles'
@@ -414,7 +441,7 @@ const FeedCardComponent = ({
               );
             },
           },
-        ]
+        ] satisfies MenuOption[])
       : []),
     ...contentActions.map((action) => ({
       key: action.key,
@@ -634,11 +661,7 @@ const FeedCardComponent = ({
             ) : null}
           </View>
           {item.image && (
-            <Animated.Image
-              fadeDuration={0}
-              source={thumbnailSource}
-              className="w-[100px] h-[75px] rounded-md ml-2.5 mt-1"
-            />
+            <FeedThumbnail key={`${identity}:${item.image}`} uri={item.image} />
           )}
         </View>
 

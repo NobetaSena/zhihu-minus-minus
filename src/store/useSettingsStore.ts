@@ -15,6 +15,10 @@ import { normalizeFeedRegexPatterns } from '@/utils/feedRegex';
 
 export type { RichContentRenderer } from '@/features/rich-content';
 
+// Keep startup readiness out of the persisted user preferences. A failed read
+// must also release the splash screen, using the in-memory defaults.
+export const useInitialSettingsReady = create<boolean>(() => false);
+
 const settingsStorage = {
   getItem: (name: string) => SecureStore.getItemAsync(name),
   setItem: (name: string, value: string) =>
@@ -57,6 +61,12 @@ const VALID_TEXT_CONTRASTS: ReadonlyArray<TextContrast> = ['standard', 'high'];
 const VALID_SURFACE_STYLES: ReadonlyArray<SurfaceStyle> = ['layered', 'flat'];
 const DEFAULT_RECOMMEND_AD_INTERVAL = -10;
 const DEFAULT_LARGE_SCREEN_LIST_RATIO = 1 / 3;
+
+export type LargeScreenLayoutMode = 'auto' | 'single' | 'dual';
+
+function normalizeLargeScreenLayoutMode(value: unknown): LargeScreenLayoutMode {
+  return value === 'single' || value === 'dual' ? value : 'auto';
+}
 
 function normalizeLargeScreenListRatio(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -142,6 +152,9 @@ export interface AppSettings {
   richContentRenderer: RichContentRenderer;
   /** 正文图片加载作者上传的原文件（知乎提供时），不带知乎水印。 */
   removeImageWatermark: boolean;
+  imageLoadingMode: 'auto' | 'manual';
+  /** 允许单击回答中的划线打开段落菜单。 */
+  enableSegmentTap: boolean;
   /** 点击回答卡片后的阅读方式；列表入口始终使用普通卡片。 */
   answerReadingMode: AnswerReadingMode;
   /**
@@ -158,14 +171,16 @@ export interface AppSettings {
   pressScale: number;
   /** 安卓按压反馈类型: ripple (水波纹), scale-opacity (透明度+缩放) */
   androidFeedbackType: 'ripple' | 'scale-opacity';
+  /** Android 单栏侧滑返回时预览上一页。 */
+  androidPredictiveBackEnabled: boolean;
   /** 是否开启应用内震动反馈 */
   enableHapticFeedback: boolean;
   /** 关注动态、消息通知与私信的未读角标样式 */
   unreadBadgeStyle: UnreadBadgeStyle;
   /** iOS 是否使用系统原生界面与底部 Tab（iOS 26+ 显示 Liquid Glass） */
   useNativeIOSBottomTabs: boolean;
-  /** 是否并排显示列表与详情；仅由开关控制，不限制设备、尺寸或方向。 */
-  enableLargeScreenLayout: boolean;
+  /** 自动跟随窗口宽度，或固定使用单栏、双栏。 */
+  largeScreenLayoutMode: LargeScreenLayoutMode;
   /** 双栏中列表占可用宽度的比例。 */
   largeScreenListRatio: number;
   /** 是否开启浏览历史记录 */
@@ -239,6 +254,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   borderRadius: 12,
   richContentRenderer: 'native-v2',
   removeImageWatermark: true,
+  imageLoadingMode: 'auto',
+  enableSegmentTap: true,
   answerReadingMode: 'detail',
   doubleTapAction: undefined,
   enablePrivateMessaging: false,
@@ -246,10 +263,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   pressOpacity: 0.82,
   pressScale: 0.98,
   androidFeedbackType: 'ripple',
+  androidPredictiveBackEnabled: true,
   enableHapticFeedback: true,
   unreadBadgeStyle: 'count',
   useNativeIOSBottomTabs: true,
-  enableLargeScreenLayout: false,
+  largeScreenLayoutMode: 'auto',
   largeScreenListRatio: DEFAULT_LARGE_SCREEN_LIST_RATIO,
   enableBrowseHistory: true,
   enableListPreload: false,
@@ -318,6 +336,12 @@ export const useSettingsStore = create<SettingsState>()(
           if (typeof nextSettings.removeImageWatermark !== 'boolean') {
             nextSettings.removeImageWatermark = true;
           }
+          if (nextSettings.imageLoadingMode !== 'manual') {
+            nextSettings.imageLoadingMode = 'auto';
+          }
+          if (typeof nextSettings.enableSegmentTap !== 'boolean') {
+            nextSettings.enableSegmentTap = true;
+          }
           if (
             nextSettings.doubleTapAction !== undefined &&
             !isValidDoubleTapAction(nextSettings.doubleTapAction)
@@ -327,9 +351,11 @@ export const useSettingsStore = create<SettingsState>()(
           if (typeof nextSettings.enablePressFeedback !== 'boolean') {
             nextSettings.enablePressFeedback = true;
           }
-          if (typeof nextSettings.enableLargeScreenLayout !== 'boolean') {
-            nextSettings.enableLargeScreenLayout = false;
-          }
+          nextSettings.androidPredictiveBackEnabled =
+            nextSettings.androidPredictiveBackEnabled !== false;
+          nextSettings.largeScreenLayoutMode = normalizeLargeScreenLayoutMode(
+            nextSettings.largeScreenLayoutMode,
+          );
           nextSettings.largeScreenListRatio = normalizeLargeScreenListRatio(
             nextSettings.largeScreenListRatio,
           );
@@ -389,7 +415,9 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'zhihu-settings-storage',
       storage: createJSONStorage(() => settingsStorage),
-      version: 23,
+      // v25: upstream v24 plus this fork's list preloading and parallel paging.
+      version: 25,
+      onRehydrateStorage: () => () => useInitialSettingsReady.setState(true),
       migrate: (rawPersistedState: unknown, version: number) => {
         const persistedState =
           normalizePersistedSettingsState(rawPersistedState);
@@ -548,14 +576,22 @@ export const useSettingsStore = create<SettingsState>()(
           ? persistedState.doubleTapAction
           : undefined;
 
-        // v19 adds adaptive panes while retaining any saved layout preference.
-        persistedState.enableLargeScreenLayout =
-          typeof persistedState.enableLargeScreenLayout === 'boolean'
-            ? persistedState.enableLargeScreenLayout
-            : false;
+        // v23 keeps the old switch's explicit choice, including off on tablets.
+        const oldLayout = persistedState.enableLargeScreenLayout;
+        if (version < 23 && typeof oldLayout === 'boolean') {
+          persistedState.largeScreenLayoutMode = oldLayout ? 'dual' : 'single';
+        } else {
+          persistedState.largeScreenLayoutMode = normalizeLargeScreenLayoutMode(
+            persistedState.largeScreenLayoutMode,
+          );
+        }
+        delete persistedState.enableLargeScreenLayout;
         persistedState.largeScreenListRatio = normalizeLargeScreenListRatio(
           persistedState.largeScreenListRatio,
         );
+        // v24 enables predictive back for existing installations.
+        persistedState.androidPredictiveBackEnabled =
+          persistedState.androidPredictiveBackEnabled !== false;
         // v21 adds unread badge styles; existing installs keep red counts.
         persistedState.unreadBadgeStyle = isValidUnreadBadgeStyle(
           persistedState.unreadBadgeStyle,
@@ -568,10 +604,16 @@ export const useSettingsStore = create<SettingsState>()(
           typeof persistedState.removeImageWatermark === 'boolean'
             ? persistedState.removeImageWatermark
             : true;
-        // v22 adds list preloading, off unless chosen.
+        persistedState.imageLoadingMode =
+          persistedState.imageLoadingMode === 'manual' ? 'manual' : 'auto';
+        persistedState.enableSegmentTap =
+          typeof persistedState.enableSegmentTap === 'boolean'
+            ? persistedState.enableSegmentTap
+            : true;
+        // v25 (fork) adds list preloading, off unless chosen.
         persistedState.enableListPreload =
           persistedState.enableListPreload === true;
-        // v23 adds parallel paging, off unless chosen.
+        // v25 (fork) adds parallel paging, off unless chosen.
         persistedState.enableParallelPaging =
           persistedState.enableParallelPaging === true;
 

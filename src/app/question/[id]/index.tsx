@@ -33,6 +33,7 @@ import {
 } from '@/api/zhihu/question';
 import { BouncyButton } from '@/components/BouncyButton';
 import { CollectionButton } from '@/components/CollectionButton';
+import { CommentBubbleIcon } from '@/components/CommentBubbleIcon';
 import { ContentActionButton } from '@/components/ContentActionButton';
 import { useContentCardSurface } from '@/components/contentCardSurface';
 import {
@@ -257,11 +258,7 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
             })
           }
         >
-          <Ionicons
-            name="chatbubble-outline"
-            size={16}
-            color={secondaryColor}
-          />
+          <CommentBubbleIcon size={16} color={secondaryColor} />
           <Text type="secondary" className="ml-1 text-xs font-semibold">
             {item.comment_count}
           </Text>
@@ -645,11 +642,7 @@ export default function QuestionDetail() {
                     })
                   }
                 >
-                  <Ionicons
-                    name="chatbubble-outline"
-                    size={16}
-                    color={secondaryTextColor}
-                  />
+                  <CommentBubbleIcon size={16} color={secondaryTextColor} />
                   <Text
                     type="secondary"
                     style={{ fontSize: 13, lineHeight: 20 }}

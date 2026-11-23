@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { CanceledError } from 'axios';
 import { useRouter } from 'expo-router';
@@ -11,6 +10,7 @@ import {
   unfollowQuestion,
   type ZhihuQuestionDetail,
 } from '@/api/zhihu/question';
+import { CommentBubbleIcon } from '@/components/CommentBubbleIcon';
 import {
   QuestionDetailContent,
   QuestionDetailSummary,
@@ -44,7 +44,7 @@ export function AnswerPreviewQuestionHeader({
     hasAuthenticationCookie(state.cookies),
   );
   const sessionVersion = useAuthStore(() => getAuthSessionVersion());
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const {
     data: question,
@@ -143,7 +143,10 @@ export function AnswerPreviewQuestionHeader({
                   summary={summary}
                 />
               ) : (
-                <QuestionDetailSummary text={summary} />
+                <QuestionDetailSummary
+                  text={summary}
+                  truncate={Boolean(question.detail)}
+                />
               )}
               {question.detail ? (
                 <ContentActionButton
@@ -192,11 +195,7 @@ export function AnswerPreviewQuestionHeader({
                 })
               }
             >
-              <Ionicons
-                name="chatbubble-outline"
-                size={16}
-                color={colors.textSecondary}
-              />
+              <CommentBubbleIcon size={16} color={colors.textSecondary} />
               <Text type="secondary" style={{ fontSize: 13 }}>
                 {question?.comment_count ?? 0}
               </Text>
