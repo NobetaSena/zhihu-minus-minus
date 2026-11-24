@@ -1379,6 +1379,7 @@ const FeedList = React.forwardRef<
     cancelPendingIntentRef.current = cancelPendingIntent;
     useLoadMoreNearEnd({
       enabled: listPreloadEnabled,
+      active: isActive,
       listRef: flashListRef,
       threshold: listPreload.onEndReachedThreshold,
       loading: isBusy,

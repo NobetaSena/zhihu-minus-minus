@@ -214,6 +214,7 @@ export const DailyList = React.forwardRef<
   cancelPendingIntentRef.current = cancelPendingIntent;
   useLoadMoreNearEnd({
     enabled: listPreloadEnabled,
+    active: chrome.enabled,
     listRef: flashListRef,
     threshold: listPreload.onEndReachedThreshold,
     loading: isBusy,

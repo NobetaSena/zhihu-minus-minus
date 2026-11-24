@@ -306,6 +306,7 @@ export const ProfileTabList = forwardRef<
     });
   useLoadMoreNearEnd({
     enabled: listPreloadEnabled,
+    active,
     listRef,
     threshold: listPreload.onEndReachedThreshold,
     loading: isBusy,

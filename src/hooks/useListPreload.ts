@@ -50,18 +50,26 @@ export function useListPreloadEnabled(): boolean {
  * inside the zone, and scrolling further never re-enters it, so the reader
  * would reach the bottom with nothing left to start the next page.
  *
+ * A list that is not on screen drops these attempts. When it becomes active
+ * again it asks once more with a fresh follow-up budget: a short feed restored
+ * under another screen stays inside the zone, and coming back neither enters
+ * the zone nor finishes a load, so nothing else would ask for the next page.
+ *
  * The upstream pagination hook only follows up a load that added nothing,
  * which is enough at its half-screen threshold; this runs only while
  * preloading is on.
  */
 export function useLoadMoreNearEnd({
   enabled,
+  active = true,
   listRef,
   threshold,
   loading,
   loadMore,
 }: {
   enabled: boolean;
+  /** Whether the list is on screen; loads asked for while inactive are dropped. */
+  active?: boolean;
   listRef: RefObject<EndGeometry | null>;
   threshold: number;
   loading: boolean;
@@ -76,7 +84,11 @@ export function useLoadMoreNearEnd({
   });
 
   useEffect(() => {
-    if (!enabled || loading) return;
+    if (!active) resting.current = { ...resting.current, followUps: 0 };
+  }, [active]);
+
+  useEffect(() => {
+    if (!enabled || !active || loading) return;
     const frame = requestAnimationFrame(() => {
       const list = listRef.current;
       if (!list || !isNearEnd(list, threshold)) return;
@@ -93,5 +105,5 @@ export function useLoadMoreNearEnd({
       loadMoreRef.current();
     });
     return () => cancelAnimationFrame(frame);
-  }, [enabled, listRef, loading, threshold]);
+  }, [active, enabled, listRef, loading, threshold]);
 }

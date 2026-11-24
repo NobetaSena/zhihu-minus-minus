@@ -118,4 +118,53 @@ describe('useLoadMoreNearEnd', () => {
     }
     expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS + 2);
   });
+
+  async function renderActivity(geometry: { offset: number; content: number }) {
+    const loadMore = jest.fn();
+    const listRef = { current: fakeList(geometry) };
+    const hook = await renderHook(
+      ({ active, loading }: { active: boolean; loading: boolean }) =>
+        useLoadMoreNearEnd({
+          enabled: true,
+          active,
+          listRef,
+          threshold: 2,
+          loading,
+          loadMore,
+        }),
+      { initialProps: { active: false, loading: false } },
+    );
+    const set = async (props: { active: boolean; loading: boolean }) => {
+      await hook.rerender(props);
+      await act(async () => jest.runOnlyPendingTimers());
+    };
+    return { loadMore, set };
+  }
+
+  test('asks when a list that waited inside the end zone becomes active', async () => {
+    // A short feed restored under another screen: its first attempts were
+    // dropped while inactive, and returning neither re-enters the zone nor
+    // finishes a load, so nothing else would ask for the next page.
+    const { loadMore, set } = await renderActivity({ offset: 0, content: 800 });
+    await act(async () => jest.runOnlyPendingTimers());
+    expect(loadMore).not.toHaveBeenCalled();
+    await set({ active: true, loading: false });
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  test('becoming active again restores the follow-up budget at one offset', async () => {
+    const { loadMore, set } = await renderActivity({
+      offset: 5000,
+      content: 6000,
+    });
+    await set({ active: true, loading: false });
+    for (let i = 0; i < MAX_RESTING_FOLLOW_UPS + 2; i += 1) {
+      await set({ active: true, loading: true });
+      await set({ active: true, loading: false });
+    }
+    expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS);
+    await set({ active: false, loading: false });
+    await set({ active: true, loading: false });
+    expect(loadMore).toHaveBeenCalledTimes(MAX_RESTING_FOLLOW_UPS + 1);
+  });
 });
