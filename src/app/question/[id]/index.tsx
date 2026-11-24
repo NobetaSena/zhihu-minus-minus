@@ -164,6 +164,8 @@ const QuestionAnswerCard = React.memo(function QuestionAnswerCard({
         questionId,
         title: questionTitle,
         sortBy,
+        // 问题页本身就是这道题的回答列表，再进一层预览列表像是原地重进。
+        readingMode: 'detail',
       },
     });
   };
