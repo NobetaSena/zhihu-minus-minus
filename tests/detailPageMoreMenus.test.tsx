@@ -1128,6 +1128,9 @@ test('question and answer more entries target distinct content and preserve auth
       title: '合成问题',
       sortBy: 'default',
       answerScene: 'question_feed',
+      // The question page is already a list of its answers; opening another
+      // preview list of the same question reads as re-entering this page.
+      readingMode: 'detail',
     },
   });
   await pressButton(host.getByRole('button', { name: '问题更多操作' }));
